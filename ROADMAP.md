@@ -14,6 +14,7 @@ Agent Harnessの未実装機能と将来の拡張計画。
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列（暗号化データの疑い）を検知。`[payload_rules.advanced] entropy_threshold = 4.5`
 - [ ] **ダッシュボード認証**: Basic認証 or APIキー。環境変数`DASHBOARD_USER`/`DASHBOARD_PASS`で設定。CSRF対策（カスタムヘッダチェック）
 - [ ] **suspicious_argsのワード境界マッチ**: 現在の部分文字列マッチ（`.env`が`environment`にもマッチ）を正規表現のワード境界付きに改善
+- [ ] **アラートルールの組み合わせ条件**: 現在は各条件が独立発火だが、ツール名+引数パターン等を1セットにした複合条件を配列で複数定義できるようにする。例: `[[alerts.rules]] tools = ["Bash"] args = ["~/.ssh"]`（Bashかつ~/.sshの場合のみアラート）
 - [ ] **policy.tomlのファイルロック**: 同時書き込みのlost update防止。`fcntl.flock`で直列化
 
 ### 運用改善

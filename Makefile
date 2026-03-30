@@ -21,10 +21,8 @@ build: certs
 # === コンテナモード ===
 .PHONY: run
 run: certs
-ifndef CLAUDE_CODE_OAUTH_TOKEN
-	$(error CLAUDE_CODE_OAUTH_TOKEN is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make run)
-endif
 	HOST_UID=$(HOST_UID) docker compose up -d
+	@echo "対話モード: 初回はコンテナ内で /login が必要です"
 	docker compose exec claude claude
 
 .PHONY: task

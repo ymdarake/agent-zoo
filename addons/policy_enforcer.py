@@ -171,8 +171,9 @@ class PolicyEnforcer:
         body = flow.request.content
         body_size = len(body) if body else 0
 
-        # 1. ドメイン制御
-        allowed, reason = self.engine.is_allowed(host)
+        # 1. ドメイン + パス制御
+        req_path = flow.request.path  # URLパス（クエリ含む）
+        allowed, reason = self.engine.is_allowed(host, req_path)
         if not allowed:
             self._log_request(host, method, url, "BLOCKED", body_size, reason)
             flow.response = http.Response.make(

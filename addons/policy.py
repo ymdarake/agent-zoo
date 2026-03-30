@@ -24,6 +24,8 @@ class PolicyEngine:
         self._mtime: float = 0.0
         self.allow_list: list[str] = []
         self.deny_list: list[str] = []
+        self.paths_allow: dict[str, list[str]] = {}
+        self.paths_deny: dict[str, list[str]] = {}
         self.db_path: str = ""
         self.rate_limits: dict[str, dict] = {}
         self.block_patterns: list[re.Pattern] = []
@@ -50,6 +52,11 @@ class PolicyEngine:
         self.allow_list = domains.get("allow", {}).get("list", [])
         self.deny_list = domains.get("deny", {}).get("list", [])
         self.db_path = policy.get("general", {}).get("log_db", "/data/harness.db")
+
+        # パスベースルール
+        paths = policy.get("paths", {})
+        self.paths_allow = paths.get("allow", {})
+        self.paths_deny = paths.get("deny", {})
 
         # レート制限
         self.rate_limits = policy.get("rate_limits", {})
@@ -102,21 +109,42 @@ class PolicyEngine:
             logger.warning(f"Policy reload failed, keeping previous policy: {e}")
         return False
 
-    def is_allowed(self, host: str) -> tuple[bool, str]:
-        """ホスト名がポリシーで許可されているか判定する。
-        deny list → allow list → default deny の順で評価。
+    def is_allowed(self, host: str, path: str = "") -> tuple[bool, str]:
+        """ホスト名+パスがポリシーで許可されているか判定する。
+        1. domains.deny → ブロック（パスルール無視）
+        2. domains.allow → paths.deny チェック → パス拒否ならブロック、それ以外は許可
+        3. ドメイン未許可 → paths.allow チェック → パス許可ならOK
+        4. デフォルト拒否
         """
         host = host.lower()
 
+        # 1. domains.deny → 無条件ブロック
         for pattern in self.deny_list:
             p = pattern.lower()
             if fnmatch(host, p) or (p.startswith("*.") and host == p[2:]):
                 return False, f"denied by pattern: {pattern}"
 
+        # 2. domains.allow → paths.denyチェック
+        domain_allowed = False
         for pattern in self.allow_list:
             p = pattern.lower()
             if fnmatch(host, p) or (p.startswith("*.") and host == p[2:]):
-                return True, ""
+                domain_allowed = True
+                break
+
+        if domain_allowed:
+            # paths.denyで特定パスをブロック
+            if path and host in self.paths_deny:
+                for path_pattern in self.paths_deny[host]:
+                    if fnmatch(path, path_pattern):
+                        return False, f"path denied: {host}{path_pattern}"
+            return True, ""
+
+        # 3. paths.allowで特定パスを許可
+        if path and host in self.paths_allow:
+            for path_pattern in self.paths_allow[host]:
+                if fnmatch(path, path_pattern):
+                    return True, ""
 
         return False, "not in allow list"
 

@@ -182,7 +182,7 @@ def partial_requests():
     db = get_db()
     try:
         rows = db.execute(
-            "SELECT id, ts, host, method, status, body_size "
+            "SELECT id, ts, host, url, method, status, body_size "
             "FROM requests ORDER BY id DESC LIMIT 30"
         ).fetchall()
         return render_template("partials/requests.html", rows=rows)

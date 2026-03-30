@@ -177,15 +177,25 @@ class TestPayloadDecode(unittest.TestCase):
     def tearDown(self):
         os.unlink(self.path)
 
-    def test_base64_encoded_rm_detected(self):
-        """Base64エンコードされた 'rm -rf /' を検出"""
+    def test_base64_encoded_long_command_detected(self):
+        """Base64エンコードされた長い危険コマンドを検出（16文字以上のBase64候補）"""
         import base64
 
-        encoded = base64.b64encode(b"rm -rf /").decode()
+        # 16文字以上のBase64になる入力
+        encoded = base64.b64encode(b"rm -rf / --no-preserve-root").decode()
         body = f'{{"command": "{encoded}"}}'.encode()
         blocked, reason = self.engine.check_payload(body)
         self.assertTrue(blocked)
         self.assertIn("decoded", reason.lower())
+
+    def test_short_base64_attack_not_detected(self):
+        """短い攻撃文字列のBase64（16文字未満）は検出対象外（誤検知防止のため）"""
+        import base64
+
+        encoded = base64.b64encode(b"rm -rf /").decode()  # 12文字
+        body = f'{{"command": "{encoded}"}}'.encode()
+        blocked, _ = self.engine.check_payload(body)
+        self.assertFalse(blocked)
 
     def test_base64_encoded_secret_detected(self):
         """Base64エンコードされた秘密鍵パターンを検出"""

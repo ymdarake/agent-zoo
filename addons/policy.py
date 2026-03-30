@@ -211,15 +211,20 @@ class PolicyEngine:
         """テキスト内のBase64候補文字列をデコードして返す。"""
         import base64 as b64mod
         results = []
-        # Base64候補を検出（パディング含めて12文字以上）
-        for match in re.finditer(r'[A-Za-z0-9+/]{8,}={0,2}', text):
-            candidate = match.group()
+        # Base64候補を検出: 境界（引用符/スペース/行頭行末）で区切られた16文字以上
+        # 誤検知防止のため上限10候補まで
+        count = 0
+        for match in re.finditer(r'(?:^|[\s"\'=:,])([A-Za-z0-9+/]{16,}={0,2})(?:$|[\s"\'=:,])', text):
+            candidate = match.group(1)
             try:
                 decoded_bytes = b64mod.b64decode(candidate, validate=True)
                 decoded_str = decoded_bytes.decode("utf-8")
                 results.append(decoded_str)
             except Exception:
                 continue
+            count += 1
+            if count >= 10:
+                break
         return results
 
     def check_tool_use(

@@ -61,33 +61,36 @@ def _save_policy(path: str, policy: dict) -> None:
 
 
 def add_to_allow_list(policy_path: str, domain: str) -> None:
-    """policy.tomlのdomains.allow.listにドメインを追加する。"""
-    policy = _load_policy(policy_path)
-    allow_list = policy.setdefault("domains", {}).setdefault("allow", {}).setdefault(
-        "list", []
-    )
-    if domain not in allow_list:
-        allow_list.append(domain)
-    _save_policy(policy_path, policy)
+    """policy.tomlのdomains.allow.listにドメインを追加する。自動でファイルロックを取得。"""
+    with policy_lock(policy_path):
+        policy = _load_policy(policy_path)
+        allow_list = policy.setdefault("domains", {}).setdefault("allow", {}).setdefault(
+            "list", []
+        )
+        if domain not in allow_list:
+            allow_list.append(domain)
+        _save_policy(policy_path, policy)
 
 
 def add_to_dismissed(policy_path: str, domain: str, reason: str) -> None:
-    """policy.tomlのdomains.dismissedにドメインと理由を追加する。"""
-    policy = _load_policy(policy_path)
-    dismissed = policy.setdefault("domains", {}).setdefault("dismissed", {})
-    dismissed[domain] = {
-        "reason": reason,
-        "date": datetime.now().strftime("%Y-%m-%d"),
-    }
-    _save_policy(policy_path, policy)
+    """policy.tomlのdomains.dismissedにドメインと理由を追加する。自動でファイルロックを取得。"""
+    with policy_lock(policy_path):
+        policy = _load_policy(policy_path)
+        dismissed = policy.setdefault("domains", {}).setdefault("dismissed", {})
+        dismissed[domain] = {
+            "reason": reason,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+        }
+        _save_policy(policy_path, policy)
 
 
 def remove_from_dismissed(policy_path: str, domain: str) -> None:
-    """policy.tomlのdomains.dismissedからドメインを削除する。"""
-    policy = _load_policy(policy_path)
-    dismissed = policy.get("domains", {}).get("dismissed", {})
-    dismissed.pop(domain, None)
-    _save_policy(policy_path, policy)
+    """policy.tomlのdomains.dismissedからドメインを削除する。自動でファイルロックを取得。"""
+    with policy_lock(policy_path):
+        policy = _load_policy(policy_path)
+        dismissed = policy.get("domains", {}).get("dismissed", {})
+        dismissed.pop(domain, None)
+        _save_policy(policy_path, policy)
 
 
 def get_whitelist_candidates(

@@ -154,6 +154,7 @@ class PolicyEngine:
     def check_payload(self, body: bytes | None) -> tuple[bool, str]:
         """リクエストボディに危険パターンや機密情報が含まれていないかチェックする。
         (True, reason) = ブロック, (False, "") = 通過。
+        平文チェック後、URLデコード→Base64デコードの順で再検査する（1段階のみ）。
         """
         if not body:
             return False, ""
@@ -161,19 +162,65 @@ class PolicyEngine:
         try:
             text = body.decode("utf-8")
         except UnicodeDecodeError:
-            # バイナリデータ（画像等）は通過。ログで追跡可能。
             logger.debug("Payload is not UTF-8, skipping text pattern check")
             return False, ""
 
-        for pattern in self.block_patterns:
-            if pattern.search(text):
-                return True, f"block_pattern matched: {pattern.pattern}"
+        # 1. 平文チェック
+        result = self._match_patterns(text)
+        if result:
+            return True, result
 
-        for pattern in self.secret_patterns:
-            if pattern.search(text):
-                return True, f"secret_pattern matched: {pattern.pattern}"
+        # 2. URLデコード → 再検査
+        url_decoded = self._try_url_decode(text)
+        if url_decoded and url_decoded != text:
+            result = self._match_patterns(url_decoded)
+            if result:
+                return True, f"decoded(url): {result}"
+
+        # 3. Base64デコード → 再検査（URLデコード後のテキストから検出）
+        source = url_decoded or text
+        for decoded in self._extract_base64(source):
+            result = self._match_patterns(decoded)
+            if result:
+                return True, f"decoded(base64): {result}"
 
         return False, ""
+
+    def _match_patterns(self, text: str) -> str:
+        """block_patterns/secret_patternsに対してマッチングし、マッチしたら理由を返す。"""
+        for pattern in self.block_patterns:
+            if pattern.search(text):
+                return f"block_pattern matched: {pattern.pattern}"
+        for pattern in self.secret_patterns:
+            if pattern.search(text):
+                return f"secret_pattern matched: {pattern.pattern}"
+        return ""
+
+    @staticmethod
+    def _try_url_decode(text: str) -> str | None:
+        """URLエンコードされた文字列をデコードする。変化がなければNone。"""
+        from urllib.parse import unquote
+        try:
+            decoded = unquote(text)
+            return decoded if decoded != text else None
+        except Exception:
+            return None
+
+    @staticmethod
+    def _extract_base64(text: str) -> list[str]:
+        """テキスト内のBase64候補文字列をデコードして返す。"""
+        import base64 as b64mod
+        results = []
+        # Base64候補を検出（パディング含めて12文字以上）
+        for match in re.finditer(r'[A-Za-z0-9+/]{8,}={0,2}', text):
+            candidate = match.group()
+            try:
+                decoded_bytes = b64mod.b64decode(candidate, validate=True)
+                decoded_str = decoded_bytes.decode("utf-8")
+                results.append(decoded_str)
+            except Exception:
+                continue
+        return results
 
     def check_tool_use(
         self, tool_name: str, input_str: str, input_size: int

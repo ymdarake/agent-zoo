@@ -13,6 +13,7 @@ from addons.policy_edit import (
     add_to_dismissed,
     atomic_write,
     get_whitelist_candidates,
+    policy_lock,
     remove_from_dismissed,
 )
 
@@ -188,6 +189,63 @@ class TestWhitelistCandidates(unittest.TestCase):
         candidates = get_whitelist_candidates(db_path, policy_path)
         if len(candidates) >= 2:
             self.assertGreaterEqual(candidates[0]["count"], candidates[1]["count"])
+
+
+class TestFileLock(unittest.TestCase):
+    def test_lock_allows_sequential_access(self):
+        """ロック内で正常に読み書きできる"""
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+
+        with policy_lock(path):
+            add_to_allow_list(path, "test.com")
+
+        import tomllib
+        with open(path, "rb") as f:
+            policy = tomllib.load(f)
+        self.assertIn("test.com", policy["domains"]["allow"]["list"])
+
+    def test_lock_file_cleaned_up(self):
+        """ロックファイルが作成される"""
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        lock_path = path + ".lock"
+
+        with policy_lock(path):
+            self.assertTrue(os.path.exists(lock_path))
+
+        # ロックファイルは残る（削除しない設計）が、ロックは解放されている
+        self.assertTrue(os.path.exists(lock_path))
+        if os.path.exists(lock_path):
+            os.unlink(lock_path)
+
+    def test_concurrent_writes_protected(self):
+        """並行書き込みがロックで直列化される"""
+        import threading
+
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        results = []
+
+        def add_domain(domain):
+            with policy_lock(path):
+                add_to_allow_list(path, domain)
+                results.append(domain)
+
+        t1 = threading.Thread(target=add_domain, args=("domain1.com",))
+        t2 = threading.Thread(target=add_domain, args=("domain2.com",))
+        t1.start()
+        t2.start()
+        t1.join()
+        t2.join()
+
+        import tomllib
+        with open(path, "rb") as f:
+            policy = tomllib.load(f)
+        allow_list = policy["domains"]["allow"]["list"]
+        # 両方のドメインが存在する（lost updateなし）
+        self.assertIn("domain1.com", allow_list)
+        self.assertIn("domain2.com", allow_list)
 
 
 if __name__ == "__main__":

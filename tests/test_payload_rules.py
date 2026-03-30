@@ -167,5 +167,74 @@ secret_patterns = []
         os.unlink(path)
 
 
+class TestPayloadDecode(unittest.TestCase):
+    """デコード後の再検査テスト"""
+
+    def setUp(self):
+        self.path = _write_policy(PAYLOAD_POLICY)
+        self.engine = PolicyEngine(self.path)
+
+    def tearDown(self):
+        os.unlink(self.path)
+
+    def test_base64_encoded_rm_detected(self):
+        """Base64エンコードされた 'rm -rf /' を検出"""
+        import base64
+
+        encoded = base64.b64encode(b"rm -rf /").decode()
+        body = f'{{"command": "{encoded}"}}'.encode()
+        blocked, reason = self.engine.check_payload(body)
+        self.assertTrue(blocked)
+        self.assertIn("decoded", reason.lower())
+
+    def test_base64_encoded_secret_detected(self):
+        """Base64エンコードされた秘密鍵パターンを検出"""
+        import base64
+
+        encoded = base64.b64encode(b"AWS_SECRET_ACCESS_KEY=abcdef").decode()
+        body = f'{{"data": "{encoded}"}}'.encode()
+        blocked, reason = self.engine.check_payload(body)
+        self.assertTrue(blocked)
+
+    def test_url_encoded_rm_detected(self):
+        """URLエンコードされた 'rm -rf /' を検出"""
+        body = b'{"command": "rm%20-rf%20/"}'
+        blocked, reason = self.engine.check_payload(body)
+        self.assertTrue(blocked)
+
+    def test_url_encoded_secret_detected(self):
+        """URLエンコードされた秘密鍵パターンを検出"""
+        body = b'{"data": "AWS%5FSECRET%5FACCESS%5FKEY%3Dabcdef"}'
+        blocked, reason = self.engine.check_payload(body)
+        self.assertTrue(blocked)
+
+    def test_normal_base64_not_false_positive(self):
+        """通常のBase64データ（安全な内容）は誤検知しない"""
+        import base64
+
+        encoded = base64.b64encode(b"Hello, this is a normal message").decode()
+        body = f'{{"data": "{encoded}"}}'.encode()
+        blocked, _ = self.engine.check_payload(body)
+        self.assertFalse(blocked)
+
+    def test_short_base64_like_string_ignored(self):
+        """短いBase64風文字列はデコード対象外"""
+        body = b'{"token": "abc123"}'
+        blocked, _ = self.engine.check_payload(body)
+        self.assertFalse(blocked)
+
+    def test_decode_only_one_level(self):
+        """二重エンコードは1段階のみデコード（無限ループ防止）"""
+        import base64
+
+        inner = base64.b64encode(b"rm -rf /").decode()
+        outer = base64.b64encode(inner.encode()).decode()
+        body = f'{{"data": "{outer}"}}'.encode()
+        # 1段階デコードではinnerのBase64文字列が出るだけ。
+        # rm -rf / 自体は出てこないのでブロックされない
+        blocked, _ = self.engine.check_payload(body)
+        self.assertFalse(blocked)
+
+
 if __name__ == "__main__":
     unittest.main()

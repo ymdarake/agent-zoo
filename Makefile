@@ -54,6 +54,16 @@ up-strict: certs
 down:
 	docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml down 2>/dev/null || docker compose down
 
+# === ログ管理 ===
+.PHONY: clear-logs
+clear-logs:
+	@if [ -f data/harness.db ]; then \
+		rm data/harness.db; \
+		echo "Logs cleared: data/harness.db removed"; \
+	else \
+		echo "No log database found"; \
+	fi
+
 # === ホストモード ===
 .PHONY: host
 host:

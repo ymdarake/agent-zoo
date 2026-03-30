@@ -6,6 +6,8 @@
 log_db = "/data/harness.db"
 # tool_usesテーブルに保存するinputの最大文字数（0=無制限）
 max_tool_input_store = 1000
+# ログの自動ローテーション日数（0=無制限、起動時に古いレコードを削除）
+log_retention_days = 30
 
 [domains.allow]
 # 通信を許可するドメイン。ここにないドメインは全てブロックされる
@@ -41,6 +43,13 @@ secret_patterns = [
     "ANTHROPIC_API_KEY",
     "-----BEGIN.*PRIVATE KEY-----",
 ]
+
+[tool_use_rules]
+# tool_useをリアルタイムでブロックする条件（SSEストリーム切断でtool実行を阻止）
+# 完全にブロックするツール名
+block_tools = []
+# 引数にこの文字列が含まれたらブロック
+block_args = ["/etc/shadow", "/etc/passwd"]
 
 [alerts]
 # tool_use検出時にアラートを生成する条件（それぞれ独立、ログのみでブロックはしない）

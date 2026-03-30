@@ -32,6 +32,9 @@ class PolicyEngine:
         self.suspicious_args: list[str] = []
         self.tool_arg_size_alert: int = 0
         self.max_tool_input_store: int = 0
+        self.log_retention_days: int = 0
+        self.tool_use_block_tools: list[str] = []
+        self.tool_use_block_args: list[str] = []
         # レート制限の内部状態（ホットリロードでもリセットしない）
         self._rate_windows: dict[str, deque] = {}
         self._burst_windows: dict[str, deque] = {}
@@ -65,6 +68,12 @@ class PolicyEngine:
         self.suspicious_args = alerts_config.get("suspicious_args", [])
         self.tool_arg_size_alert = alerts_config.get("tool_arg_size_alert", 0)
         self.max_tool_input_store = policy.get("general", {}).get("max_tool_input_store", 0)
+        self.log_retention_days = policy.get("general", {}).get("log_retention_days", 0)
+
+        # tool_useブロックルール
+        tool_use_rules = policy.get("tool_use_rules", {})
+        self.tool_use_block_tools = tool_use_rules.get("block_tools", [])
+        self.tool_use_block_args = tool_use_rules.get("block_args", [])
 
     @staticmethod
     def _compile_patterns(
@@ -255,3 +264,19 @@ class PolicyEngine:
                 )
 
         return alerts
+
+    def should_block_tool_use(self, tool_name: str, input_str: str) -> tuple[bool, str]:
+        """tool_useをブロックすべきか判定する。
+        (True, reason) = ブロック, (False, "") = 通過。
+        """
+        if not self.tool_use_block_tools and not self.tool_use_block_args:
+            return False, ""
+
+        if tool_name in self.tool_use_block_tools:
+            return True, f"tool blocked: {tool_name}"
+
+        for pattern in self.tool_use_block_args:
+            if pattern in input_str:
+                return True, f"tool_use arg blocked: '{pattern}' in {tool_name}"
+
+        return False, ""

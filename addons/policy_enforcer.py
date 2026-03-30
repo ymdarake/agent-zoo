@@ -26,6 +26,7 @@ class PolicyEnforcer:
         self.engine = PolicyEngine(policy_path)
         self._db: sqlite3.Connection | None = None
         self._init_db()
+        self._cleanup_old_logs()
         ctx.log.info(
             f"PolicyEnforcer loaded: "
             f"{len(self.engine.allow_list)} allowed, "
@@ -73,6 +74,10 @@ class PolicyEnforcer:
                 type TEXT,
                 detail TEXT
             );
+            CREATE INDEX IF NOT EXISTS idx_requests_ts ON requests(ts);
+            CREATE INDEX IF NOT EXISTS idx_blocks_ts ON blocks(ts);
+            CREATE INDEX IF NOT EXISTS idx_tool_uses_ts ON tool_uses(ts);
+            CREATE INDEX IF NOT EXISTS idx_alerts_ts ON alerts(ts);
             """
         )
         db.commit()
@@ -124,6 +129,33 @@ class PolicyEnforcer:
             ctx.log.info(f"tool_use: {tool_use.name} (size={tool_use.input_size})")
         except Exception as e:
             ctx.log.error(f"DB write failed (tool_uses): {e}")
+
+    def _cleanup_old_logs(self):
+        """log_retention_daysに基づいて古いログを自動削除する。"""
+        days = self.engine.log_retention_days
+        if not days:
+            return
+        try:
+            db = self._get_db()
+            cutoff = f"datetime('now', '-{days} days')"
+            for table in ("requests", "blocks", "tool_uses", "alerts"):
+                db.execute(f"DELETE FROM {table} WHERE ts < {cutoff}")
+            db.commit()
+            ctx.log.info(f"Cleaned up logs older than {days} days")
+        except Exception as e:
+            ctx.log.error(f"Log cleanup failed: {e}")
+
+    def _log_block_tool_use(self, tool_name, reason):
+        """ブロックされたtool_useをblocksテーブルに記録する。"""
+        try:
+            db = self._get_db()
+            db.execute(
+                "INSERT INTO blocks (host, reason) VALUES (?, ?)",
+                (f"tool_use:{tool_name}", reason),
+            )
+            db.commit()
+        except Exception as e:
+            ctx.log.error(f"DB write failed (tool_use block): {e}")
 
     def request(self, flow: http.HTTPFlow):
         self.engine.maybe_reload()
@@ -184,6 +216,14 @@ class PolicyEnforcer:
                 sse_buf.feed(chunk)
                 for tool_use in sse_buf.drain_completed():
                     self._log_tool_use(tool_use)
+                    # tool_useブロック判定（方式B: 事後キル）
+                    should_block, reason = self.engine.should_block_tool_use(
+                        tool_use.name, tool_use.input
+                    )
+                    if should_block:
+                        ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
+                        self._log_block_tool_use(tool_use.name, reason)
+                        return  # generator終了→ストリーム切断→tool実行阻止
                 yield chunk  # クライアントにはそのまま透過
 
         flow.response.stream = stream_handler

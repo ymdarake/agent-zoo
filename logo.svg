@@ -1,76 +1,129 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" fill="none">
-  <!-- Background -->
-  <rect width="420" height="140" rx="14" fill="#1a1b26"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 180" fill="none">
+  <rect width="520" height="180" rx="16" fill="#1a1b26"/>
 
+  <!-- ========== LEFT: Cage with Hamster ========== -->
+
+  <!-- Cage structure -->
+  <rect x="20" y="30" width="110" height="120" rx="6" fill="none" stroke="#565f89" stroke-width="2" opacity="0.5"/>
   <!-- Cage bars -->
-  <line x1="18" y1="18" x2="18" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-  <line x1="38" y1="18" x2="38" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-  <line x1="58" y1="18" x2="58" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-  <line x1="78" y1="18" x2="78" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-  <line x1="98" y1="18" x2="98" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-  <!-- Top/bottom bars -->
-  <line x1="12" y1="18" x2="104" y2="18" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
-  <line x1="12" y1="122" x2="104" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="42" y1="30" x2="42" y2="150" stroke="#565f89" stroke-width="2" opacity="0.4"/>
+  <line x1="64" y1="30" x2="64" y2="150" stroke="#565f89" stroke-width="2" opacity="0.4"/>
+  <line x1="86" y1="30" x2="86" y2="150" stroke="#565f89" stroke-width="2" opacity="0.4"/>
+  <line x1="108" y1="30" x2="108" y2="150" stroke="#565f89" stroke-width="2" opacity="0.4"/>
 
   <!-- Hamster body -->
-  <ellipse cx="58" cy="82" rx="26" ry="24" fill="#e0af68"/>
-  <!-- Hamster belly -->
-  <ellipse cx="58" cy="88" rx="16" ry="14" fill="#fcebd2"/>
-  <!-- Hamster head -->
-  <circle cx="58" cy="56" r="20" fill="#e0af68"/>
+  <ellipse cx="75" cy="108" rx="22" ry="20" fill="#e0af68"/>
+  <ellipse cx="75" cy="113" rx="14" ry="12" fill="#fcebd2"/>
+  <!-- Head -->
+  <circle cx="75" cy="80" r="18" fill="#e0af68"/>
   <!-- Ears -->
-  <ellipse cx="42" cy="40" rx="8" ry="10" fill="#e0af68"/>
-  <ellipse cx="42" cy="40" rx="5" ry="7" fill="#f5c89a"/>
-  <ellipse cx="74" cy="40" rx="8" ry="10" fill="#e0af68"/>
-  <ellipse cx="74" cy="40" rx="5" ry="7" fill="#f5c89a"/>
+  <ellipse cx="61" cy="66" rx="7" ry="9" fill="#e0af68"/>
+  <ellipse cx="61" cy="66" rx="4.5" ry="6" fill="#f5c89a"/>
+  <ellipse cx="89" cy="66" rx="7" ry="9" fill="#e0af68"/>
+  <ellipse cx="89" cy="66" rx="4.5" ry="6" fill="#f5c89a"/>
   <!-- Eyes -->
-  <circle cx="50" cy="54" r="4" fill="#1a1b26"/>
-  <circle cx="66" cy="54" r="4" fill="#1a1b26"/>
-  <circle cx="51.5" cy="52.5" r="1.5" fill="white"/>
-  <circle cx="67.5" cy="52.5" r="1.5" fill="white"/>
-  <!-- Nose -->
-  <ellipse cx="58" cy="61" rx="3" ry="2" fill="#c0846b"/>
-  <!-- Mouth -->
-  <path d="M55 63 Q58 67 61 63" fill="none" stroke="#c0846b" stroke-width="1" stroke-linecap="round"/>
+  <circle cx="68" cy="78" r="3.5" fill="#1a1b26"/>
+  <circle cx="82" cy="78" r="3.5" fill="#1a1b26"/>
+  <circle cx="69.2" cy="76.8" r="1.3" fill="white"/>
+  <circle cx="83.2" cy="76.8" r="1.3" fill="white"/>
+  <!-- Nose + mouth -->
+  <ellipse cx="75" cy="85" rx="2.5" ry="1.8" fill="#c0846b"/>
+  <path d="M72.5 87 Q75 90 77.5 87" fill="none" stroke="#c0846b" stroke-width="0.8"/>
   <!-- Cheeks -->
-  <circle cx="44" cy="60" r="5" fill="#f7768e" opacity="0.25"/>
-  <circle cx="72" cy="60" r="5" fill="#f7768e" opacity="0.25"/>
-  <!-- Paws holding bar -->
-  <ellipse cx="37" cy="76" rx="5" ry="4" fill="#e0af68"/>
-  <ellipse cx="79" cy="76" rx="5" ry="4" fill="#e0af68"/>
-  <!-- Tiny tail -->
-  <circle cx="84" cy="90" r="4" fill="#e0af68"/>
+  <circle cx="62" cy="84" r="4.5" fill="#f7768e" opacity="0.25"/>
+  <circle cx="88" cy="84" r="4.5" fill="#f7768e" opacity="0.25"/>
+  <!-- Paws on bars -->
+  <ellipse cx="64" cy="98" rx="5" ry="3.5" fill="#e0af68"/>
+  <ellipse cx="86" cy="98" rx="5" ry="3.5" fill="#e0af68"/>
+  <!-- Tail -->
+  <circle cx="97" cy="115" r="3.5" fill="#e0af68"/>
 
-  <!-- Shield badge on cage -->
-  <path d="M88 96 L98 92 L108 96 L108 110 C108 116 98 122 98 122 C98 122 88 116 88 110 Z"
-        fill="#7aa2f7" opacity="0.8"/>
-  <rect x="94" y="104" width="8" height="6" rx="1" fill="white" opacity="0.9"/>
-  <path d="M96 104 L96 101 C96 98 100 98 100 101 L100 104"
-        fill="none" stroke="white" stroke-width="1.2" opacity="0.9"/>
+  <!-- Label -->
+  <text x="50" y="166" font-family="system-ui, sans-serif" font-size="9" fill="#565f89">Agent</text>
 
-  <!-- Title -->
-  <text x="125" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="#c0caf5">
-    Agent
+  <!-- ========== MIDDLE: Proxy Shield (mitmproxy) ========== -->
+
+  <!-- Network lines from cage to proxy -->
+  <line x1="130" y1="70" x2="175" y2="70" stroke="#9ece6a" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+  <line x1="130" y1="90" x2="175" y2="90" stroke="#9ece6a" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+  <line x1="130" y1="110" x2="175" y2="110" stroke="#f7768e" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+
+  <!-- Arrow heads (allowed) -->
+  <polygon points="173,67 180,70 173,73" fill="#9ece6a" opacity="0.6"/>
+  <polygon points="173,87 180,90 173,93" fill="#9ece6a" opacity="0.6"/>
+  <!-- X mark (blocked) -->
+  <line x1="170" y1="106" x2="178" y2="114" stroke="#f7768e" stroke-width="2" opacity="0.8"/>
+  <line x1="178" y1="106" x2="170" y2="114" stroke="#f7768e" stroke-width="2" opacity="0.8"/>
+
+  <!-- Shield shape -->
+  <path d="M195 42 L225 30 L255 42 L255 110 C255 130 225 148 225 148 C225 148 195 130 195 110 Z"
+        fill="#7aa2f7" opacity="0.12" stroke="#7aa2f7" stroke-width="2"/>
+
+  <!-- Magnifying glass (inspection) -->
+  <circle cx="225" cy="72" r="14" fill="none" stroke="#c0caf5" stroke-width="2"/>
+  <line x1="235" y1="82" x2="244" y2="91" stroke="#c0caf5" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Eye inside magnifier -->
+  <ellipse cx="225" cy="72" rx="7" ry="5" fill="none" stroke="#7aa2f7" stroke-width="1.5"/>
+  <circle cx="225" cy="72" r="2.5" fill="#7aa2f7"/>
+
+  <!-- Check / block marks inside shield -->
+  <text x="210" y="113" font-family="system-ui, sans-serif" font-size="11" fill="#9ece6a">ALLOW</text>
+  <text x="210" y="130" font-family="system-ui, sans-serif" font-size="11" fill="#f7768e">BLOCK</text>
+
+  <!-- Label -->
+  <text x="205" y="166" font-family="system-ui, sans-serif" font-size="9" fill="#565f89">Proxy</text>
+
+  <!-- Network lines from proxy to internet -->
+  <line x1="255" y1="70" x2="290" y2="70" stroke="#9ece6a" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+  <line x1="255" y1="90" x2="290" y2="90" stroke="#9ece6a" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6"/>
+  <polygon points="288,67 295,70 288,73" fill="#9ece6a" opacity="0.6"/>
+  <polygon points="288,87 295,90 288,93" fill="#9ece6a" opacity="0.6"/>
+
+  <!-- Internet cloud -->
+  <ellipse cx="320" cy="75" rx="28" ry="18" fill="#414868" opacity="0.5"/>
+  <ellipse cx="310" cy="70" rx="15" ry="12" fill="#414868" opacity="0.5"/>
+  <ellipse cx="332" cy="68" rx="14" ry="11" fill="#414868" opacity="0.5"/>
+  <text x="305" y="80" font-family="system-ui, sans-serif" font-size="10" fill="#c0caf5" opacity="0.7">API</text>
+
+  <!-- ========== RIGHT: Dashboard Monitor ========== -->
+
+  <!-- Monitor frame -->
+  <rect x="370" y="28" width="130" height="85" rx="6" fill="#24283b" stroke="#565f89" stroke-width="1.5"/>
+  <!-- Monitor stand -->
+  <rect x="420" y="113" width="30" height="8" rx="2" fill="#565f89" opacity="0.4"/>
+  <rect x="410" y="121" width="50" height="4" rx="2" fill="#565f89" opacity="0.4"/>
+
+  <!-- Screen content: mini chart bars -->
+  <rect x="380" y="72" width="8" height="30" rx="2" fill="#9ece6a" opacity="0.6"/>
+  <rect x="392" y="62" width="8" height="40" rx="2" fill="#9ece6a" opacity="0.6"/>
+  <rect x="404" y="78" width="8" height="24" rx="2" fill="#9ece6a" opacity="0.6"/>
+  <rect x="416" y="85" width="8" height="17" rx="2" fill="#f7768e" opacity="0.6"/>
+  <rect x="428" y="68" width="8" height="34" rx="2" fill="#9ece6a" opacity="0.6"/>
+  <rect x="440" y="90" width="8" height="12" rx="2" fill="#f7768e" opacity="0.6"/>
+
+  <!-- Screen header -->
+  <rect x="378" y="35" width="114" height="22" rx="3" fill="#1a1b26"/>
+  <circle cx="387" cy="46" r="3" fill="#f7768e" opacity="0.7"/>
+  <circle cx="397" cy="46" r="3" fill="#e0af68" opacity="0.7"/>
+  <circle cx="407" cy="46" r="3" fill="#9ece6a" opacity="0.7"/>
+  <text x="418" y="50" font-family="monospace" font-size="8" fill="#565f89">Dashboard</text>
+
+  <!-- Alert badge on monitor -->
+  <circle cx="492" cy="36" r="8" fill="#f7768e"/>
+  <text x="489" y="40" font-family="system-ui, sans-serif" font-size="10" font-weight="bold" fill="white">!</text>
+
+  <!-- Label -->
+  <text x="405" y="148" font-family="system-ui, sans-serif" font-size="9" fill="#565f89">Monitor</text>
+
+  <!-- ========== Connection: Proxy to Dashboard (log flow) ========== -->
+  <path d="M240 140 C240 160 400 160 420 130" fill="none" stroke="#e0af68" stroke-width="1.2" stroke-dasharray="3,3" opacity="0.4"/>
+  <text x="300" y="160" font-family="system-ui, sans-serif" font-size="8" fill="#e0af68" opacity="0.5">logs</text>
+
+  <!-- ========== Title (top center) ========== -->
+  <text x="160" y="20" font-family="system-ui, -apple-system, sans-serif" font-size="14" font-weight="700" fill="#c0caf5">
+    Agent Zoo
   </text>
-  <text x="270" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="#7aa2f7">
-    Zoo
-  </text>
-
-  <!-- Subtitle -->
-  <text x="125" y="90" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#565f89" letter-spacing="0.5">
+  <text x="248" y="20" font-family="system-ui, -apple-system, sans-serif" font-size="10" fill="#565f89">
     Security Harness for AI Coding Agents
   </text>
-
-  <!-- Feature pills -->
-  <rect x="125" y="102" rx="8" ry="8" width="70" height="20" fill="#7aa2f7" opacity="0.15"/>
-  <text x="138" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#7aa2f7">Network</text>
-
-  <rect x="203" y="102" rx="8" ry="8" width="60" height="20" fill="#9ece6a" opacity="0.15"/>
-  <text x="215" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#9ece6a">Proxy</text>
-
-  <rect x="271" y="102" rx="8" ry="8" width="60" height="20" fill="#e0af68" opacity="0.15"/>
-  <text x="282" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#e0af68">Policy</text>
-
-  <rect x="339" y="102" rx="8" ry="8" width="60" height="20" fill="#f7768e" opacity="0.15"/>
-  <text x="352" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#f7768e">Alerts</text>
 </svg>

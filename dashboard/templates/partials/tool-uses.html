@@ -1,0 +1,23 @@
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Tool</th>
+            <th>Input</th>
+            <th>Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.ts }}</td>
+            <td><strong>{{ row.tool_name }}</strong></td>
+            <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ row.input }}">{{ row.input }}</td>
+            <td>{{ row.input_size }}</td>
+        </tr>
+        {% endfor %}
+        {% if not rows %}
+        <tr><td colspan="4">No tool uses yet.</td></tr>
+        {% endif %}
+    </tbody>
+</table>

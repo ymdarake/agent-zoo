@@ -207,6 +207,19 @@ def partial_stats():
         db.close()
 
 
+@app.route("/partials/tool-uses")
+def partial_tool_uses():
+    db = get_db()
+    try:
+        rows = db.execute(
+            "SELECT id, ts, tool_name, input, input_size "
+            "FROM tool_uses ORDER BY id DESC LIMIT 50"
+        ).fetchall()
+        return render_template("partials/tool-uses.html", rows=rows)
+    finally:
+        db.close()
+
+
 @app.route("/partials/whitelist")
 def partial_whitelist():
     import tomllib

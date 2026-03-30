@@ -44,12 +44,20 @@
         <!-- Tabs -->
         <div class="tab-nav" id="tabs">
             <a href="#" class="active" onclick="showTab('requests', this)">Requests</a>
+            <a href="#" onclick="showTab('tool-uses', this)">Tool Uses</a>
             <a href="#" onclick="showTab('whitelist', this)">Whitelist</a>
         </div>
 
         <!-- Requests Tab -->
         <div id="tab-requests">
             <div hx-get="/partials/requests" hx-trigger="load, every 3s" hx-swap="innerHTML">
+                <p aria-busy="true">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Tool Uses Tab -->
+        <div id="tab-tool-uses" style="display:none">
+            <div hx-get="/partials/tool-uses" hx-trigger="load, every 5s" hx-swap="innerHTML">
                 <p aria-busy="true">Loading...</p>
             </div>
         </div>
@@ -64,8 +72,8 @@
 
     <script>
     function showTab(name, el) {
-        document.getElementById('tab-requests').style.display = name === 'requests' ? '' : 'none';
-        document.getElementById('tab-whitelist').style.display = name === 'whitelist' ? '' : 'none';
+        document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
+        document.getElementById('tab-' + name).style.display = '';
         document.querySelectorAll('.tab-nav a').forEach(a => a.classList.remove('active'));
         el.classList.add('active');
     }

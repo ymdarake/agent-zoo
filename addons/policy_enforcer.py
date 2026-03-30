@@ -137,9 +137,12 @@ class PolicyEnforcer:
             return
         try:
             db = self._get_db()
-            cutoff = f"datetime('now', '-{days} days')"
+            days = int(days)
             for table in ("requests", "blocks", "tool_uses", "alerts"):
-                db.execute(f"DELETE FROM {table} WHERE ts < {cutoff}")
+                db.execute(
+                    f"DELETE FROM {table} WHERE ts < datetime('now', ? || ' days')",
+                    (f"-{days}",),
+                )
             db.commit()
             ctx.log.info(f"Cleaned up logs older than {days} days")
         except Exception as e:

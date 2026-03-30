@@ -58,8 +58,8 @@ down:
 .PHONY: clear-logs
 clear-logs:
 	@if [ -f data/harness.db ]; then \
-		rm data/harness.db; \
-		echo "Logs cleared: data/harness.db removed"; \
+		rm -f data/harness.db data/harness.db-wal data/harness.db-shm; \
+		echo "Logs cleared (DB + WAL/SHM removed)"; \
 	else \
 		echo "No log database found"; \
 	fi

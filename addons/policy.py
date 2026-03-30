@@ -118,6 +118,11 @@ class PolicyEngine:
         """
         host = host.lower()
 
+        # URLデコード（%2f → / 等）してからマッチング
+        if path:
+            from urllib.parse import unquote
+            path = unquote(path)
+
         # 1. domains.deny → 無条件ブロック
         for pattern in self.deny_list:
             p = pattern.lower()

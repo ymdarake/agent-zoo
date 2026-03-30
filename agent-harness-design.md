@@ -1,5 +1,7 @@
 # Agent Harness 設計ドキュメント
 
+> **注意**: この文書は初期設計時のものです。実装の過程でコマンド内容・ポリシー構成・認証方式等が変更されています。最新の正確な情報は [README.md](README.md) と [CLAUDE.md](CLAUDE.md) を参照してください。実装状態は [ROADMAP.md](ROADMAP.md) で管理しています。
+
 AIコーディングエージェント（Claude Code, Codex CLI, Aider, Cline等）を安全に自律実行するためのセキュリティハーネス。Docker Compose隔離 + mitmproxyペイロード検査 + TOMLポリシー制御をエージェント非依存で提供する。
 
 ---

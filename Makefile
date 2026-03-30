@@ -46,7 +46,7 @@ up-dashboard: certs
 
 .PHONY: reload
 reload:
-	docker compose restart proxy
+	docker compose restart proxy dashboard
 	@echo "policy.toml reloaded"
 
 .PHONY: up-strict

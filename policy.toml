@@ -22,7 +22,8 @@ log_retention_days = 30
 list = ["api.anthropic.com", "statsig.anthropic.com", "platform.claude.com", "code.claude.com", "claude.ai", "mcp-proxy.anthropic.com"]
 
 [domains.deny]
-# 明示的に拒否するドメイン。allow より優先される
+# allowより優先して拒否するドメイン（allowのワイルドカードから例外的に除外する用途）
+# デフォルトが全拒否なので、通常は空でよい
 list = ["*.evil.com"]
 
 [domains.dismissed]

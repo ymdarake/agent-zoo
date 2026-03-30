@@ -88,7 +88,7 @@ make clear-logs       # ログDB削除（WAL/SHM含む）
 list = ["api.anthropic.com"]
 
 [domains.deny]
-# 明示的に拒否するドメイン。allow より優先
+# allowより優先して拒否（allowのワイルドカードから例外除外する用途。デフォルト全拒否なので通常は空でよい）
 list = ["*.evil.com"]
 
 [paths.allow]

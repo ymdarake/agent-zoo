@@ -61,11 +61,12 @@ make up-strict        # CoreDNS strictモード（DNS漏洩対策）
 ### テスト・分析
 
 ```bash
-make unit             # ユニットテスト（82件）
+make unit             # ユニットテスト（105件）
 make test             # Dockerスモークテスト
 make analyze          # ブロックログ → policy.toml改善提案
 make summarize        # tool_use履歴 → 最小権限settings.json提案
 make alerts           # セキュリティアラートの分析
+make clear-logs       # ログDB削除（WAL/SHM含む）
 ```
 
 ## ポリシー設定（policy.toml）
@@ -131,6 +132,8 @@ Docker不要の軽量モード。macOS Seatbeltサンドボックスと併用。
 エージェントはコンテナ内のファイルや環境変数を読むことができる。これを防ぐのではなく、読んだ情報を外部に送信できないようにネットワークレベルで制御する。`api.anthropic.com` のみ許可し、それ以外への通信を全て遮断することで、データ漏洩の経路を塞ぐ。
 
 **原則: コンテナは使い捨ての一時環境として扱う。** 本番のクレデンシャルや漏洩すると致命的な情報は入れない。開発用のテストキーやローカルDB接続文字列に留め、本番環境の秘密情報はworkspaceの外で管理する。
+
+**botサーバー等の常駐プロセスにも利用可能。** APIキーを含むbotサーバー（Slack bot等）の実行環境としても、ネットワーク隔離により最低限の箱庭を提供する。許可ドメイン（`api.anthropic.com` + botが接続する先）のみ通信可能にし、それ以外への漏洩を遮断できる。
 
 ### 多層防御
 

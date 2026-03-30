@@ -52,11 +52,12 @@ make down             # コンテナ停止
 make analyze          # ブロックログ → policy.toml改善提案
 make summarize        # tool_use履歴 → ホストモード最小権限提案
 make alerts           # アラート履歴の分析
+make clear-logs       # ログDB削除
 ```
 
 ## 実装状態
 
-Phase 1-3 実装済み。ユニットテスト82件、Dockerスモークテスト。
+Phase 1-3 実装済み。ユニットテスト105件、Dockerスモークテスト。
 
 ## テスト実行ルール
 

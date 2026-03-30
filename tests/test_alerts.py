@@ -80,6 +80,39 @@ class TestAlerts(unittest.TestCase):
         self.assertIn("suspicious_arg", types)
         self.assertIn("tool_arg_size", types)
 
+    def test_suspicious_arg_no_false_positive_envrc(self):
+        """.envが.envrcにマッチしない"""
+        alerts = self.engine.check_tool_use("Read", '{"path": "/home/.envrc"}', 24)
+        arg_alerts = [a for a in alerts if a.type == "suspicious_arg"]
+        env_alerts = [a for a in arg_alerts if ".env" in a.detail]
+        self.assertEqual(len(env_alerts), 0)
+
+    def test_suspicious_arg_no_false_positive_environment(self):
+        """.envが.environment_configにマッチしない"""
+        alerts = self.engine.check_tool_use("Read", '{"path": ".environment_config"}', 31)
+        arg_alerts = [a for a in alerts if a.type == "suspicious_arg"]
+        env_alerts = [a for a in arg_alerts if ".env" in a.detail]
+        self.assertEqual(len(env_alerts), 0)
+
+    def test_suspicious_arg_no_false_positive_env_backup(self):
+        """.envが.env_backupにマッチしない"""
+        alerts = self.engine.check_tool_use("Read", '{"path": ".env_backup"}', 22)
+        arg_alerts = [a for a in alerts if a.type == "suspicious_arg"]
+        env_alerts = [a for a in arg_alerts if ".env" in a.detail]
+        self.assertEqual(len(env_alerts), 0)
+
+    def test_suspicious_arg_matches_dotenv_exact(self):
+        """.envが/.envにマッチする"""
+        alerts = self.engine.check_tool_use("Read", '{"path": "/.env"}', 17)
+        arg_alerts = [a for a in alerts if a.type == "suspicious_arg" and ".env" in a.detail]
+        self.assertGreater(len(arg_alerts), 0)
+
+    def test_suspicious_arg_matches_dotenv_with_extension(self):
+        """.envが/.env.localにマッチする"""
+        alerts = self.engine.check_tool_use("Read", '{"path": "/.env.local"}', 23)
+        arg_alerts = [a for a in alerts if a.type == "suspicious_arg" and ".env" in a.detail]
+        self.assertGreater(len(arg_alerts), 0)
+
     def test_no_alerts_config_empty(self):
         """alerts設定なしで空リスト"""
         path = _write_policy(

@@ -99,10 +99,14 @@ class PolicyEnforcer:
         """tool_useをDBに記録し、アラートチェックを行う。"""
         try:
             db = self._get_db()
+            stored_input = tool_use.input
+            max_store = self.engine.max_tool_input_store
+            if max_store and len(stored_input) > max_store:
+                stored_input = stored_input[:max_store] + "... (truncated)"
             db.execute(
                 "INSERT INTO tool_uses (tool_name, input, input_size) "
                 "VALUES (?, ?, ?)",
-                (tool_use.name, tool_use.input, tool_use.input_size),
+                (tool_use.name, stored_input, tool_use.input_size),
             )
 
             # アラートチェック

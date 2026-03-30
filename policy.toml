@@ -4,6 +4,8 @@
 [general]
 # SQLiteログの保存先（コンテナ内パス）
 log_db = "/data/harness.db"
+# tool_usesテーブルに保存するinputの最大文字数（0=無制限）
+max_tool_input_store = 1000
 
 [domains.allow]
 # 通信を許可するドメイン。ここにないドメインは全てブロックされる

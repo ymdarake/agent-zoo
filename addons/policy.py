@@ -31,6 +31,7 @@ class PolicyEngine:
         self.suspicious_tools: list[str] = []
         self.suspicious_args: list[str] = []
         self.tool_arg_size_alert: int = 0
+        self.max_tool_input_store: int = 0
         # レート制限の内部状態（ホットリロードでもリセットしない）
         self._rate_windows: dict[str, deque] = {}
         self._burst_windows: dict[str, deque] = {}
@@ -63,6 +64,7 @@ class PolicyEngine:
         self.suspicious_tools = alerts_config.get("suspicious_tools", [])
         self.suspicious_args = alerts_config.get("suspicious_args", [])
         self.tool_arg_size_alert = alerts_config.get("tool_arg_size_alert", 0)
+        self.max_tool_input_store = policy.get("general", {}).get("max_tool_input_store", 0)
 
     @staticmethod
     def _compile_patterns(
@@ -193,7 +195,9 @@ class PolicyEngine:
             )
 
         for pattern in self.suspicious_args:
-            if pattern in input_str:
+            # ワード境界マッチ: 英数字・アンダースコアに挟まれた部分一致を除外
+            escaped = re.escape(pattern)
+            if re.search(rf'(?:^|[^a-zA-Z0-9_]){escaped}(?:$|[^a-zA-Z0-9_])', input_str):
                 alerts.append(
                     Alert("suspicious_arg", f"suspicious arg '{pattern}' in {tool_name}")
                 )

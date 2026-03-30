@@ -68,6 +68,9 @@ host-stop:
 unit:
 	uv run python -m pytest tests/ -v
 
+SMOKE_PASS = 0
+SMOKE_FAIL = 0
+
 .PHONY: test
 test: certs
 	@echo "=== Smoke Test ==="
@@ -77,29 +80,41 @@ test: certs
 	@docker compose exec proxy python3 -c "import socket; s = socket.create_connection(('localhost', 8080), timeout=10); s.close()" 2>/dev/null \
 		|| sleep 5
 	@echo ""
-	@echo "--- Test 1: Allowed domain (expect HTTP response) ---"
-	@docker compose run --rm --no-deps --entrypoint="" \
+	@echo "--- Test 1: Allowed domain → expect HTTP response ---"
+	@STATUS=$$(docker compose run --rm --no-deps --entrypoint="" \
 		-e HTTP_PROXY=http://proxy:8080 -e HTTPS_PROXY=http://proxy:8080 \
 		-e SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem \
 		claude curl -x http://proxy:8080 --cacert /certs/mitmproxy-ca-cert.pem \
-		-s -o /dev/null -w "  Status: %{http_code}\n" https://api.anthropic.com/ 2>&1 || true
+		-s -o /dev/null -w "%{http_code}" https://api.anthropic.com/ 2>/dev/null); \
+	if [ "$$STATUS" -gt 0 ] 2>/dev/null; then echo "  PASS (HTTP $$STATUS)"; else echo "  FAIL (no response)"; exit 1; fi
 	@echo ""
-	@echo "--- Test 2: Blocked domain (expect connection reset/error) ---"
-	@docker compose run --rm --no-deps --entrypoint="" \
+	@echo "--- Test 2: Blocked domain → expect 403 ---"
+	@STATUS=$$(docker compose run --rm --no-deps --entrypoint="" \
 		-e HTTP_PROXY=http://proxy:8080 -e HTTPS_PROXY=http://proxy:8080 \
 		claude curl -x http://proxy:8080 \
-		-s -o /dev/null -w "  Status: %{http_code}\n" --connect-timeout 5 https://evil.com/ 2>&1 || echo "  (Blocked as expected)"
+		-s -o /dev/null -w "%{http_code}" --connect-timeout 5 https://evil.com/ 2>/dev/null); \
+	if [ "$$STATUS" = "403" ]; then echo "  PASS (403 Blocked)"; \
+	elif [ "$$STATUS" = "000" ]; then echo "  PASS (connection reset)"; \
+	else echo "  FAIL (unexpected: $$STATUS)"; exit 1; fi
 	@echo ""
-	@echo "--- Test 3: Direct access without proxy (expect timeout) ---"
+	@echo "--- Test 3: Direct access without proxy → expect failure ---"
 	@docker compose run --rm --no-deps --entrypoint="" \
 		-e HTTP_PROXY= -e HTTPS_PROXY= \
-		claude curl -s --connect-timeout 5 https://api.anthropic.com/ 2>&1 || echo "  (Network isolated as expected)"
+		claude curl -s --connect-timeout 3 https://api.anthropic.com/ >/dev/null 2>&1; \
+	if [ $$? -ne 0 ]; then echo "  PASS (network isolated)"; else echo "  FAIL (direct access succeeded)"; exit 1; fi
 	@echo ""
-	@echo "--- Test 4: Check SQLite logs ---"
-	@docker compose exec proxy python3 -c "import sqlite3; db = sqlite3.connect('/data/harness.db'); rows = db.execute('SELECT host, status FROM requests ORDER BY id').fetchall(); print(f'  Logged {len(rows)} requests:'); [print(f'    {r[0]} -> {r[1]}') for r in rows]; blocks = db.execute('SELECT host, reason FROM blocks').fetchall(); print(f'  Blocked {len(blocks)} requests:'); [print(f'    {b[0]}: {b[1]}') for b in blocks]" 2>&1 || true
+	@echo "--- Test 4: SQLite logs → expect ALLOWED and BLOCKED records ---"
+	@docker compose exec proxy python3 -c "\
+	import sqlite3, sys; \
+	db = sqlite3.connect('/data/harness.db'); \
+	allowed = db.execute(\"SELECT COUNT(*) FROM requests WHERE status='ALLOWED'\").fetchone()[0]; \
+	blocked = db.execute(\"SELECT COUNT(*) FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED')\").fetchone()[0]; \
+	print(f'  ALLOWED: {allowed}, BLOCKED: {blocked}'); \
+	sys.exit(0 if allowed > 0 and blocked > 0 else 1)" 2>&1; \
+	if [ $$? -eq 0 ]; then echo "  PASS"; else echo "  FAIL (missing log records)"; exit 1; fi
 	@echo ""
 	docker compose down
-	@echo "=== Smoke Test Complete ==="
+	@echo "=== All Smoke Tests Passed ==="
 
 # === ログ分析（ホスト側Claude CLI利用）===
 .PHONY: analyze

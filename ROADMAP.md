@@ -15,6 +15,7 @@ Agent Harnessの未実装機能と将来の拡張計画。
 ## P1: セキュリティ強化（他人に使わせる前に）
 
 - [ ] **ダッシュボード認証**: Basic認証 or APIキー。環境変数`DASHBOARD_USER`/`DASHBOARD_PASS`で設定。CSRF対策（カスタムヘッダチェック）
+    - ユーザーからの補足情報: localhostだけで使用する想定です
 - [ ] **ペイロードのデコード+再検査**: Base64, Hex, URL encodingをデコードしてからblock_patterns/secret_patternsを適用。難読化によるバイパスを防止
 - [ ] **policy.tomlのファイルロック**: 同時書き込みのlost update防止。`fcntl.flock`で直列化
 

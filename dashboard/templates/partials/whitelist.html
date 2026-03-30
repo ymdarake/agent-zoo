@@ -1,0 +1,76 @@
+<h4>Blocked Domain Candidates</h4>
+<p><small>ブロックされたドメインの許可候補。policy.tomlに反映されます。</small></p>
+
+{% if candidates %}
+<table>
+    <thead>
+        <tr>
+            <th>Domain</th>
+            <th>Blocked</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for c in candidates %}
+        <tr>
+            <td>{{ c.host }}</td>
+            <td>{{ c.count }}</td>
+            <td>
+                <button class="btn-sm"
+                    hx-post="/api/whitelist/allow"
+                    hx-vals='{"domain": "{{ c.host }}"}'
+                    hx-headers='{"Content-Type": "application/json"}'
+                    hx-target="#tab-whitelist"
+                    hx-swap="innerHTML"
+                    hx-confirm="{{ c.host }} を許可しますか？">Allow</button>
+                <button class="btn-sm secondary"
+                    hx-post="/api/whitelist/dismiss"
+                    hx-vals='{"domain": "{{ c.host }}", "reason": "dashboard dismiss"}'
+                    hx-headers='{"Content-Type": "application/json"}'
+                    hx-target="#tab-whitelist"
+                    hx-swap="innerHTML">Dismiss</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><small>候補なし（全てのブロックドメインが許可済みまたは無視済み）</small></p>
+{% endif %}
+
+<hr>
+
+<h4>Dismissed Domains</h4>
+<p><small>無視済みドメイン。必要に応じて候補に復帰できます。</small></p>
+
+{% if dismissed %}
+<table>
+    <thead>
+        <tr>
+            <th>Domain</th>
+            <th>Reason</th>
+            <th>Date</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for domain, info in dismissed.items() %}
+        <tr>
+            <td>{{ domain }}</td>
+            <td>{{ info.reason }}</td>
+            <td>{{ info.date }}</td>
+            <td>
+                <button class="btn-sm contrast"
+                    hx-post="/api/whitelist/restore"
+                    hx-vals='{"domain": "{{ domain }}"}'
+                    hx-headers='{"Content-Type": "application/json"}'
+                    hx-target="#tab-whitelist"
+                    hx-swap="innerHTML">Restore</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><small>なし</small></p>
+{% endif %}

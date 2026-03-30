@@ -207,6 +207,23 @@ def partial_stats():
         db.close()
 
 
+@app.route("/partials/whitelist")
+def partial_whitelist():
+    import tomllib
+    db_path = os.environ.get("DB_PATH", "/data/harness.db")
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    candidates = get_whitelist_candidates(db_path, policy_path)
+    # dismissed一覧を取得
+    dismissed = {}
+    try:
+        with open(policy_path, "rb") as f:
+            policy = tomllib.load(f)
+        dismissed = policy.get("domains", {}).get("dismissed", {})
+    except Exception:
+        pass
+    return render_template("partials/whitelist.html", candidates=candidates, dismissed=dismissed)
+
+
 # === Whitelist Nurturing API ===
 
 import re
@@ -247,6 +264,8 @@ def api_whitelist_allow():
         return jsonify({"error": error}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     add_to_allow_list(policy_path, domain)
+    if request.headers.get("HX-Request"):
+        return partial_whitelist()
     return jsonify({"status": "ok", "action": "allowed", "domain": domain})
 
 
@@ -260,6 +279,8 @@ def api_whitelist_dismiss():
         return jsonify({"error": error}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     add_to_dismissed(policy_path, domain, reason or "dismissed via dashboard")
+    if request.headers.get("HX-Request"):
+        return partial_whitelist()
     return jsonify({"status": "ok", "action": "dismissed", "domain": domain})
 
 
@@ -272,6 +293,8 @@ def api_whitelist_restore():
         return jsonify({"error": error}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     remove_from_dismissed(policy_path, domain)
+    if request.headers.get("HX-Request"):
+        return partial_whitelist()
     return jsonify({"status": "ok", "action": "restored", "domain": domain})
 
 

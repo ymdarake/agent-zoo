@@ -8,6 +8,7 @@ Features:
 - SSE streaming with tool_use extraction
 """
 
+import json
 import os
 import sqlite3
 import sys
@@ -17,7 +18,7 @@ from mitmproxy import ctx, http
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
 from policy import PolicyEngine
-from sse_parser import AnthropicSSEParser
+from sse_parser import AnthropicSSEParser, ToolUse
 
 
 class PolicyEnforcer:
@@ -244,16 +245,14 @@ class PolicyEnforcer:
         if "application/json" not in content_type:
             return
         try:
-            import json
             data = json.loads(flow.response.content)
-            # Anthropic APIの非ストリーミングレスポンスからtool_useを抽出
             for block in data.get("content", []):
                 if block.get("type") == "tool_use":
-                    from sse_parser import ToolUse
+                    input_str = json.dumps(block.get("input", {}))
                     tool_use = ToolUse(
                         name=block.get("name", ""),
-                        input=json.dumps(block.get("input", {})),
-                        input_size=len(json.dumps(block.get("input", {}))),
+                        input=input_str,
+                        input_size=len(input_str),
                     )
                     self._log_tool_use(tool_use)
                     should_block, reason = self.engine.should_block_tool_use(
@@ -262,6 +261,11 @@ class PolicyEnforcer:
                     if should_block:
                         ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
                         self._log_block_tool_use(tool_use.name, reason)
+                        flow.response = http.Response.make(
+                            403, b"Tool use blocked by policy",
+                            {"Content-Type": "text/plain"},
+                        )
+                        return
         except Exception as e:
             ctx.log.debug(f"Response parse skipped: {e}")
 

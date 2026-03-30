@@ -20,21 +20,18 @@
     {% endif %}
 
     <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
-        <button class="btn-sm"
-            hx-post="/api/whitelist/allow"
-            hx-vals='{"domain": "{{ c.host }}"}'
-            hx-target="#tab-whitelist"
-            hx-swap="innerHTML"
-            hx-confirm="{{ c.host }} をドメインごと許可しますか？">Allow Domain</button>
-        <button class="btn-sm secondary"
-            hx-post="/api/whitelist/dismiss"
-            hx-vals='{"domain": "{{ c.host }}", "reason": "dashboard dismiss"}'
-            hx-target="#tab-whitelist"
-            hx-swap="innerHTML">Dismiss</button>
+        <form style="display:inline;margin:0" hx-post="/api/whitelist/allow" hx-target="#tab-whitelist" hx-swap="innerHTML"
+            hx-confirm="{{ c.host }} をドメインごと許可しますか？">
+            <input type="hidden" name="domain" value="{{ c.host }}">
+            <button type="submit" class="btn-sm">Allow Domain</button>
+        </form>
+        <form style="display:inline;margin:0" hx-post="/api/whitelist/dismiss" hx-target="#tab-whitelist" hx-swap="innerHTML">
+            <input type="hidden" name="domain" value="{{ c.host }}">
+            <input type="hidden" name="reason" value="dashboard dismiss">
+            <button type="submit" class="btn-sm secondary">Dismiss</button>
+        </form>
         <form style="display:flex;gap:0.3rem;align-items:center;margin:0"
-            hx-post="/api/whitelist/allow-path"
-            hx-target="#tab-whitelist"
-            hx-swap="innerHTML">
+            hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
             <input type="hidden" name="domain" value="{{ c.host }}">
             <input type="text" name="path_pattern" placeholder="/path/*" value="/*"
                 style="padding:0.25rem 0.5rem;font-size:0.75rem;width:150px;margin:0">
@@ -69,11 +66,10 @@
             <td>{{ info.reason }}</td>
             <td>{{ info.date }}</td>
             <td>
-                <button class="btn-sm contrast"
-                    hx-post="/api/whitelist/restore"
-                    hx-vals='{"domain": "{{ domain }}"}'
-                    hx-target="#tab-whitelist"
-                    hx-swap="innerHTML">Restore</button>
+                <form style="display:inline;margin:0" hx-post="/api/whitelist/restore" hx-target="#tab-whitelist" hx-swap="innerHTML">
+                    <input type="hidden" name="domain" value="{{ domain }}">
+                    <button type="submit" class="btn-sm contrast">Restore</button>
+                </form>
             </td>
         </tr>
         {% endfor %}

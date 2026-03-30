@@ -61,7 +61,7 @@ make up-strict        # CoreDNS strictモード（DNS漏洩対策）
 ### テスト・分析
 
 ```bash
-make unit             # ユニットテスト（105件）
+make unit             # ユニットテスト（115件）
 make test             # Dockerスモークテスト
 make analyze          # ブロックログ → policy.toml改善提案
 make summarize        # tool_use履歴 → 最小権限settings.json提案
@@ -97,9 +97,15 @@ secret_patterns = ["AWS_SECRET_ACCESS_KEY", "-----BEGIN.*PRIVATE KEY-----"]
 block_args = ["rm -rf /", "chmod 777", "printenv", "/etc/shadow"]
 
 [alerts]
-# tool_use検出時にアラート生成（ログのみ、ブロックはしない）
+# 独立条件（それぞれ単発で発火）
 suspicious_args = ["~/.ssh", "~/.aws", ".env"]        # 引数にこの文字列が含まれたらアラート
 tool_arg_size_alert = 10000                           # 引数サイズ（バイト）超過でアラート
+
+# 組み合わせ条件（ルール内AND、ルール間OR）
+[[alerts.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]                                      # かつ
+args = ["~/.ssh", "~/.aws"]                           # いずれかにマッチで発火
 ```
 
 ## アーキテクチャ

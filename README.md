@@ -96,11 +96,11 @@ list = ["*.evil.com"]
 "api.anthropic.com" = { rpm = 30, burst = 5 }
 
 [payload_rules]
-# エージェント→Anthropic APIへの送信内容を検査（機密情報の流出防止）
+# 送信内容から機密情報の流出を検知・ブロック
 secret_patterns = ["AWS_SECRET_ACCESS_KEY", "-----BEGIN.*PRIVATE KEY-----"]
 
 [tool_use_rules]
-# Anthropic API→エージェントのtool_useを検査（危険な実行を阻止）
+# 危険なツール実行をリアルタイムで阻止
 block_args = ["rm -rf /", "chmod 777", "printenv", "/etc/shadow"]
 
 [alerts]

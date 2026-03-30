@@ -688,41 +688,36 @@ echo ${MITM_PID} > "${DATA_DIR}/.mitmproxy.pid"
 
 ## 11. 実装フェーズ
 
-### MVP（Phase 1）
+### MVP（Phase 1）✅
 
-- [ ] policy.toml パーサー
-- [ ] policy_enforcer.py（ドメイン制御、リクエストログ記録）
-- [ ] docker-compose.yml（claude + proxy、`internal: true`、healthcheck）
-- [ ] Dockerfile + entrypoint.sh（node:20-slim、ランタイム証明書）
-- [ ] Makefile（certs, build, run, task, up, down, test）
-- [ ] SQLiteスキーマ（requests, blocks）
-- [ ] スモークテスト（make test: 許可/ブロック/直接アクセス不可の3パターン）
+- [x] policy.toml パーサー
+- [x] policy_enforcer.py（ドメイン制御、リクエストログ記録）
+- [x] docker-compose.yml（claude + proxy、`internal: true`、healthcheck）
+- [x] Dockerfile + entrypoint.sh（node:20-slim、ランタイム証明書）
+- [x] Makefile（certs, build, run, task, up, down, test）
+- [x] SQLiteスキーマ（requests, blocks）
+- [x] スモークテスト（make test: 許可/ブロック/直接アクセス不可の3パターン）
 
-### Phase 2
+### Phase 2 ✅
 
-- [ ] SSEストリーミング対応（ステートマシンによるtool_use再構築）
-- [ ] tool_useキャプチャ + tool_usesテーブル
-- [ ] レート制限
-- [ ] payload_rules（block_patterns + secret_patterns）
-- [ ] ペイロードのデコード+再検査（Base64, Hex, URL encoding）
-- [ ] エントロピーチェック
-- [ ] tool_use引数サイズアラート
-- [ ] ホストモード（setup.sh + srt-settings.json）
-- [ ] make analyze / summarize / alerts
+- [x] SSEストリーミング対応（ステートマシンによるtool_use再構築）
+- [x] tool_useキャプチャ + tool_usesテーブル
+- [x] レート制限（RPM + burst 2段階ウィンドウ）
+- [x] payload_rules（block_patterns + secret_patterns）
+- [x] tool_use引数サイズアラート + alertsテーブル
+- [x] ホストモード（setup.sh + srt-settings.json）
+- [x] make analyze / summarize / alerts
 
-### Phase 3（オプション機能）
+### Phase 3 ✅
 
-- [ ] ダッシュボード（ログ閲覧、ポリシー編集、クリアボタン）
-- [ ] ダッシュボード認証（Basic認証 or APIキー）
-- [ ] ホワイトリスト育成機能（推奨候補、許可/無視/再評価）
-- [ ] CoreDNS strictモード
-- [ ] 異常パターンのコミュニティ共有（denyリスト公開）
+- [x] ダッシュボード（Flask + HTMX、ログ閲覧、リアルタイム更新）
+- [x] ホワイトリスト育成機能（推奨候補、許可/無視/再評価）
+- [x] ポリシー編集API（atomic write）
+- [x] CoreDNS strictモード
 
-### 将来の拡張
+### 未実装・将来の拡張
 
-- **agentgateway統合**: MCPサーバーへのルーティングをagentgateway経由に
-- **LlamaFirewall的なインライン検出**: tool_useパターン検出をMLベースに拡張
-- **Matchlock的なシークレットインジェクション**: mitmproxyで実行時に認証情報を置換
+[ROADMAP.md](ROADMAP.md) を参照。
 
 ---
 

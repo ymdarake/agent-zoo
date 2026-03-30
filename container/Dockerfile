@@ -1,5 +1,6 @@
 FROM node:20-slim
 
+# ホスト側のUIDと合わせてworkspaceのパーミッション問題を防止
 ARG HOST_UID=1001
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

@@ -18,7 +18,7 @@ log_retention_days = 30
 # platform.claude.com: OAuth認証
 # code.claude.com: Claude Code Web
 # claude.ai: Claude Web
-list = ["api.anthropic.com", "statsig.anthropic.com", "platform.claude.com", "code.claude.com", "claude.ai"]
+list = ["api.anthropic.com", "statsig.anthropic.com", "platform.claude.com", "code.claude.com", "claude.ai", "mcp-proxy.anthropic.com"]
 
 [domains.deny]
 # 明示的に拒否するドメイン。allow より優先される
@@ -31,7 +31,7 @@ list = ["*.evil.com"]
 [paths.allow]
 # ドメインがdomains.allowになくても、特定パスは許可
 "raw.githubusercontent.com" = ["/anthropics/*"]
-"registry.npmjs.org" = ["/@anthropic-ai/*", "/@playwright/*", "/npm"]
+"registry.npmjs.org" = ["/@anthropic-ai/*", "/@playwright/*", "/npm", "/playwright", "/playwright-core"]
 "downloads.claude.ai" = ["/claude-code-releases/*"]
 
 [paths.deny]

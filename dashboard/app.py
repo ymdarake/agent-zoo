@@ -256,8 +256,8 @@ def _validate_domain(domain: str) -> str | None:
 
 
 def _get_json_body() -> dict:
-    """request.jsonがNoneの場合に安全にハンドルする。"""
-    return request.get_json(silent=True) or {}
+    """JSONまたはフォームデータを取得する（HTMX互換）。"""
+    return request.get_json(silent=True) or dict(request.form) or {}
 
 
 @app.route("/api/whitelist-candidates")

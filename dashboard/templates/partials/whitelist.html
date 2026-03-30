@@ -19,15 +19,13 @@
                 <button class="btn-sm"
                     hx-post="/api/whitelist/allow"
                     hx-vals='{"domain": "{{ c.host }}"}'
-                    hx-headers='{"Content-Type": "application/json"}'
-                    hx-target="#tab-whitelist"
+                                        hx-target="#tab-whitelist"
                     hx-swap="innerHTML"
                     hx-confirm="{{ c.host }} を許可しますか？">Allow</button>
                 <button class="btn-sm secondary"
                     hx-post="/api/whitelist/dismiss"
                     hx-vals='{"domain": "{{ c.host }}", "reason": "dashboard dismiss"}'
-                    hx-headers='{"Content-Type": "application/json"}'
-                    hx-target="#tab-whitelist"
+                                        hx-target="#tab-whitelist"
                     hx-swap="innerHTML">Dismiss</button>
             </td>
         </tr>
@@ -63,8 +61,7 @@
                 <button class="btn-sm contrast"
                     hx-post="/api/whitelist/restore"
                     hx-vals='{"domain": "{{ domain }}"}'
-                    hx-headers='{"Content-Type": "application/json"}'
-                    hx-target="#tab-whitelist"
+                                        hx-target="#tab-whitelist"
                     hx-swap="innerHTML">Restore</button>
             </td>
         </tr>

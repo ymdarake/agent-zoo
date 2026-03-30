@@ -11,6 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from addons.policy_edit import (
     add_to_allow_list,
     add_to_dismissed,
+    add_to_paths_allow,
     atomic_write,
     get_whitelist_candidates,
     policy_lock,
@@ -189,6 +190,58 @@ class TestWhitelistCandidates(unittest.TestCase):
         candidates = get_whitelist_candidates(db_path, policy_path)
         if len(candidates) >= 2:
             self.assertGreaterEqual(candidates[0]["count"], candidates[1]["count"])
+
+
+class TestAddToPathsAllow(unittest.TestCase):
+    def test_adds_path_pattern(self):
+        """パスパターンを追加できる"""
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        add_to_paths_allow(path, "github.com", "/anthropics/*")
+
+        import tomllib
+        with open(path, "rb") as f:
+            policy = tomllib.load(f)
+        self.assertIn("github.com", policy["paths"]["allow"])
+        self.assertIn("/anthropics/*", policy["paths"]["allow"]["github.com"])
+
+    def test_no_duplicate_path(self):
+        """同じパスパターンを二重追加しない"""
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        add_to_paths_allow(path, "github.com", "/anthropics/*")
+        add_to_paths_allow(path, "github.com", "/anthropics/*")
+
+        import tomllib
+        with open(path, "rb") as f:
+            policy = tomllib.load(f)
+        patterns = policy["paths"]["allow"]["github.com"]
+        self.assertEqual(patterns.count("/anthropics/*"), 1)
+
+    def test_multiple_paths_for_same_domain(self):
+        """同じドメインに複数パスパターンを追加"""
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        add_to_paths_allow(path, "github.com", "/anthropics/*")
+        add_to_paths_allow(path, "github.com", "/user/repo/*")
+
+        import tomllib
+        with open(path, "rb") as f:
+            policy = tomllib.load(f)
+        patterns = policy["paths"]["allow"]["github.com"]
+        self.assertIn("/anthropics/*", patterns)
+        self.assertIn("/user/repo/*", patterns)
+
+    def test_result_is_valid_toml(self):
+        """書き換え後のファイルが有効なTOML"""
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        add_to_paths_allow(path, "example.com", "/api/*")
+
+        import tomllib
+        with open(path, "rb") as f:
+            policy = tomllib.load(f)
+        self.assertIn("example.com", policy["paths"]["allow"])
 
 
 class TestFileLock(unittest.TestCase):

@@ -216,8 +216,11 @@ class PolicyEnforcer:
             return
 
         sse_buf = AnthropicSSEParser()
+        blocked_flag = {"blocked": False}
 
         def stream_filter(data: bytes) -> bytes:
+            if blocked_flag["blocked"]:
+                return b""  # ブロック確定後は全チャンク空にする
             try:
                 sse_buf.feed(data)
                 for tool_use in sse_buf.drain_completed():
@@ -229,16 +232,21 @@ class PolicyEnforcer:
                     if should_block:
                         ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
                         self._log_block_tool_use(tool_use.name, reason)
+                        blocked_flag["blocked"] = True
                         return b""
             except Exception as e:
                 ctx.log.error(f"SSE stream filter error: {e}")
             return data
 
         flow.response.stream = stream_filter
+        flow.metadata["sse_streaming"] = True  # responseフックでの二重処理防止
 
     def response(self, flow: http.HTTPFlow):
         """非ストリーミングレスポンスからtool_useを抽出する。"""
         if not flow.response or not flow.response.content:
+            return
+        # SSEストリーミング済みフローは二重処理しない
+        if flow.metadata.get("sse_streaming"):
             return
         content_type = flow.response.headers.get("content-type", "")
         # SSEはストリーミング透過済み。非ストリーミングのJSONレスポンスを解析

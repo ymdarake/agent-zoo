@@ -31,6 +31,9 @@ block_patterns = [
     "rm -rf /",
     "chmod 777",
     "base64.*\\|.*curl",
+    "\\bprintenv\\b",
+    "\\b/proc/\\d+/environ\\b",
+    "cat.*/proc/.*/environ",
 ]
 # 機密情報の流出を検知するパターン（正規表現、大文字小文字を区別しない）
 secret_patterns = [

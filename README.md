@@ -59,17 +59,20 @@ make host             # mitmproxyをローカル起動（Docker不要）
 make host-stop        # ホストモード停止
 ```
 
-### オプションプロファイル
+### オプション
 
 ```bash
-make up-dashboard     # ダッシュボード起動（http://localhost:8080）
+make up-dashboard     # proxy + dashboardのみ起動（claudeなし）
 make up-strict        # CoreDNS strictモード（DNS漏洩対策）
+make reload           # policy.toml変更を反映（proxy + dashboard再起動）
 ```
+
+ダッシュボード（http://localhost:8080）は`make run`で自動起動。
 
 ### テスト・分析
 
 ```bash
-make unit             # ユニットテスト（124件）
+make unit             # ユニットテスト（130件）
 make test             # Dockerスモークテスト
 make analyze          # ブロックログ → policy.toml改善提案
 make summarize        # tool_use履歴 → 最小権限settings.json提案

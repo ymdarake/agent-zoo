@@ -36,6 +36,10 @@ endif
 up: certs
 	HOST_UID=$(HOST_UID) docker compose up -d
 
+.PHONY: up-dashboard
+up-dashboard: certs
+	HOST_UID=$(HOST_UID) docker compose --profile dashboard up -d
+
 .PHONY: up-strict
 up-strict: certs
 	HOST_UID=$(HOST_UID) docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml up -d

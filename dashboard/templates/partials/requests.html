@@ -1,0 +1,25 @@
+<table>
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>Host</th>
+            <th>Method</th>
+            <th>Status</th>
+            <th>Size</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.ts }}</td>
+            <td>{{ row.host }}</td>
+            <td>{{ row.method }}</td>
+            <td><span class="status-{{ row.status }}">{{ row.status }}</span></td>
+            <td>{{ row.body_size }}</td>
+        </tr>
+        {% endfor %}
+        {% if not rows %}
+        <tr><td colspan="5">No requests yet.</td></tr>
+        {% endif %}
+    </tbody>
+</table>

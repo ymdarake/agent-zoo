@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent Harness Dashboard</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <style>
+        :root { --pico-font-size: 14px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+        .stat-card { text-align: center; padding: 1rem; }
+        .stat-card h2 { margin: 0; font-size: 2rem; }
+        .stat-card small { color: var(--pico-muted-color); }
+        .status-ALLOWED { color: var(--pico-ins-color); }
+        .status-BLOCKED, .status-PAYLOAD_BLOCKED { color: var(--pico-del-color); }
+        .status-RATE_LIMITED { color: orange; }
+        table { font-size: 0.85rem; }
+        nav h1 { margin: 0; }
+    </style>
+</head>
+<body>
+    <nav class="container">
+        <ul><li><h1>Agent Harness</h1></li></ul>
+        <ul><li><small>Dashboard</small></li></ul>
+    </nav>
+
+    <main class="container">
+        <!-- Stats -->
+        <div hx-get="/partials/stats" hx-trigger="load, every 5s" hx-swap="innerHTML">
+            <div class="stat-grid">
+                <article class="stat-card"><h2>-</h2><small>Total</small></article>
+                <article class="stat-card"><h2>-</h2><small>Blocked</small></article>
+                <article class="stat-card"><h2>-</h2><small>Tool Uses</small></article>
+                <article class="stat-card"><h2>-</h2><small>Alerts</small></article>
+            </div>
+        </div>
+
+        <!-- Requests Table -->
+        <h3>Recent Requests</h3>
+        <div hx-get="/partials/requests" hx-trigger="load, every 3s" hx-swap="innerHTML">
+            <p aria-busy="true">Loading...</p>
+        </div>
+    </main>
+</body>
+</html>

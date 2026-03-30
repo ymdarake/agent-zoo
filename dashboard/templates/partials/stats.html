@@ -1,0 +1,18 @@
+<div class="stat-grid">
+    <article class="stat-card">
+        <h2>{{ stats.total }}</h2>
+        <small>Total Requests</small>
+    </article>
+    <article class="stat-card">
+        <h2 class="status-BLOCKED">{{ stats.blocked }}</h2>
+        <small>Blocked</small>
+    </article>
+    <article class="stat-card">
+        <h2>{{ stats.tool_uses }}</h2>
+        <small>Tool Uses</small>
+    </article>
+    <article class="stat-card">
+        <h2{% if stats.alerts > 0 %} class="status-BLOCKED"{% endif %}>{{ stats.alerts }}</h2>
+        <small>Alerts</small>
+    </article>
+</div>

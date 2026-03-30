@@ -17,7 +17,7 @@ from mitmproxy import ctx, http
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
 from policy import PolicyEngine
-from sse_parser import SSEToolUseBuffer
+from sse_parser import AnthropicSSEParser
 
 
 class PolicyEnforcer:
@@ -215,7 +215,7 @@ class PolicyEnforcer:
             return
 
         # SSEパーサーをフローに紐付けて、ストリーミングハンドラを設定
-        sse_buf = SSEToolUseBuffer()
+        sse_buf = AnthropicSSEParser()
 
         def stream_handler(data):
             """mitmproxy 10のストリーミングフィルタ: bytesを受け取りbytesを返す"""

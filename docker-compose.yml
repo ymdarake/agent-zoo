@@ -44,7 +44,6 @@ services:
 
   dashboard:
     build: ./dashboard
-    profiles: ["dashboard"]
     ports: ["127.0.0.1:8080:8080"]
     environment:
       - DB_PATH=/data/harness.db

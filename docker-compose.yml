@@ -13,7 +13,7 @@ services:
       - NODE_EXTRA_CA_CERTS=/certs/mitmproxy-ca-cert.pem
       - SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem
       - GIT_SSL_CAINFO=/certs/mitmproxy-ca-cert.pem
-      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
     networks: [intnet]
     volumes:
       - ./certs:/certs:ro

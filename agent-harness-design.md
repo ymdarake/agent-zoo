@@ -115,7 +115,7 @@ services:
       - HTTPS_PROXY=http://proxy:8080
       - NODE_EXTRA_CA_CERTS=/certs/mitmproxy-ca-cert.pem
       - SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem
-      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
     networks: [intnet]
     volumes:
       - ./certs:/certs:ro
@@ -245,7 +245,7 @@ Dockerfile注意事項:
 - Alpine Linux禁止: musl libc互換性でClaude Codeがクラッシュする（posix_getdents: symbol not found）
 - NODE_TLS_REJECT_UNAUTHORIZED=0 は絶対使わない
 - メモリ4GB以上確保: 下回るとOOM Killerが発動
-- 認証は`CLAUDE_CODE_OAUTH_TOKEN`環境変数で毎回渡す。.envファイルは使わない
+- 認証は`ANTHROPIC_AUTH_TOKEN`環境変数で毎回渡す。.envファイルは使わない
 ```
 
 ---

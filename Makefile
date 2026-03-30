@@ -21,21 +21,21 @@ build: certs
 # === コンテナモード ===
 .PHONY: run
 run: certs
-ifndef CLAUDE_CODE_OAUTH_TOKEN
-	$(error CLAUDE_CODE_OAUTH_TOKEN is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make run)
+ifndef ANTHROPIC_AUTH_TOKEN
+	$(error ANTHROPIC_AUTH_TOKEN is required. Usage: ANTHROPIC_AUTH_TOKEN=xxx make run)
 endif
-	HOST_UID=$(HOST_UID) CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN) docker compose up -d claude
+	HOST_UID=$(HOST_UID) ANTHROPIC_AUTH_TOKEN=$(ANTHROPIC_AUTH_TOKEN) docker compose up -d claude
 	docker compose exec claude claude
 
 .PHONY: task
 task: certs
-ifndef CLAUDE_CODE_OAUTH_TOKEN
-	$(error CLAUDE_CODE_OAUTH_TOKEN is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="...")
+ifndef ANTHROPIC_AUTH_TOKEN
+	$(error ANTHROPIC_AUTH_TOKEN is required. Usage: ANTHROPIC_AUTH_TOKEN=xxx make task PROMPT="...")
 endif
 ifndef PROMPT
-	$(error PROMPT is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="...")
+	$(error PROMPT is required. Usage: ANTHROPIC_AUTH_TOKEN=xxx make task PROMPT="...")
 endif
-	HOST_UID=$(HOST_UID) CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN) docker compose up -d claude
+	HOST_UID=$(HOST_UID) ANTHROPIC_AUTH_TOKEN=$(ANTHROPIC_AUTH_TOKEN) docker compose up -d claude
 	docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions
 
 .PHONY: up

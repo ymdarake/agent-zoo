@@ -21,15 +21,21 @@ build: certs
 # === コンテナモード ===
 .PHONY: run
 run: certs
-	HOST_UID=$(HOST_UID) docker compose up -d claude
+ifndef CLAUDE_CODE_OAUTH_TOKEN
+	$(error CLAUDE_CODE_OAUTH_TOKEN is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make run)
+endif
+	HOST_UID=$(HOST_UID) CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN) docker compose up -d claude
 	docker compose exec claude claude
 
 .PHONY: task
 task: certs
-ifndef PROMPT
-	$(error PROMPT is required. Usage: make task PROMPT="...")
+ifndef CLAUDE_CODE_OAUTH_TOKEN
+	$(error CLAUDE_CODE_OAUTH_TOKEN is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="...")
 endif
-	HOST_UID=$(HOST_UID) docker compose up -d claude
+ifndef PROMPT
+	$(error PROMPT is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="...")
+endif
+	HOST_UID=$(HOST_UID) CLAUDE_CODE_OAUTH_TOKEN=$(CLAUDE_CODE_OAUTH_TOKEN) docker compose up -d claude
 	docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions
 
 .PHONY: up

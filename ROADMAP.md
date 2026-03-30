@@ -6,11 +6,11 @@ Agent Harnessの未実装機能と将来の拡張計画。
 
 ---
 
-## P0: クイック修正（実用に必須）
+## ~~P0: クイック修正~~ ✅ 完了
 
-- [ ] **suspicious_argsのワード境界マッチ**: 現在の部分文字列マッチ（`.env`が`environment`にもマッチ）を正規表現のワード境界付きに改善
-- [ ] **tool_usesテーブルのinputサイズ制限**: 先頭N文字のみ保存してDB肥大化を防止
-- [ ] **Dockerスモークテストの合否判定**: exit codeベースの自動判定（CI連携用）
+- [x] **suspicious_argsのワード境界マッチ**: 非英数字/アンダースコア境界チェックに改善
+- [x] **tool_usesテーブルのinputサイズ制限**: `max_tool_input_store=1000` + truncatedマーカー
+- [x] **Dockerスモークテストの合否判定**: exit codeベースの自動判定
 
 ## P1: セキュリティ強化（他人に使わせる前に）
 

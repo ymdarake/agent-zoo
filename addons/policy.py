@@ -31,6 +31,7 @@ class PolicyEngine:
         self.suspicious_tools: list[str] = []
         self.suspicious_args: list[str] = []
         self.tool_arg_size_alert: int = 0
+        self.alert_rules: list[dict] = []
         self.max_tool_input_store: int = 0
         self.log_retention_days: int = 0
         self.tool_use_block_tools: list[str] = []
@@ -67,6 +68,7 @@ class PolicyEngine:
         self.suspicious_tools = alerts_config.get("suspicious_tools", [])
         self.suspicious_args = alerts_config.get("suspicious_args", [])
         self.tool_arg_size_alert = alerts_config.get("tool_arg_size_alert", 0)
+        self.alert_rules = alerts_config.get("rules", [])
         self.max_tool_input_store = policy.get("general", {}).get("max_tool_input_store", 0)
         self.log_retention_days = policy.get("general", {}).get("log_retention_days", 0)
 
@@ -240,7 +242,7 @@ class PolicyEngine:
         self, tool_name: str, input_str: str, input_size: int
     ) -> list[Alert]:
         """tool_useに対してアラートチェックを行う。"""
-        if not self.suspicious_tools and not self.suspicious_args and not self.tool_arg_size_alert:
+        if not self.suspicious_tools and not self.suspicious_args and not self.tool_arg_size_alert and not self.alert_rules:
             return []
 
         alerts: list[Alert] = []
@@ -262,6 +264,34 @@ class PolicyEngine:
                 alerts.append(
                     Alert("suspicious_arg", f"suspicious arg '{pattern}' in {tool_name}")
                 )
+
+        # 組み合わせ条件ルール（各ルール内はAND、ルール間はOR）
+        for rule in self.alert_rules:
+            rule_name = rule.get("name", "unnamed")
+
+            # tools条件（指定あればOR: いずれかにマッチ）
+            if "tools" in rule and tool_name not in rule["tools"]:
+                continue
+
+            # min_size条件
+            if "min_size" in rule and input_size <= rule["min_size"]:
+                continue
+
+            # args条件（指定あればOR: いずれかにワード境界マッチ）
+            if "args" in rule:
+                matched = False
+                for pattern in rule["args"]:
+                    escaped = re.escape(pattern)
+                    if re.search(rf'(?:^|[^a-zA-Z0-9_]){escaped}(?:$|[^a-zA-Z0-9_])', input_str):
+                        matched = True
+                        break
+                if not matched:
+                    continue
+
+            # 全条件にマッチ
+            alerts.append(
+                Alert("rule_match", f"Rule '{rule_name}' matched for {tool_name}")
+            )
 
         return alerts
 

@@ -74,3 +74,18 @@ suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
 
 # 引数がこのバイト数を超えたらアラート（大量データ流出の兆候検知）
 tool_arg_size_alert = 10000
+
+# 組み合わせ条件（各ルール内はAND、ルール間はOR）
+# tools: ツール名のいずれかにマッチ（省略=全ツール対象）
+# args: 引数パターンのいずれかにワード境界マッチ（省略=引数条件なし）
+# min_size: 引数サイズ閾値（省略=サイズ条件なし）
+
+[[alerts.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env"]
+
+[[alerts.rules]]
+name = "Large file operation"
+tools = ["Write", "Edit"]
+min_size = 50000

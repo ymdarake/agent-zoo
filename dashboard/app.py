@@ -230,13 +230,15 @@ def partial_whitelist():
     # 各候補にブロックされたパスのトップ5を付与
     try:
         db = get_db()
-        for c in candidates:
-            rows = db.execute(
-                "SELECT DISTINCT url FROM requests WHERE host=? AND status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') LIMIT 5",
-                (c["host"],),
-            ).fetchall()
-            c["paths"] = [r["url"] for r in rows]
-        db.close()
+        try:
+            for c in candidates:
+                rows = db.execute(
+                    "SELECT DISTINCT url FROM requests WHERE host=? AND status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') LIMIT 5",
+                    (c["host"],),
+                ).fetchall()
+                c["paths"] = [r["url"] for r in rows]
+        finally:
+            db.close()
     except Exception:
         pass
     # dismissed一覧を取得
@@ -305,6 +307,12 @@ def api_whitelist_allow_path():
         return jsonify({"error": error}), 400
     if not path_pattern:
         return jsonify({"error": "path_pattern is required"}), 400
+    if not path_pattern.startswith("/"):
+        return jsonify({"error": "path_pattern must start with /"}), 400
+    if len(path_pattern) > 500:
+        return jsonify({"error": "path_pattern too long"}), 400
+    if "\n" in path_pattern or "\r" in path_pattern:
+        return jsonify({"error": "path_pattern must not contain newlines"}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     add_to_paths_allow(policy_path, domain, path_pattern)
     if request.headers.get("HX-Request"):

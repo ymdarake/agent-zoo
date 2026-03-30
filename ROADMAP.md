@@ -26,6 +26,8 @@ Agent Harnessの未実装機能と将来の拡張計画。
 - [ ] **CoreDNSとpolicy.tomlの自動同期**: allow list変更時にCorefileを動的生成してリロード
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列（暗号化データの疑い）を検知。`[payload_rules.advanced] entropy_threshold = 4.5`
 
+- [ ] **OpenAI形式のtool_calls対応**: 現在のSSEパーサーはAnthropic API形式（content_block_start/delta/stop）に特化。OpenAI形式（tool_calls/function_call）のストリーミングパーサーを追加し、Codex CLI等のOpenAI互換エージェントにも対応する
+
 ## P3: 将来の拡張（エコシステム）
 
 ### LiteLLM的な設定ファイルベースの認証管理

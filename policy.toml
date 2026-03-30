@@ -28,12 +28,14 @@ list = ["*.evil.com"]
 [domains.dismissed]
 # ダッシュボードで「無視」したドメイン。ホワイトリスト育成の候補から除外される
 # "registry.npmjs.org" = { reason = "ホスト側でnpm install済み", date = "2026-03-29" }
+"http-intake.logs.us5.datadoghq.com" = { reason = "Datadogテレメトリ。エージェント動作に不要", date = "2026-03-31" }
 
 [paths.allow]
 # ドメインがdomains.allowになくても、特定パスは許可
 "raw.githubusercontent.com" = ["/anthropics/*"]
 "registry.npmjs.org" = ["/@anthropic-ai/*", "/@playwright/*", "/npm", "/playwright", "/playwright/*", "/playwright-core", "/playwright-core/*"]
 "downloads.claude.ai" = ["/claude-code-releases/*"]
+"github.com" = ["/anthropics/*"]
 
 [paths.deny]
 # ドメインがdomains.allowにあっても、特定パスはブロック
@@ -42,7 +44,7 @@ list = ["*.evil.com"]
 [rate_limits]
 # ドメイン別のレート制限。rpm=1分あたりの上限、burst=1秒あたりの上限
 # 超過時は 429 Retry-After レスポンスを返す
-"api.anthropic.com" = { rpm = 120, burst = 30 }
+"api.anthropic.com" = { rpm = 120, burst = 50 }
 
 [payload_rules]
 # エージェント → Anthropic API へのリクエスト本文を検査する

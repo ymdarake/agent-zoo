@@ -13,7 +13,7 @@ services:
       - NODE_EXTRA_CA_CERTS=/certs/mitmproxy-ca-cert.pem
       - SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem
       - GIT_SSL_CAINFO=/certs/mitmproxy-ca-cert.pem
-      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN}
+      - ANTHROPIC_AUTH_TOKEN=${ANTHROPIC_AUTH_TOKEN:-}
     networks: [intnet]
     volumes:
       - ./certs:/certs:ro
@@ -25,6 +25,8 @@ services:
 
   proxy:
     image: mitmproxy/mitmproxy:10
+    environment:
+      - PYTHONDONTWRITEBYTECODE=1
     command: mitmdump --set confdir=/certs -s /scripts/policy_enforcer.py
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import socket; s = socket.create_connection(('localhost', 8080), timeout=2); s.close()\""]

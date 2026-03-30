@@ -12,7 +12,7 @@ workspace/
 certs/*
 !certs/.gitkeep
 
-# Python
+# Python (addons/__pycache__がproxyコンテナに影響するため確実に除外)
 __pycache__/
 *.pyc
 .pytest_cache/

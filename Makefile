@@ -124,13 +124,14 @@ test: certs
 # === ログ分析（ホスト側Claude CLI利用）===
 .PHONY: analyze
 analyze:
-	@sqlite3 data/harness.db -json \
+	@(echo "=== ブロックログ ==="; \
+	sqlite3 data/harness.db -json \
 	  "SELECT host, COUNT(*) as n, GROUP_CONCAT(DISTINCT status) as statuses \
 	   FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') \
-	   GROUP BY host ORDER BY n DESC" \
-	| claude -p "ブロックログとcurrent policy.tomlを比較して改善案をTOML形式で提案して。\
-	  許可すべきドメインとその理由、危険なドメインとその理由を分けて。" \
-	  --file policy.toml
+	   GROUP BY host ORDER BY n DESC"; \
+	echo "=== 現在のpolicy.toml ==="; \
+	cat policy.toml) \
+	| claude -p "ブロックログとpolicy.tomlを比較して改善案をTOML形式で提案して。許可すべきドメインとその理由、危険なドメインとその理由を分けて。"
 
 .PHONY: summarize
 summarize:

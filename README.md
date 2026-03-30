@@ -49,7 +49,7 @@ make task PROMPT="..."  # 自律実行モード（--dangerously-skip-permissions
 make down             # コンテナ停止
 ```
 
-`run`（対話モード）は初回にコンテナ内で`/login`が必要。`task`（自律実行）は`CLAUDE_CODE_OAUTH_TOKEN`環境変数で認証（`claude setup-token`で取得）。
+`run`（対話モード）は初回にコンテナ内で`/login`が必要。認証とセッションは名前付きボリュームに永続化されるため、`make down`しても再ログイン不要（`docker compose down -v`で明示的にリセット）。`task`（自律実行）は`CLAUDE_CODE_OAUTH_TOKEN`環境変数で認証（`claude setup-token`で取得）。
 
 ### ホストモード
 

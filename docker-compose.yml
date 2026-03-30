@@ -18,6 +18,7 @@ services:
     volumes:
       - ./certs:/certs:ro
       - ${WORKSPACE:-./workspace}:/workspace
+      - claude-auth:/home/claude/.claude
     stdin_open: true
     tty: true
     entrypoint: ["/usr/local/bin/entrypoint.sh"]
@@ -74,3 +75,6 @@ networks:
       config:
         - subnet: 172.30.0.0/24
   extnet: {}
+
+volumes:
+  claude-auth:  # OAuth認証+セッション永続化（docker compose down -v で削除）

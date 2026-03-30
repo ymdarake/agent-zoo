@@ -12,12 +12,11 @@ Agent Harnessの未実装機能と将来の拡張計画。
 - [x] **tool_usesテーブルのinputサイズ制限**: `max_tool_input_store=1000` + truncatedマーカー
 - [x] **Dockerスモークテストの合否判定**: exit codeベースの自動判定
 
-## P1: セキュリティ強化（他人に使わせる前に）
+## ~~P1: セキュリティ強化~~ ✅ 完了
 
-- [ ] **ダッシュボード認証**: Basic認証 or APIキー。環境変数`DASHBOARD_USER`/`DASHBOARD_PASS`で設定。CSRF対策（カスタムヘッダチェック）
-    - ユーザーからの補足情報: localhostだけで使用する想定です
-- [ ] **ペイロードのデコード+再検査**: Base64, Hex, URL encodingをデコードしてからblock_patterns/secret_patternsを適用。難読化によるバイパスを防止
-- [ ] **policy.tomlのファイルロック**: 同時書き込みのlost update防止。`fcntl.flock`で直列化
+- [x] **ペイロードのデコード+再検査**: URLデコード→Base64デコード→再検査（1段階のみ）
+- [x] **policy.tomlのファイルロック**: `fcntl.flock`コンテキストマネージャで排他制御
+- [ ] **ダッシュボード認証**: Basic認証 or APIキー（localhost専用のため優先度低）
 
 ## P2: 機能強化（運用品質の向上）
 

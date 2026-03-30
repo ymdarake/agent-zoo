@@ -1,0 +1,9 @@
+# Strict mode override: claudeコンテナのDNSをCoreDNSに向ける
+services:
+  claude:
+    dns: ["172.30.0.10"]
+    depends_on:
+      proxy:
+        condition: service_healthy
+      dns:
+        condition: service_started

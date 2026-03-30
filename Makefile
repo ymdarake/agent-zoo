@@ -36,9 +36,13 @@ endif
 up: certs
 	HOST_UID=$(HOST_UID) docker compose up -d
 
+.PHONY: up-strict
+up-strict: certs
+	HOST_UID=$(HOST_UID) docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml up -d
+
 .PHONY: down
 down:
-	docker compose down
+	docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml down 2>/dev/null || docker compose down
 
 # === ホストモード ===
 .PHONY: host

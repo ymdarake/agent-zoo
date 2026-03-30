@@ -32,12 +32,25 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    networks: [intnet, extnet]
+    networks:
+      intnet:
+        ipv4_address: 172.30.0.2
+      extnet:
     volumes:
       - ./certs:/certs
       - ./addons:/scripts:ro
       - ./policy.toml:/config/policy.toml:ro
       - ./data:/data
+
+  dns:
+    image: coredns/coredns:1.11.4
+    profiles: ["strict"]
+    command: -conf /etc/coredns/Corefile
+    networks:
+      intnet:
+        ipv4_address: 172.30.0.10
+    volumes:
+      - ./dns/Corefile:/etc/coredns/Corefile:ro
 
 networks:
   intnet:

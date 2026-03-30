@@ -44,6 +44,11 @@ up: certs
 up-dashboard: certs
 	HOST_UID=$(HOST_UID) docker compose up -d proxy dashboard
 
+.PHONY: reload
+reload:
+	docker compose restart proxy
+	@echo "policy.toml reloaded"
+
 .PHONY: up-strict
 up-strict: certs
 	HOST_UID=$(HOST_UID) docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml up -d

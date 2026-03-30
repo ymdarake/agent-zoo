@@ -1,0 +1,48 @@
+services:
+  claude:
+    build:
+      context: ./container
+      args:
+        HOST_UID: ${HOST_UID:-1001}
+    depends_on:
+      proxy:
+        condition: service_healthy
+    environment:
+      - HTTP_PROXY=http://proxy:8080
+      - HTTPS_PROXY=http://proxy:8080
+      - NODE_EXTRA_CA_CERTS=/certs/mitmproxy-ca-cert.pem
+      - SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem
+      - GIT_SSL_CAINFO=/certs/mitmproxy-ca-cert.pem
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    networks: [intnet]
+    volumes:
+      - ./certs:/certs:ro
+      - ./workspace:/workspace
+    stdin_open: true
+    tty: true
+    entrypoint: ["/usr/local/bin/entrypoint.sh"]
+    cap_drop: [ALL]
+
+  proxy:
+    image: mitmproxy/mitmproxy:10
+    command: mitmdump --set confdir=/certs -s /scripts/policy_enforcer.py
+    healthcheck:
+      test: ["CMD-SHELL", "python3 -c \"import socket; s = socket.create_connection(('localhost', 8080), timeout=2); s.close()\""]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks: [intnet, extnet]
+    volumes:
+      - ./certs:/certs
+      - ./addons:/scripts:ro
+      - ./policy.toml:/config/policy.toml:ro
+      - ./data:/data
+
+networks:
+  intnet:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  extnet: {}

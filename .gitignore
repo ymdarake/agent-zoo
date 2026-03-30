@@ -1,0 +1,29 @@
+# Environment
+.env
+.venv/
+
+# Data (runtime generated)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+workspace/
+
+# Certificates (runtime generated, may contain private keys)
+certs/*
+!certs/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# uv
+uv.lock

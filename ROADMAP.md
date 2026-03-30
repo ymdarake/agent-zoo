@@ -20,9 +20,9 @@ Agent Harnessの未実装機能と将来の拡張計画。
 
 ## P2: 機能強化（運用品質の向上）
 
-- [ ] **tool_useリアルタイムブロック**: SSEストリーミング中のtool_useを検知し、危険と判定した時点で接続切断。方式B（事後キル）を推奨。`[tool_use_rules]`セクション追加
+- [x] **tool_useリアルタイムブロック**: 方式B（事後キル）で実装。`[tool_use_rules]`セクション追加
+- [x] **ログ管理**: `make clear-logs` + `log_retention_days=30`自動ローテーション + tsインデックス
 - [ ] **アラートルールの組み合わせ条件**: ツール名+引数パターン等を1セットにした複合条件を配列で複数定義。例: `[[alerts.rules]] tools = ["Bash"] args = ["~/.ssh"]`
-- [ ] **ログ管理**: 手動削除（`make clear-logs` / `make clear-logs DAYS=7`）+ 自動ローテーション（`[general] log_retention_days = 30` で古いレコードを起動時に自動DELETE）
 - [ ] **CoreDNSとpolicy.tomlの自動同期**: allow list変更時にCorefileを動的生成してリロード
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列（暗号化データの疑い）を検知。`[payload_rules.advanced] entropy_threshold = 4.5`
 

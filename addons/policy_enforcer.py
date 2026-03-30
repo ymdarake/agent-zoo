@@ -5,7 +5,7 @@ Features:
 - Rate limiting (RPM + burst per domain)
 - Payload inspection (block_patterns + secret_patterns)
 - Request logging to SQLite
-- SSE streaming passthrough (tool_use detection is Phase 2b)
+- SSE streaming with tool_use extraction
 """
 
 import os
@@ -17,6 +17,7 @@ from mitmproxy import ctx, http
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
 from policy import PolicyEngine
+from sse_parser import SSEToolUseBuffer
 
 
 class PolicyEnforcer:
@@ -59,6 +60,13 @@ class PolicyEnforcer:
                 host TEXT,
                 reason TEXT
             );
+            CREATE TABLE IF NOT EXISTS tool_uses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT DEFAULT (datetime('now')),
+                tool_name TEXT,
+                input TEXT,
+                input_size INTEGER
+            );
             """
         )
         db.commit()
@@ -80,6 +88,20 @@ class PolicyEnforcer:
             db.commit()
         except Exception as e:
             ctx.log.error(f"DB write failed: {e}")
+
+    def _log_tool_use(self, tool_use):
+        """tool_useをDBに記録する。"""
+        try:
+            db = self._get_db()
+            db.execute(
+                "INSERT INTO tool_uses (tool_name, input, input_size) "
+                "VALUES (?, ?, ?)",
+                (tool_use.name, tool_use.input, tool_use.input_size),
+            )
+            db.commit()
+            ctx.log.info(f"tool_use: {tool_use.name} (size={tool_use.input_size})")
+        except Exception as e:
+            ctx.log.error(f"DB write failed (tool_uses): {e}")
 
     def request(self, flow: http.HTTPFlow):
         self.engine.maybe_reload()
@@ -121,11 +143,24 @@ class PolicyEnforcer:
         self._log_request(host, method, url, "ALLOWED", body_size)
 
     def responseheaders(self, flow: http.HTTPFlow):
-        """SSEストリーミングレスポンスは透過させる（tool_use検出はPhase 2b）"""
-        if flow.response:
-            content_type = flow.response.headers.get("content-type", "")
-            if "text/event-stream" in content_type:
-                flow.response.stream = True
+        """SSEストリーミングレスポンスからtool_useを抽出しつつ透過する。"""
+        if not flow.response:
+            return
+        content_type = flow.response.headers.get("content-type", "")
+        if "text/event-stream" not in content_type:
+            return
+
+        # SSEパーサーをフローに紐付けて、ストリーミングハンドラを設定
+        sse_buf = SSEToolUseBuffer()
+
+        def stream_handler(chunks):
+            for chunk in chunks:
+                sse_buf.feed(chunk)
+                for tool_use in sse_buf.drain_completed():
+                    self._log_tool_use(tool_use)
+                yield chunk  # クライアントにはそのまま透過
+
+        flow.response.stream = stream_handler
 
     def done(self):
         """mitmproxyアドオンのライフサイクル終了時にDB接続をクローズする。"""

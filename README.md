@@ -89,14 +89,15 @@ list = ["*.evil.com"]
 "api.anthropic.com" = { rpm = 30, burst = 5 }
 
 [payload_rules]
-# リクエストボディに含まれていたらブロック（正規表現）
-block_patterns = ["rm -rf /", "chmod 777", "base64.*\\|.*curl"]
-# 機密情報の流出検知（正規表現、大文字小文字を区別しない）
+# エージェント→Anthropic APIへの送信内容を検査（機密情報の流出防止）
 secret_patterns = ["AWS_SECRET_ACCESS_KEY", "-----BEGIN.*PRIVATE KEY-----"]
 
+[tool_use_rules]
+# Anthropic API→エージェントのtool_useを検査（危険な実行を阻止）
+block_args = ["rm -rf /", "chmod 777", "printenv", "/etc/shadow"]
+
 [alerts]
-# tool_use検出時にアラートを生成する条件（それぞれ独立、ログのみでブロックはしない）
-suspicious_tools = []                                 # 全使用をログするツール（デバッグ用、通常は空）
+# tool_use検出時にアラート生成（ログのみ、ブロックはしない）
 suspicious_args = ["~/.ssh", "~/.aws", ".env"]        # 引数にこの文字列が含まれたらアラート
 tool_arg_size_alert = 10000                           # 引数サイズ（バイト）超過でアラート
 ```

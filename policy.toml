@@ -12,9 +12,13 @@ log_retention_days = 30
 [domains.allow]
 # 通信を許可するドメイン。ここにないドメインは全てブロックされる
 # ワイルドカード対応: "*.example.com" は example.com 自体とサブドメインの両方にマッチ
-# 必須: API通信 + OAuth認証
-# オプション: statsig.anthropic.com（フィーチャーフラグ）、sentry.io（エラー追跡）
-list = ["api.anthropic.com", "platform.claude.com"]
+# Anthropic公式の必須ドメイン（https://code.claude.com/docs/en/claude-code-on-the-web）
+# api.anthropic.com: API通信
+# statsig.anthropic.com: フィーチャーフラグ
+# platform.claude.com: OAuth認証
+# code.claude.com: Claude Code Web
+# claude.ai: Claude Web
+list = ["api.anthropic.com", "statsig.anthropic.com", "platform.claude.com", "code.claude.com", "claude.ai"]
 
 [domains.deny]
 # 明示的に拒否するドメイン。allow より優先される

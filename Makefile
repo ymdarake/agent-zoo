@@ -68,9 +68,6 @@ host-stop:
 unit:
 	uv run python -m pytest tests/ -v
 
-SMOKE_PASS = 0
-SMOKE_FAIL = 0
-
 .PHONY: test
 test: certs
 	@echo "=== Smoke Test ==="

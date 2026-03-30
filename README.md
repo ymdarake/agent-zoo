@@ -136,6 +136,7 @@ Docker不要の軽量モード。macOS Seatbeltサンドボックスと併用。
 - ホストモード: Seatbelt sandbox + mitmproxy
 - 認証: `CLAUDE_CODE_OAUTH_TOKEN` を毎回環境変数で渡す（コンテナに痕跡なし）
 - workspace内に機密ファイル（`.env`等）を置かないことを推奨。環境変数で渡す
+- HTTP/HTTPS通信はmitmproxy経由のためDNSクエリ自体が発生しないが、`ping`や`dig`等の非HTTPコマンドはDocker内蔵DNS経由で名前解決できてしまう（DNSトンネリングによる微量なデータ漏洩の余地）。これも防ぎたい場合は `make up-strict` でCoreDNSを有効化し、許可ドメイン以外をNXDOMAINで遮断できる
 
 ## 開発
 

@@ -46,8 +46,9 @@ up-dashboard: certs
 
 .PHONY: reload
 reload:
+	@rm -rf addons/__pycache__
 	docker compose restart proxy dashboard
-	@echo "policy.toml reloaded"
+	@echo "policy.toml reloaded (cache cleared)"
 
 .PHONY: up-strict
 up-strict: certs

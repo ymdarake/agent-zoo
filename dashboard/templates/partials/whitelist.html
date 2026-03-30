@@ -1,3 +1,68 @@
+<!-- 現在のポリシー設定 -->
+<h4>Current Policy</h4>
+
+<details open>
+    <summary><strong>Allowed Domains</strong> ({{ current_policy.allow_domains|length }})</summary>
+    {% if current_policy.allow_domains %}
+    <ul style="font-size:0.85rem">
+        {% for d in current_policy.allow_domains %}
+        <li>{{ d }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p><small>なし（全ドメインブロック）</small></p>
+    {% endif %}
+</details>
+
+<details>
+    <summary><strong>Denied Domains</strong> ({{ current_policy.deny_domains|length }})</summary>
+    {% if current_policy.deny_domains %}
+    <ul style="font-size:0.85rem">
+        {% for d in current_policy.deny_domains %}
+        <li>{{ d }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p><small>なし（デフォルト全拒否で十分）</small></p>
+    {% endif %}
+</details>
+
+<details>
+    <summary><strong>Path Rules</strong></summary>
+    {% if current_policy.paths_allow %}
+    <table style="font-size:0.8rem">
+        <thead><tr><th>Domain</th><th>Allowed Paths</th></tr></thead>
+        <tbody>
+        {% for domain, patterns in current_policy.paths_allow.items() %}
+        <tr>
+            <td>{{ domain }}</td>
+            <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p><small>パスルールなし</small></p>
+    {% endif %}
+    {% if current_policy.paths_deny %}
+    <p><small><strong>Denied paths:</strong></small></p>
+    <table style="font-size:0.8rem">
+        <thead><tr><th>Domain</th><th>Denied Paths</th></tr></thead>
+        <tbody>
+        {% for domain, patterns in current_policy.paths_deny.items() %}
+        <tr>
+            <td>{{ domain }}</td>
+            <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</details>
+
+<hr>
+
+<!-- ブロック候補 -->
 <h4>Blocked Domain Candidates</h4>
 <p><small>ブロックされたドメインの許可候補。Allow Domainはドメイン全体を許可、Allow Pathは特定パスのみ許可します。</small></p>
 
@@ -9,11 +74,15 @@
     </header>
 
     {% if c.paths %}
-    <details style="margin-bottom:0.5rem">
-        <summary><small>Blocked URLs</small></summary>
+    <details style="margin-bottom:0.5rem" open>
+        <summary><small>Blocked URLs (click to suggest path pattern)</small></summary>
         <ul style="font-size:0.8rem;margin:0.3rem 0">
             {% for url in c.paths %}
-            <li style="word-break:break-all">{{ url }}</li>
+            <li style="word-break:break-all;cursor:pointer"
+                onclick="document.getElementById('path-{{ loop.parent.loop.index }}').value = new URL('{{ url }}').pathname.replace(/\/[^\/]+$/, '/*')"
+                title="Click to use as path pattern">
+                {{ url }}
+            </li>
             {% endfor %}
         </ul>
     </details>
@@ -33,31 +102,26 @@
         <form style="display:flex;gap:0.3rem;align-items:center;margin:0"
             hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
             <input type="hidden" name="domain" value="{{ c.host }}">
-            <input type="text" name="path_pattern" placeholder="/path/*" value="/*"
-                style="padding:0.25rem 0.5rem;font-size:0.75rem;width:150px;margin:0">
+            <input type="text" name="path_pattern" id="path-{{ loop.index }}" placeholder="/path/*" value="/*"
+                style="padding:0.25rem 0.5rem;font-size:0.75rem;width:200px;margin:0">
             <button type="submit" class="btn-sm outline">Allow Path</button>
         </form>
     </div>
 </article>
 {% endfor %}
 {% else %}
-<p><small>候補なし（全てのブロックドメインが許可済みまたは無視済み）</small></p>
+<p><small>候補なし</small></p>
 {% endif %}
 
 <hr>
 
+<!-- Dismissed -->
 <h4>Dismissed Domains</h4>
-<p><small>無視済みドメイン。必要に応じて候補に復帰できます。</small></p>
 
 {% if dismissed %}
 <table>
     <thead>
-        <tr>
-            <th>Domain</th>
-            <th>Reason</th>
-            <th>Date</th>
-            <th>Action</th>
-        </tr>
+        <tr><th>Domain</th><th>Reason</th><th>Date</th><th>Action</th></tr>
     </thead>
     <tbody>
         {% for domain, info in dismissed.items() %}

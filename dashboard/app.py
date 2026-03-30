@@ -241,15 +241,45 @@ def partial_whitelist():
             db.close()
     except Exception:
         pass
-    # dismissed一覧を取得
+    # 現在のポリシー設定を取得（base + runtime）
+    policy = {}
+    runtime = {}
     dismissed = {}
     try:
         with open(policy_path, "rb") as f:
             policy = tomllib.load(f)
-        dismissed = policy.get("domains", {}).get("dismissed", {})
+        rt_path = policy_path.replace(".toml", ".runtime.toml")
+        if os.path.exists(rt_path):
+            with open(rt_path, "rb") as f:
+                runtime = tomllib.load(f)
+        # dismissed: base + runtime
+        dismissed = {
+            **policy.get("domains", {}).get("dismissed", {}),
+            **runtime.get("domains", {}).get("dismissed", {}),
+        }
     except Exception:
         pass
-    return render_template("partials/whitelist.html", candidates=candidates, dismissed=dismissed)
+
+    # 現在の設定まとめ
+    current_policy = {
+        "allow_domains": (
+            policy.get("domains", {}).get("allow", {}).get("list", [])
+            + runtime.get("domains", {}).get("allow", {}).get("list", [])
+        ),
+        "deny_domains": policy.get("domains", {}).get("deny", {}).get("list", []),
+        "paths_allow": {
+            **policy.get("paths", {}).get("allow", {}),
+            **runtime.get("paths", {}).get("allow", {}),
+        },
+        "paths_deny": policy.get("paths", {}).get("deny", {}),
+    }
+
+    return render_template(
+        "partials/whitelist.html",
+        candidates=candidates,
+        dismissed=dismissed,
+        current_policy=current_policy,
+    )
 
 
 # === Whitelist Nurturing API ===

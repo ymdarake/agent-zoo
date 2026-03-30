@@ -1,5 +1,6 @@
 # Agent Harness ポリシー設定
-# このファイルを編集すると mitmproxy にホットリロードされる（再起動不要）
+# ホストモードではファイル保存で即反映（ホットリロード）
+# コンテナモードではDocker bind mountのmtime伝播遅延があるため docker compose restart proxy が必要
 
 [general]
 # SQLiteログの保存先（コンテナ内パス）

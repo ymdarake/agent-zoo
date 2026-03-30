@@ -1,4 +1,8 @@
-# Agent Harness
+<p align="center">
+  <img src="logo.svg" alt="Agent Zoo" width="400">
+</p>
+
+# Agent Zoo
 
 AIコーディングエージェント（Claude Code, Codex CLI, Aider, Cline等）を安全に自律実行するためのセキュリティハーネス。
 

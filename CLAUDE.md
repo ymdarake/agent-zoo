@@ -28,7 +28,7 @@ AIコーディングエージェント（Claude Code, Codex CLI, Aider, Cline等
 
 ```bash
 # コンテナモード
-make run                                           # 対話実行（初回は /login 必要）
+WORKSPACE=/path/to/project make run                 # 対話実行（初回は /login 必要）
 CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="..." # 自律実行（トークン認証）
 
 # ホストモード

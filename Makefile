@@ -22,7 +22,7 @@ build: certs
 .PHONY: run
 run: certs
 	HOST_UID=$(HOST_UID) docker compose up -d
-	@echo "対話モード: 初回はコンテナ内で /login が必要です"
+	@echo "対話モード: 初回はコンテナ内で /login が必要です (WORKSPACE=$(or $(WORKSPACE),./workspace))"
 	docker compose exec claude claude
 
 .PHONY: task

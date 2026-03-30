@@ -17,7 +17,7 @@ services:
     networks: [intnet]
     volumes:
       - ./certs:/certs:ro
-      - ./workspace:/workspace
+      - ${WORKSPACE:-./workspace}:/workspace
     stdin_open: true
     tty: true
     entrypoint: ["/usr/local/bin/entrypoint.sh"]

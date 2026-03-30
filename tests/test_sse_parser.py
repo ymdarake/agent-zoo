@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from addons.sse_parser import AnthropicSSEParser
+from addons.sse_parser import AnthropicSSEParser, BaseSSEParser
 
 # Anthropic API の実際のSSEフォーマットに基づくテストデータ
 SSE_TOOL_USE_COMPLETE = (
@@ -179,6 +179,19 @@ class TestEdgeCases(unittest.TestCase):
         buf.feed(data)
         results = buf.drain_completed()
         self.assertEqual(len(results), 1)
+
+
+class TestBaseSSEParser(unittest.TestCase):
+    def test_cannot_instantiate_abstract(self):
+        """BaseSSEParserは直接インスタンス化できない"""
+        with self.assertRaises(TypeError):
+            BaseSSEParser()
+
+    def test_anthropic_parser_is_subclass(self):
+        """AnthropicSSEParserはBaseSSEParserのサブクラス"""
+        self.assertTrue(issubclass(AnthropicSSEParser, BaseSSEParser))
+        parser = AnthropicSSEParser()
+        self.assertIsInstance(parser, BaseSSEParser)
 
 
 if __name__ == "__main__":

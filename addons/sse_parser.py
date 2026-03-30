@@ -109,6 +109,12 @@ class BaseSSEParser(ABC):
         self._completed = []
         return results
 
+    def reset(self) -> None:
+        """全状態をリセット。ストリーム切断時等に呼び出す。"""
+        self._line_buf = b""
+        self._event_lines = []
+        self._completed = []
+
 
 class AnthropicSSEParser(BaseSSEParser):
     """Anthropic API SSE format parser.
@@ -159,3 +165,7 @@ class AnthropicSSEParser(BaseSSEParser):
 
         elif event_type == "message_stop":
             self._active_tools.clear()
+
+    def reset(self) -> None:
+        super().reset()
+        self._active_tools.clear()

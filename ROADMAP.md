@@ -22,7 +22,7 @@ Agent Harnessの未実装機能と将来の拡張計画。
 
 - [x] **tool_useリアルタイムブロック**: 方式B（事後キル）で実装。`[tool_use_rules]`セクション追加
 - [x] **ログ管理**: `make clear-logs` + `log_retention_days=30`自動ローテーション + tsインデックス
-- [ ] **アラートルールの組み合わせ条件**: ツール名+引数パターン等を1セットにした複合条件を配列で複数定義。例: `[[alerts.rules]] tools = ["Bash"] args = ["~/.ssh"]`
+- [x] **アラートルールの組み合わせ条件**: `[[alerts.rules]]`で複合条件を配列定義。ルール内AND、ルール間OR
 - [ ] **CoreDNSとpolicy.tomlの自動同期**: allow list変更時にCorefileを動的生成してリロード
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列（暗号化データの疑い）を検知。`[payload_rules.advanced] entropy_threshold = 4.5`
 

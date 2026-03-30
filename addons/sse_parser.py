@@ -39,6 +39,8 @@ class SSEToolUseBuffer:
             print(tool_use.name, tool_use.input)
     """
 
+    MAX_LINE_BUF = 1024 * 1024  # 1MB
+
     def __init__(self):
         self._line_buf = b""
         self._event_lines: list[str] = []
@@ -52,6 +54,12 @@ class SSEToolUseBuffer:
             return
 
         self._line_buf += chunk
+
+        # バッファサイズ上限チェック（改行なしの巨大データ対策）
+        if len(self._line_buf) > self.MAX_LINE_BUF:
+            logger.warning(f"SSE line buffer exceeded {self.MAX_LINE_BUF} bytes, discarding")
+            self._line_buf = b""
+            self._event_lines = []
 
         # Process complete lines (separated by \n)
         while b"\n" in self._line_buf:
@@ -95,7 +103,9 @@ class SSEToolUseBuffer:
         if event_type == "content_block_start":
             block = data.get("content_block", {})
             if block.get("type") == "tool_use":
-                index = data.get("index", -1)
+                index = data.get("index")
+                if index is None:
+                    return
                 self._active_tools[index] = {
                     "name": block.get("name", ""),
                     "id": block.get("id", ""),
@@ -103,16 +113,16 @@ class SSEToolUseBuffer:
                 }
 
         elif event_type == "content_block_delta":
-            index = data.get("index", -1)
+            index = data.get("index")
             delta = data.get("delta", {})
-            if delta.get("type") == "input_json_delta" and index in self._active_tools:
+            if index is not None and delta.get("type") == "input_json_delta" and index in self._active_tools:
                 self._active_tools[index]["partial_json_parts"].append(
                     delta.get("partial_json", "")
                 )
 
         elif event_type == "content_block_stop":
-            index = data.get("index", -1)
-            if index in self._active_tools:
+            index = data.get("index")
+            if index is not None and index in self._active_tools:
                 tool = self._active_tools.pop(index)
                 full_json = "".join(tool["partial_json_parts"])
                 self._completed.append(

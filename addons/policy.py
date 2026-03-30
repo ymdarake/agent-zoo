@@ -55,7 +55,7 @@ class PolicyEngine:
             payload_rules.get("block_patterns", [])
         )
         self.secret_patterns = self._compile_patterns(
-            payload_rules.get("secret_patterns", [])
+            payload_rules.get("secret_patterns", []), flags=re.IGNORECASE
         )
 
         # アラート設定
@@ -65,11 +65,13 @@ class PolicyEngine:
         self.tool_arg_size_alert = alerts_config.get("tool_arg_size_alert", 0)
 
     @staticmethod
-    def _compile_patterns(patterns: list[str]) -> list[re.Pattern]:
+    def _compile_patterns(
+        patterns: list[str], flags: int = 0
+    ) -> list[re.Pattern]:
         compiled = []
         for p in patterns:
             try:
-                compiled.append(re.compile(p))
+                compiled.append(re.compile(p, flags))
             except re.error as e:
                 logger.warning(f"Invalid regex pattern '{p}': {e}")
         return compiled
@@ -110,6 +112,7 @@ class PolicyEngine:
         2段階ウィンドウ: 60秒RPM + 1秒burst。
         (True, "") = 許可, (False, reason) = ブロック。
         """
+        host = host.lower()
         config = self.rate_limits.get(host)
         if not config:
             return True, ""
@@ -156,6 +159,8 @@ class PolicyEngine:
         try:
             text = body.decode("utf-8")
         except UnicodeDecodeError:
+            # バイナリデータ（画像等）は通過。ログで追跡可能。
+            logger.debug("Payload is not UTF-8, skipping text pattern check")
             return False, ""
 
         for pattern in self.block_patterns:

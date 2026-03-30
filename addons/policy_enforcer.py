@@ -134,7 +134,9 @@ class PolicyEnforcer:
         allowed, reason = self.engine.is_allowed(host)
         if not allowed:
             self._log_request(host, method, url, "BLOCKED", body_size, reason)
-            flow.kill()
+            flow.response = http.Response.make(
+                403, b"Blocked by policy", {"Content-Type": "text/plain"}
+            )
             ctx.log.warn(f"BLOCKED: {host} ({reason})")
             return
 
@@ -154,7 +156,9 @@ class PolicyEnforcer:
         blocked, reason = self.engine.check_payload(body)
         if blocked:
             self._log_request(host, method, url, "PAYLOAD_BLOCKED", body_size, reason)
-            flow.kill()
+            flow.response = http.Response.make(
+                403, b"Blocked by payload policy", {"Content-Type": "text/plain"}
+            )
             ctx.log.warn(f"PAYLOAD_BLOCKED: {reason}")
             return
 

@@ -68,7 +68,7 @@ make up-strict        # CoreDNS strictモード（DNS漏洩対策）
 ### テスト・分析
 
 ```bash
-make unit             # ユニットテスト（115件）
+make unit             # ユニットテスト（124件）
 make test             # Dockerスモークテスト
 make analyze          # ブロックログ → policy.toml改善提案
 make summarize        # tool_use履歴 → 最小権限settings.json提案
@@ -89,6 +89,14 @@ list = ["api.anthropic.com"]
 [domains.deny]
 # 明示的に拒否するドメイン。allow より優先
 list = ["*.evil.com"]
+
+[paths.allow]
+# ドメイン未許可でも、特定パスだけ許可（glob対応）
+"raw.githubusercontent.com" = ["/anthropics/*"]
+
+[paths.deny]
+# ドメイン許可でも、特定パスはブロック
+# "api.anthropic.com" = ["/v1/files*"]
 
 [rate_limits]
 # ドメイン別のレート制限。rpm=1分あたり上限、burst=1秒あたり上限

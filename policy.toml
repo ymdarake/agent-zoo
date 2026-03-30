@@ -1,24 +1,36 @@
+# Agent Harness ポリシー設定
+# このファイルを編集すると mitmproxy にホットリロードされる（再起動不要）
+
 [general]
+# SQLiteログの保存先（コンテナ内パス）
 log_db = "/data/harness.db"
 
 [domains.allow]
+# 通信を許可するドメイン。ここにないドメインは全てブロックされる
+# ワイルドカード対応: "*.example.com" は example.com 自体とサブドメインの両方にマッチ
 list = ["api.anthropic.com"]
 
 [domains.deny]
+# 明示的に拒否するドメイン。allow より優先される
 list = ["*.evil.com"]
 
 [domains.dismissed]
+# ダッシュボードで「無視」したドメイン。ホワイトリスト育成の候補から除外される
 # "registry.npmjs.org" = { reason = "ホスト側でnpm install済み", date = "2026-03-29" }
 
 [rate_limits]
+# ドメイン別のレート制限。rpm=1分あたりの上限、burst=1秒あたりの上限
+# 超過時は 429 Retry-After レスポンスを返す
 "api.anthropic.com" = { rpm = 30, burst = 5 }
 
 [payload_rules]
+# リクエストボディに含まれていたらブロックするパターン（正規表現）
 block_patterns = [
     "rm -rf /",
     "chmod 777",
     "base64.*\\|.*curl",
 ]
+# 機密情報の流出を検知するパターン（正規表現、大文字小文字を区別しない）
 secret_patterns = [
     "AWS_SECRET_ACCESS_KEY",
     "ANTHROPIC_API_KEY",
@@ -26,6 +38,8 @@ secret_patterns = [
 ]
 
 [alerts]
-suspicious_tools = ["Bash"]
-suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
-tool_arg_size_alert = 10000
+# tool_use検出時にアラートを生成する条件
+# アラートはログのみ（ブロックはしない）
+suspicious_tools = ["Bash"]                          # このツール名が使われたらアラート
+suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]  # 引数にこの文字列が含まれたらアラート
+tool_arg_size_alert = 10000                          # 引数がこのバイト数を超えたらアラート

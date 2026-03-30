@@ -217,20 +217,22 @@ class PolicyEnforcer:
         # SSEパーサーをフローに紐付けて、ストリーミングハンドラを設定
         sse_buf = SSEToolUseBuffer()
 
-        def stream_handler(chunks):
-            for chunk in chunks:
-                sse_buf.feed(chunk)
+        def stream_handler(data):
+            """mitmproxy 10のストリーミングフィルタ: bytesを受け取りbytesを返す"""
+            try:
+                sse_buf.feed(data)
                 for tool_use in sse_buf.drain_completed():
                     self._log_tool_use(tool_use)
-                    # tool_useブロック判定（方式B: 事後キル）
                     should_block, reason = self.engine.should_block_tool_use(
                         tool_use.name, tool_use.input
                     )
                     if should_block:
                         ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
                         self._log_block_tool_use(tool_use.name, reason)
-                        return  # generator終了→ストリーム切断→tool実行阻止
-                yield chunk  # クライアントにはそのまま透過
+                        return b""  # 空バイトを返してストリーム切断
+            except Exception as e:
+                ctx.log.error(f"SSE stream handler error: {e}")
+            return data  # クライアントにはそのまま透過
 
         flow.response.stream = stream_handler
 

@@ -41,7 +41,7 @@ list = ["*.evil.com"]
 [rate_limits]
 # ドメイン別のレート制限。rpm=1分あたりの上限、burst=1秒あたりの上限
 # 超過時は 429 Retry-After レスポンスを返す
-"api.anthropic.com" = { rpm = 30, burst = 5 }
+"api.anthropic.com" = { rpm = 120, burst = 30 }
 
 [payload_rules]
 # エージェント → Anthropic API へのリクエスト本文を検査する

@@ -24,7 +24,7 @@ run: certs
 ifndef ANTHROPIC_AUTH_TOKEN
 	$(error ANTHROPIC_AUTH_TOKEN is required. Usage: ANTHROPIC_AUTH_TOKEN=xxx make run)
 endif
-	HOST_UID=$(HOST_UID) docker compose up -d claude
+	HOST_UID=$(HOST_UID) docker compose up -d
 	docker compose exec claude claude
 
 .PHONY: task
@@ -35,7 +35,7 @@ endif
 ifndef PROMPT
 	$(error PROMPT is required. Usage: ANTHROPIC_AUTH_TOKEN=xxx make task PROMPT="...")
 endif
-	HOST_UID=$(HOST_UID) docker compose up -d claude
+	HOST_UID=$(HOST_UID) docker compose up -d
 	docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions
 
 .PHONY: up

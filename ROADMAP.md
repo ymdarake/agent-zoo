@@ -12,7 +12,7 @@ Agent Harnessの未実装機能と将来の拡張計画。
 - [x] **tool_usesテーブルのinputサイズ制限**: `max_tool_input_store=1000` + truncatedマーカー
 - [x] **Dockerスモークテストの合否判定**: exit codeベースの自動判定
 
-## ~~P1: セキュリティ強化~~ ✅ 完了
+## P1: セキュリティ強化（主要完了）
 
 - [x] **ペイロードのデコード+再検査**: URLデコード→Base64デコード→再検査（1段階のみ）
 - [x] **policy.tomlのファイルロック**: `fcntl.flock`コンテキストマネージャで排他制御

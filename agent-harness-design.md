@@ -113,7 +113,7 @@ services:
       - HTTPS_PROXY=http://proxy:8080
       - NODE_EXTRA_CA_CERTS=/certs/mitmproxy-ca-cert.pem
       - SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
     networks: [intnet]
     volumes:
       - ./certs:/certs:ro
@@ -243,7 +243,7 @@ Dockerfile注意事項:
 - Alpine Linux禁止: musl libc互換性でClaude Codeがクラッシュする（posix_getdents: symbol not found）
 - NODE_TLS_REJECT_UNAUTHORIZED=0 は絶対使わない
 - メモリ4GB以上確保: 下回るとOOM Killerが発動
-- 認証は環境変数で渡す: -e ANTHROPIC_API_KEY。コンテナ内でのインタラクティブログインは不要な認証痕跡を残す
+- 認証は`CLAUDE_CODE_OAUTH_TOKEN`環境変数で毎回渡す。.envファイルは使わない
 ```
 
 ---
@@ -355,26 +355,22 @@ list = ["*.evil.com"]
 "api.anthropic.com" = { rpm = 30, burst = 5 }
 
 [payload_rules]
-block_patterns = [
-  "rm -rf /",
-  "chmod 777",
-  "base64.*\\|.*curl",
-]
-# 機密情報パターン（デフォルトで有効）
+# エージェント→Anthropic APIへの送信内容を検査（機密情報の流出防止）
+# ※実行コマンドのブロックは [tool_use_rules] で行う
+block_patterns = []
 secret_patterns = [
   "AWS_SECRET_ACCESS_KEY",
   "ANTHROPIC_API_KEY",
   "-----BEGIN.*PRIVATE KEY-----",
 ]
 
-[payload_rules.advanced]
-# Base64/Hexデコード後に正規表現を適用する（Phase 2）
-decode_before_match = true
-# エントロピーチェック: 高エントロピー文字列を検知（Phase 2）
-entropy_threshold = 4.5
+[tool_use_rules]
+# Anthropic API→エージェントのtool_useを検査（危険な実行を阻止）
+block_tools = []
+block_args = ["rm -rf /", "chmod 777", "printenv", "/etc/shadow"]
 
 [alerts]
-suspicious_tools = ["Bash"]
+suspicious_tools = []
 suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
 # tool_use引数のサイズ閾値（バイト）— 異常に大きい場合アラート
 tool_arg_size_alert = 10000

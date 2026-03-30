@@ -32,13 +32,11 @@ Agent Harnessの未実装機能と将来の拡張計画。
 
 現在は`CLAUDE_CODE_OAUTH_TOKEN`環境変数で毎回渡す方式。将来的にLiteLLMのような設定ファイル（YAML/TOML）でモデル別の認証情報・エンドポイント・パラメータを一元管理できるようにする。複数のLLMプロバイダやモデルを切り替えてエージェントを実行するユースケースに対応。
 
-### Docker Secrets統合
+### シークレット保護の現実的な整理
 
-環境変数の代わりにDocker Secrets (`/run/secrets/`) で機密情報を管理。`printenv`や`/proc/1/environ`による漏洩を防止。mitmproxyアドオンが起動時にSecretsファイルを読み込み、`secret_patterns`に自動登録する。
+エージェントが開発中のアプリを起動する場合（`npm run dev`等）、アプリが必要とするAPIキーやDB接続文字列はエージェントコンテナに渡すしかない。Docker SecretsやMatchlock方式で隠しても、アプリが起動できなければ意味がない。
 
-### Matchlock的なシークレットインジェクション
-
-mitmproxyで実行時に認証情報を置換。エージェントに秘密情報を直接渡さず、API呼び出し時にプロキシが自動でトークンを付与する。Docker Secretsと組み合わせることで、エージェントは秘密情報に一切触れない設計が実現可能。
+**結論: ネットワーク隔離（読めても送れない）が唯一の現実的な防御。** `payload_rules.secret_patterns`でAPIリクエスト内の既知パターンを検知・ブロックし、`alerts`で不審なアクセスを事後検知する。
 
 ### エージェントツール設定テンプレート拡充
 

@@ -146,7 +146,7 @@ Docker不要の軽量モード。macOS Seatbeltサンドボックスと併用。
 ### 既知の制約
 
 - **Anthropic APIへの送信**: 会話コンテキストはAnthropicに送信される（API経由のデータは学習に使用されない。不正利用監視のため最大30日間保持）
-- **printenv**: コンテナ内で `printenv` や `/proc/1/environ` で環境変数は読める。DB接続文字列等はDocker Secrets (`/run/secrets/`) で管理するのがベスト
+- **printenv**: コンテナ内で `printenv` で環境変数は読めるが、ネットワーク隔離で送れない。`secret_patterns`に自前のAPIキーパターンを追加推奨
 - **Bash経由のアクセス**: `permissions.deny` は内部ツール(Read/Edit)のみ制限。`cat .env` は防げない。ネットワーク隔離+payload_rulesで対応
 
 ## 開発

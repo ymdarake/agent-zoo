@@ -5,10 +5,17 @@ import re
 import time
 import tomllib
 from collections import deque
+from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Alert:
+    type: str
+    detail: str
 
 
 class PolicyEngine:
@@ -21,6 +28,9 @@ class PolicyEngine:
         self.rate_limits: dict[str, dict] = {}
         self.block_patterns: list[re.Pattern] = []
         self.secret_patterns: list[re.Pattern] = []
+        self.suspicious_tools: list[str] = []
+        self.suspicious_args: list[str] = []
+        self.tool_arg_size_alert: int = 0
         # レート制限の内部状態（ホットリロードでもリセットしない）
         self._rate_windows: dict[str, deque] = {}
         self._burst_windows: dict[str, deque] = {}
@@ -47,6 +57,12 @@ class PolicyEngine:
         self.secret_patterns = self._compile_patterns(
             payload_rules.get("secret_patterns", [])
         )
+
+        # アラート設定
+        alerts_config = policy.get("alerts", {})
+        self.suspicious_tools = alerts_config.get("suspicious_tools", [])
+        self.suspicious_args = alerts_config.get("suspicious_args", [])
+        self.tool_arg_size_alert = alerts_config.get("tool_arg_size_alert", 0)
 
     @staticmethod
     def _compile_patterns(patterns: list[str]) -> list[re.Pattern]:
@@ -151,3 +167,30 @@ class PolicyEngine:
                 return True, f"secret_pattern matched: {pattern.pattern}"
 
         return False, ""
+
+    def check_tool_use(
+        self, tool_name: str, input_str: str, input_size: int
+    ) -> list[Alert]:
+        """tool_useに対してアラートチェックを行う。"""
+        if not self.suspicious_tools and not self.suspicious_args and not self.tool_arg_size_alert:
+            return []
+
+        alerts: list[Alert] = []
+
+        if self.tool_arg_size_alert and input_size > self.tool_arg_size_alert:
+            alerts.append(
+                Alert("tool_arg_size", f"{tool_name}: input_size={input_size} > {self.tool_arg_size_alert}")
+            )
+
+        if tool_name in self.suspicious_tools:
+            alerts.append(
+                Alert("suspicious_tool", f"suspicious tool: {tool_name}")
+            )
+
+        for pattern in self.suspicious_args:
+            if pattern in input_str:
+                alerts.append(
+                    Alert("suspicious_arg", f"suspicious arg '{pattern}' in {tool_name}")
+                )
+
+        return alerts

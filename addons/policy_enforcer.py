@@ -67,6 +67,12 @@ class PolicyEnforcer:
                 input TEXT,
                 input_size INTEGER
             );
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT DEFAULT (datetime('now')),
+                type TEXT,
+                detail TEXT
+            );
             """
         )
         db.commit()
@@ -90,7 +96,7 @@ class PolicyEnforcer:
             ctx.log.error(f"DB write failed: {e}")
 
     def _log_tool_use(self, tool_use):
-        """tool_useをDBに記録する。"""
+        """tool_useをDBに記録し、アラートチェックを行う。"""
         try:
             db = self._get_db()
             db.execute(
@@ -98,6 +104,18 @@ class PolicyEnforcer:
                 "VALUES (?, ?, ?)",
                 (tool_use.name, tool_use.input, tool_use.input_size),
             )
+
+            # アラートチェック
+            alerts = self.engine.check_tool_use(
+                tool_use.name, tool_use.input, tool_use.input_size
+            )
+            for alert in alerts:
+                db.execute(
+                    "INSERT INTO alerts (type, detail) VALUES (?, ?)",
+                    (alert.type, alert.detail),
+                )
+                ctx.log.warn(f"ALERT [{alert.type}]: {alert.detail}")
+
             db.commit()
             ctx.log.info(f"tool_use: {tool_use.name} (size={tool_use.input_size})")
         except Exception as e:

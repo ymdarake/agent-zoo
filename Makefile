@@ -40,6 +40,15 @@ up: certs
 down:
 	docker compose down
 
+# === ホストモード ===
+.PHONY: host
+host:
+	./host/setup.sh
+
+.PHONY: host-stop
+host-stop:
+	./host/stop.sh
+
 # === テスト ===
 .PHONY: unit
 unit:
@@ -82,12 +91,21 @@ test: certs
 .PHONY: analyze
 analyze:
 	@sqlite3 data/harness.db -json \
-	  "SELECT host, COUNT(*) as n FROM requests WHERE status='BLOCKED' GROUP BY host ORDER BY n DESC" \
-	| claude -p "ブロックログとcurrent policy.tomlを比較して改善案をTOML形式で提案して。" \
+	  "SELECT host, COUNT(*) as n, GROUP_CONCAT(DISTINCT status) as statuses \
+	   FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') \
+	   GROUP BY host ORDER BY n DESC" \
+	| claude -p "ブロックログとcurrent policy.tomlを比較して改善案をTOML形式で提案して。\
+	  許可すべきドメインとその理由、危険なドメインとその理由を分けて。" \
 	  --file policy.toml
+
+.PHONY: summarize
+summarize:
+	@sqlite3 data/harness.db -json \
+	  "SELECT tool_name, input, input_size, ts FROM tool_uses ORDER BY ts DESC LIMIT 100" \
+	| claude -p "このtool_use履歴からホストモード用settings.jsonの最小権限設定を提案して"
 
 .PHONY: alerts
 alerts:
 	@sqlite3 data/harness.db -json \
-	  "SELECT * FROM requests WHERE status='BLOCKED' ORDER BY ts DESC LIMIT 50" \
+	  "SELECT * FROM alerts ORDER BY ts DESC LIMIT 50" \
 	| claude -p "セキュリティ上の懸念があるパターンを報告して"

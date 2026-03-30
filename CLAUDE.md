@@ -28,15 +28,28 @@ make run            # コンテナモードで対話実行
 make task PROMPT="..." # コンテナモードで自律実行
 make unit           # ユニットテスト（uv run pytest）
 make test           # Dockerスモークテスト（許可/ブロック/直接アクセス不可+SQLiteログ確認）
+make host           # ホストモードでmitmproxy起動
+make host-stop      # ホストモード停止
 make analyze        # ブロックログ → policy.toml改善提案
+make summarize      # tool_use履歴 → ホストモード最小権限提案
+make alerts         # アラート履歴の分析
 make down           # コンテナ停止
 ```
 
 ## 実装状態
 
-MVP（Phase 1）実装済み: policy.tomlパーサー、policy_enforcer.py（ドメイン制御+ログ）、docker-compose.yml、Dockerfile+entrypoint.sh、Makefile、SQLiteスキーマ、ユニットテスト19件、Dockerスモークテスト
+Phase 1-2 実装済み。ユニットテスト60件、Dockerスモークテスト。
 
-次のステップ: Phase 2（SSEストリーミング対応、tool_useキャプチャ、レート制限、ホストモード）
+実装済み機能:
+- ドメイン制御（allow/deny、ワイルドカード、case-insensitive、ホットリロード）
+- レート制限（RPM + burstの2段階ウィンドウ）
+- ペイロード検査（block_patterns + secret_patterns）
+- SSEストリーミングtool_useキャプチャ（ステートマシン、チャンク境界対応）
+- アラート機能（suspicious_tools/args、tool_arg_size_alert）
+- ホストモード（setup.sh/stop.sh）
+- CLI分析（make analyze/summarize/alerts）
+
+次のステップ: Phase 3（ダッシュボード、CoreDNS strictモード）
 
 ## 重要な設計判断
 

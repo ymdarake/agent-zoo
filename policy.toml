@@ -24,3 +24,8 @@ secret_patterns = [
     "ANTHROPIC_API_KEY",
     "-----BEGIN.*PRIVATE KEY-----",
 ]
+
+[alerts]
+suspicious_tools = ["Bash"]
+suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+tool_arg_size_alert = 10000

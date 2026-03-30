@@ -32,7 +32,7 @@ list = ["*.evil.com"]
 [paths.allow]
 # ドメインがdomains.allowになくても、特定パスは許可
 "raw.githubusercontent.com" = ["/anthropics/*"]
-"registry.npmjs.org" = ["/@anthropic-ai/*", "/@playwright/*", "/npm", "/playwright", "/playwright-core"]
+"registry.npmjs.org" = ["/@anthropic-ai/*", "/@playwright/*", "/npm", "/playwright*", "/playwright-core*"]
 "downloads.claude.ai" = ["/claude-code-releases/*"]
 
 [paths.deny]

@@ -34,6 +34,7 @@ def atomic_write(path: str, content: str) -> None:
     """
     abs_path = os.path.abspath(path)
     dir_name = os.path.dirname(abs_path)
+    tmp_path = None
     try:
         with tempfile.NamedTemporaryFile(
             mode="w", dir=dir_name, delete=False, suffix=".tmp"
@@ -43,8 +44,7 @@ def atomic_write(path: str, content: str) -> None:
         os.rename(tmp_path, abs_path)
     except OSError:
         # Docker bind mount: rename may fail (device or resource busy)
-        # Fall back to direct overwrite
-        if os.path.exists(tmp_path):
+        if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
         with open(abs_path, "w") as f:
             f.write(content)

@@ -43,6 +43,7 @@ services:
       - ./certs:/certs
       - ./addons:/scripts:ro
       - ./policy.toml:/config/policy.toml:ro
+      - ./policy.runtime.toml:/config/policy.runtime.toml:ro
       - ./data:/data
 
   dashboard:
@@ -54,7 +55,8 @@ services:
       - PYTHONPATH=/app
     volumes:
       - ./data:/data:ro
-      - ./policy.toml:/config/policy.toml
+      - ./policy.toml:/config/policy.toml:ro
+      - ./policy.runtime.toml:/config/policy.runtime.toml
       - ./addons:/app/addons:ro
     networks: [extnet]
 

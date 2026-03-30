@@ -1,0 +1,97 @@
+"""Policy editing and whitelist nurturing utilities.
+
+Pure logic, no mitmproxy or Flask dependency.
+Used by the dashboard for policy.toml editing and whitelist candidate management.
+"""
+
+import os
+import sqlite3
+import tempfile
+import tomllib
+from datetime import datetime
+
+import tomli_w
+
+
+def atomic_write(path: str, content: str) -> None:
+    """Atomically write content to a file (tmpfile + rename)."""
+    dir_name = os.path.dirname(os.path.abspath(path))
+    with tempfile.NamedTemporaryFile(
+        mode="w", dir=dir_name, delete=False, suffix=".tmp"
+    ) as f:
+        f.write(content)
+        tmp_path = f.name
+    os.rename(tmp_path, path)
+
+
+def _load_policy(path: str) -> dict:
+    with open(path, "rb") as f:
+        return tomllib.load(f)
+
+
+def _save_policy(path: str, policy: dict) -> None:
+    content = tomli_w.dumps(policy)
+    atomic_write(path, content)
+
+
+def add_to_allow_list(policy_path: str, domain: str) -> None:
+    """policy.tomlのdomains.allow.listにドメインを追加する。"""
+    policy = _load_policy(policy_path)
+    allow_list = policy.setdefault("domains", {}).setdefault("allow", {}).setdefault(
+        "list", []
+    )
+    if domain not in allow_list:
+        allow_list.append(domain)
+    _save_policy(policy_path, policy)
+
+
+def add_to_dismissed(policy_path: str, domain: str, reason: str) -> None:
+    """policy.tomlのdomains.dismissedにドメインと理由を追加する。"""
+    policy = _load_policy(policy_path)
+    dismissed = policy.setdefault("domains", {}).setdefault("dismissed", {})
+    dismissed[domain] = {
+        "reason": reason,
+        "date": datetime.now().strftime("%Y-%m-%d"),
+    }
+    _save_policy(policy_path, policy)
+
+
+def remove_from_dismissed(policy_path: str, domain: str) -> None:
+    """policy.tomlのdomains.dismissedからドメインを削除する。"""
+    policy = _load_policy(policy_path)
+    dismissed = policy.get("domains", {}).get("dismissed", {})
+    dismissed.pop(domain, None)
+    _save_policy(policy_path, policy)
+
+
+def get_whitelist_candidates(
+    db_path: str, policy_path: str
+) -> list[dict]:
+    """blocksテーブルから集計し、許可候補を返す。
+    既にallow listまたはdismissedにあるドメインは除外する。
+    """
+    policy = _load_policy(policy_path)
+    allow_list = set(
+        policy.get("domains", {}).get("allow", {}).get("list", [])
+    )
+    dismissed = set(
+        policy.get("domains", {}).get("dismissed", {}).keys()
+    )
+    excluded = allow_list | dismissed
+
+    db = sqlite3.connect(db_path)
+    db.row_factory = sqlite3.Row
+    try:
+        rows = db.execute(
+            "SELECT host, COUNT(*) as count "
+            "FROM blocks GROUP BY host ORDER BY count DESC"
+        ).fetchall()
+    finally:
+        db.close()
+
+    candidates = []
+    for row in rows:
+        if row["host"] not in excluded:
+            candidates.append({"host": row["host"], "count": row["count"]})
+
+    return candidates

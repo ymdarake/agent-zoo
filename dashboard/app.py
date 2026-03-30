@@ -2,11 +2,23 @@
 
 import os
 import sqlite3
+import sys
 from datetime import UTC, datetime, timedelta
 
 from flask import Flask, jsonify, render_template, request
 
+# Import policy editing utilities
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "addons"))
+from policy_edit import (
+    add_to_allow_list,
+    add_to_dismissed,
+    get_whitelist_candidates,
+    remove_from_dismissed,
+)
+
 app = Flask(__name__)
+
+POLICY_PATH = os.environ.get("POLICY_PATH", "/app/policy.toml")
 
 
 def get_db():
@@ -177,6 +189,48 @@ def partial_stats():
         return render_template("partials/stats.html", stats=stats)
     finally:
         db.close()
+
+
+# === Whitelist Nurturing API ===
+
+
+@app.route("/api/whitelist-candidates")
+def api_whitelist_candidates():
+    db_path = os.environ.get("DB_PATH", "/data/harness.db")
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    candidates = get_whitelist_candidates(db_path, policy_path)
+    return jsonify(candidates)
+
+
+@app.route("/api/whitelist/allow", methods=["POST"])
+def api_whitelist_allow():
+    domain = request.json.get("domain", "").strip()
+    if not domain:
+        return jsonify({"error": "domain is required"}), 400
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    add_to_allow_list(policy_path, domain)
+    return jsonify({"status": "ok", "action": "allowed", "domain": domain})
+
+
+@app.route("/api/whitelist/dismiss", methods=["POST"])
+def api_whitelist_dismiss():
+    domain = request.json.get("domain", "").strip()
+    reason = request.json.get("reason", "").strip()
+    if not domain:
+        return jsonify({"error": "domain is required"}), 400
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    add_to_dismissed(policy_path, domain, reason or "dismissed via dashboard")
+    return jsonify({"status": "ok", "action": "dismissed", "domain": domain})
+
+
+@app.route("/api/whitelist/restore", methods=["POST"])
+def api_whitelist_restore():
+    domain = request.json.get("domain", "").strip()
+    if not domain:
+        return jsonify({"error": "domain is required"}), 400
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    remove_from_dismissed(policy_path, domain)
+    return jsonify({"status": "ok", "action": "restored", "domain": domain})
 
 
 if __name__ == "__main__":

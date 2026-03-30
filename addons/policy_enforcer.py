@@ -43,6 +43,8 @@ class PolicyEnforcer:
         return self._db
 
     def _init_db(self):
+        """スキーマ初期化。mitmproxy起動時に__init__から1回だけ呼ばれる。
+        リクエストごとには呼ばれない（INSERTのみ）。"""
         db = self._get_db()
         db.executescript(
             """

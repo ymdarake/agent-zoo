@@ -48,8 +48,12 @@ services:
     ports: ["127.0.0.1:8080:8080"]
     environment:
       - DB_PATH=/data/harness.db
+      - POLICY_PATH=/config/policy.toml
+      - PYTHONPATH=/app
     volumes:
       - ./data:/data:ro
+      - ./policy.toml:/config/policy.toml
+      - ./addons:/app/addons:ro
     networks: [extnet]
 
   dns:

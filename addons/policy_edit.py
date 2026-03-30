@@ -14,14 +14,26 @@ import tomli_w
 
 
 def atomic_write(path: str, content: str) -> None:
-    """Atomically write content to a file (tmpfile + rename)."""
-    dir_name = os.path.dirname(os.path.abspath(path))
-    with tempfile.NamedTemporaryFile(
-        mode="w", dir=dir_name, delete=False, suffix=".tmp"
-    ) as f:
-        f.write(content)
-        tmp_path = f.name
-    os.rename(tmp_path, path)
+    """Atomically write content to a file.
+    Tries tmpfile + rename first (POSIX atomic).
+    Falls back to direct overwrite for Docker bind mounts where rename fails.
+    """
+    abs_path = os.path.abspath(path)
+    dir_name = os.path.dirname(abs_path)
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", dir=dir_name, delete=False, suffix=".tmp"
+        ) as f:
+            f.write(content)
+            tmp_path = f.name
+        os.rename(tmp_path, abs_path)
+    except OSError:
+        # Docker bind mount: rename may fail (device or resource busy)
+        # Fall back to direct overwrite
+        if os.path.exists(tmp_path):
+            os.unlink(tmp_path)
+        with open(abs_path, "w") as f:
+            f.write(content)
 
 
 def _load_policy(path: str) -> dict:
@@ -79,7 +91,7 @@ def get_whitelist_candidates(
     )
     excluded = allow_list | dismissed
 
-    db = sqlite3.connect(db_path)
+    db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row
     try:
         rows = db.execute(

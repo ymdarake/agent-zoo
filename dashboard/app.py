@@ -8,7 +8,16 @@ from datetime import UTC, datetime, timedelta
 from flask import Flask, jsonify, render_template, request
 
 # Import policy editing utilities
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "addons"))
+# In Docker: addons mounted at /app/addons via docker-compose
+# Locally: ../addons relative to dashboard/
+for p in [
+    os.path.join(os.path.dirname(__file__), "..", "addons"),
+    os.path.join(os.path.dirname(__file__), "addons"),
+    "/app/addons",
+]:
+    if os.path.isdir(p):
+        sys.path.insert(0, p)
+        break
 from policy_edit import (
     add_to_allow_list,
     add_to_dismissed,
@@ -19,6 +28,13 @@ from policy_edit import (
 app = Flask(__name__)
 
 POLICY_PATH = os.environ.get("POLICY_PATH", "/app/policy.toml")
+
+
+def _parse_int(value, default: int) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def get_db():
@@ -81,8 +97,8 @@ def api_requests():
     db = get_db()
     try:
         status = request.args.get("status")
-        limit = min(int(request.args.get("limit", 50)), 200)
-        offset = int(request.args.get("offset", 0))
+        limit = min(_parse_int(request.args.get("limit"), 50), 200)
+        offset = _parse_int(request.args.get("offset"), 0)
 
         if status:
             rows = db.execute(
@@ -106,7 +122,7 @@ def api_requests():
 def api_blocks():
     db = get_db()
     try:
-        limit = min(int(request.args.get("limit", 50)), 200)
+        limit = min(_parse_int(request.args.get("limit"), 50), 200)
         rows = db.execute(
             "SELECT id, ts, host, reason FROM blocks ORDER BY id DESC LIMIT ?",
             (limit,),
@@ -120,7 +136,7 @@ def api_blocks():
 def api_tool_uses():
     db = get_db()
     try:
-        limit = min(int(request.args.get("limit", 50)), 200)
+        limit = min(_parse_int(request.args.get("limit"), 50), 200)
         rows = db.execute(
             "SELECT id, ts, tool_name, input_size FROM tool_uses ORDER BY id DESC LIMIT ?",
             (limit,),
@@ -134,7 +150,7 @@ def api_tool_uses():
 def api_alerts():
     db = get_db()
     try:
-        limit = min(int(request.args.get("limit", 50)), 200)
+        limit = min(_parse_int(request.args.get("limit"), 50), 200)
         rows = db.execute(
             "SELECT id, ts, type, detail FROM alerts ORDER BY id DESC LIMIT ?",
             (limit,),

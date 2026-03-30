@@ -1,30 +1,23 @@
 # CoreDNS strict mode for agent-harness
 # 許可ドメインのみDNS解決、それ以外はNXDOMAIN
-#
-# Dockerサービス名（proxy等）はhostsプラグインで静的に解決。
 # policy.tomlのdomains.allow.listと手動同期が必要。
 
-# Docker内部サービス名の解決（intnet内のサービス間通信用）
+# 許可ドメイン: api.anthropic.com → 外部DNSで解決
+api.anthropic.com {
+    forward . 8.8.8.8 8.8.4.4
+    cache 60
+    log
+}
+
+# それ以外: Dockerサービス名の静的解決 + デフォルトNXDOMAIN
 . {
     hosts {
         172.30.0.2 proxy
         fallthrough
     }
-
-    # 許可ドメイン: api.anthropic.com
-    forward api.anthropic.com 8.8.8.8 8.8.4.4 {
-        policy sequential
-    }
-
-    # statsig.anthropic.com（オプション、フィーチャーフラグ）
-    # forward statsig.anthropic.com 8.8.8.8 8.8.4.4
-
-    # それ以外は全てNXDOMAIN
     template ANY ANY {
         rcode NXDOMAIN
     }
-
     log
     errors
-    cache 60
 }

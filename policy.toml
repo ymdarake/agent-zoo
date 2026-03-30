@@ -12,7 +12,9 @@ log_retention_days = 30
 [domains.allow]
 # 通信を許可するドメイン。ここにないドメインは全てブロックされる
 # ワイルドカード対応: "*.example.com" は example.com 自体とサブドメインの両方にマッチ
-list = ["api.anthropic.com"]
+# 必須: API通信 + OAuth認証
+# オプション: statsig.anthropic.com（フィーチャーフラグ）、sentry.io（エラー追跡）
+list = ["api.anthropic.com", "platform.claude.com"]
 
 [domains.deny]
 # 明示的に拒否するドメイン。allow より優先される

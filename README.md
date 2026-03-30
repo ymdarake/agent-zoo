@@ -126,11 +126,16 @@ Docker不要の軽量モード。macOS Seatbeltサンドボックスと併用。
 
 ## セキュリティモデル
 
+**根本思想: 「読めても送れない」— ネットワーク隔離が防御の本質。**
+
+エージェントはコンテナ内のファイルや環境変数を読むことができる。これを防ぐのではなく、読んだ情報を外部に送信できないようにネットワークレベルで制御する。`api.anthropic.com` のみ許可し、それ以外への通信を全て遮断することで、データ漏洩の経路を塞ぐ。
+
 - `api.anthropic.com` 以外への通信はデフォルトで**全てブロック**
 - github.com、npmレジストリ等も非許可（exfiltration防止）
 - コンテナモード: `cap_drop: [ALL]` + `internal: true` + mitmproxy
 - ホストモード: Seatbelt sandbox + mitmproxy
 - 認証: `CLAUDE_CODE_OAUTH_TOKEN` を毎回環境変数で渡す（コンテナに痕跡なし）
+- workspace内に機密ファイル（`.env`等）を置かないことを推奨。環境変数で渡す
 
 ## 開発
 

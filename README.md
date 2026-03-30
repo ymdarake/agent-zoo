@@ -130,13 +130,24 @@ Docker不要の軽量モード。macOS Seatbeltサンドボックスと併用。
 
 エージェントはコンテナ内のファイルや環境変数を読むことができる。これを防ぐのではなく、読んだ情報を外部に送信できないようにネットワークレベルで制御する。`api.anthropic.com` のみ許可し、それ以外への通信を全て遮断することで、データ漏洩の経路を塞ぐ。
 
-- `api.anthropic.com` 以外への通信はデフォルトで**全てブロック**
-- github.com、npmレジストリ等も非許可（exfiltration防止）
-- コンテナモード: `cap_drop: [ALL]` + `internal: true` + mitmproxy
-- ホストモード: Seatbelt sandbox + mitmproxy
-- 認証: `CLAUDE_CODE_OAUTH_TOKEN` を毎回環境変数で渡す（コンテナに痕跡なし）
-- workspace内に機密ファイル（`.env`等）を置かないことを推奨。環境変数で渡す
-- HTTP/HTTPS通信はmitmproxy経由のためDNSクエリ自体が発生しないが、`ping`や`dig`等の非HTTPコマンドはDocker内蔵DNS経由で名前解決できてしまう（DNSトンネリングによる微量なデータ漏洩の余地）。これも防ぎたい場合は `make up-strict` でCoreDNSを有効化し、許可ドメイン以外をNXDOMAINで遮断できる
+### 多層防御
+
+| 層 | 防御 | 対象モード |
+|---|---|---|
+| `permissions.deny` | Read/Edit toolでの機密ファイル直接読み取りを拒否 | ホストモード |
+| ネットワーク隔離 | api.anthropic.com 以外への通信を全てブロック | 両モード |
+| マウント制限 | 機密ファイルをコンテナに入れない | コンテナモード |
+| `payload_rules` | リクエスト内の機密パターンを検知・ブロック（Base64デコード対応） | 両モード |
+| `alerts` | Bash経由の間接アクセスを事後検知 | 両モード |
+| CoreDNS strict | DNS漏洩を遮断（オプション） | コンテナモード |
+
+ホストモードでは `templates/claude-code/settings.json` を `.claude/settings.json` にコピーして使用。
+
+### 既知の制約
+
+- **Anthropic APIへの送信**: 会話コンテキストはAnthropicに送信される（API経由のデータは学習に使用されない。不正利用監視のため最大30日間保持）
+- **printenv**: コンテナ内で `printenv` や `/proc/1/environ` で環境変数は読める。DB接続文字列等はDocker Secrets (`/run/secrets/`) で管理するのがベスト
+- **Bash経由のアクセス**: `permissions.deny` は内部ツール(Read/Edit)のみ制限。`cat .env` は防げない。ネットワーク隔離+payload_rulesで対応
 
 ## 開発
 

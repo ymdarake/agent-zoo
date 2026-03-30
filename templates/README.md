@@ -1,0 +1,68 @@
+# テンプレート設定ファイル
+
+エージェントツール側で機密ファイルアクセスを制限するための設定テンプレート。
+
+Agent Harnessのネットワーク隔離（読めても送れない）に加えて、ツール側の設定で多層防御を実現する。
+
+## 防御の層
+
+| 層 | 防御内容 | 対象モード |
+|---|---|---|
+| **permissions.deny** | Read/Edit toolでの直接読み取りを拒否 | ホストモード |
+| **ネットワーク隔離** | 読めても api.anthropic.com 以外に送れない | 両モード |
+| **マウント制限** | そもそもコンテナに機密ファイルを入れない | コンテナモード |
+| **payload_rules** | リクエスト内の機密パターンを検知・ブロック | 両モード |
+| **alerts** | Bash経由の間接アクセスを事後検知 | 両モード |
+
+## 注意事項
+
+### permissions.deny の限界
+
+`permissions.deny` は Claude Code の内部ツール（Read, Edit）を制限するが、**Bash 経由の `cat .env` は防げない**。Bash経由のアクセスは:
+- ネットワーク隔離で「送れない」
+- `payload_rules.secret_patterns` で送信前にパターン検知
+- `alerts.suspicious_args` で事後検知
+
+### コンテナモードでは settings.json は無効
+
+`--dangerously-skip-permissions` を使用するため、settings.json の permissions/sandbox 設定は全て無視される。コンテナ自体がサンドボックスであり、以下で保護する:
+- 機密ファイルをworkspaceにマウントしない
+- 環境変数で渡す必要がある値は `CLAUDE_CODE_OAUTH_TOKEN` のみ
+- DB接続文字列等は Docker Secrets (`/run/secrets/`) で管理するのがベスト
+
+### Anthropic API への送信について
+
+`api.anthropic.com` への通信は許可しているため、エージェントが読んだ内容は会話コンテキストとしてAnthropicに送信される。これは「読めても送れない」の**例外ケース**。
+
+- API経由のデータはモデルの学習には使用されない（Anthropic公式ポリシー）
+- 不正利用監視のため最大30日間保持される
+- `payload_rules.secret_patterns` で既知の機密パターンは送信前にブロック
+- 完全な防止は原理的に不可能。ワークスペースに置くデータ量を最小化するのが根本対策
+
+### printenv / 環境変数の漏洩
+
+コンテナ内で `printenv` や `/proc/1/environ` で環境変数は読めてしまう。`unset` しても `/proc` には残る。
+
+対策の推奨順:
+1. **Docker Secrets**: `/run/secrets/` にファイルとして配置（printenvに表示されない）
+2. **最小限の環境変数**: 認証トークンのみ渡し、DB接続等はSecrets経由
+3. **payload_rules**: 環境変数に含まれるパターンを `secret_patterns` に追加
+
+## 使い方
+
+### Claude Code（ホストモード）
+
+```bash
+# settings.json をプロジェクトの .claude/ にコピー
+cp templates/claude-code/settings.json .claude/settings.json
+```
+
+## 対応ツール
+
+現在テンプレートが用意されているツール:
+- Claude Code (`templates/claude-code/settings.json`)
+
+今後追加予定:
+- Codex CLI
+- Aider
+- Cline

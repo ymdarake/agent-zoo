@@ -31,10 +31,10 @@ git clone https://github.com/ymdarake/agent-zoo.git
 cd agent-zoo
 
 # 2. 対話モードで起動
-CLAUDE_CODE_OAUTH_TOKEN=xxx WORKSPACE=/path/to/my-project make run
+ANTHROPIC_AUTH_TOKEN=xxx WORKSPACE=/path/to/my-project make run
 
 # 3. 自律実行モードで起動
-CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="このプロジェクトにテストを追加して"
+ANTHROPIC_AUTH_TOKEN=xxx make task PROMPT="このプロジェクトにテストを追加して"
 ```
 
 ## コマンド一覧
@@ -49,7 +49,7 @@ make task PROMPT="..."  # 自律実行モード（--dangerously-skip-permissions
 make down             # コンテナ停止
 ```
 
-`run` / `task` は `CLAUDE_CODE_OAUTH_TOKEN` 環境変数が必須。
+`run` / `task` は `ANTHROPIC_AUTH_TOKEN` 環境変数が必須。
 
 ### ホストモード
 

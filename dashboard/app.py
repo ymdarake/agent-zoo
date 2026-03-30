@@ -21,6 +21,7 @@ for p in [
 from policy_edit import (
     add_to_allow_list,
     add_to_dismissed,
+    add_to_paths_allow,
     get_whitelist_candidates,
     remove_from_dismissed,
 )
@@ -226,6 +227,18 @@ def partial_whitelist():
     db_path = os.environ.get("DB_PATH", "/data/harness.db")
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     candidates = get_whitelist_candidates(db_path, policy_path)
+    # 各候補にブロックされたパスのトップ5を付与
+    try:
+        db = get_db()
+        for c in candidates:
+            rows = db.execute(
+                "SELECT DISTINCT url FROM requests WHERE host=? AND status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') LIMIT 5",
+                (c["host"],),
+            ).fetchall()
+            c["paths"] = [r["url"] for r in rows]
+        db.close()
+    except Exception:
+        pass
     # dismissed一覧を取得
     dismissed = {}
     try:
@@ -280,6 +293,23 @@ def api_whitelist_allow():
     if request.headers.get("HX-Request"):
         return partial_whitelist()
     return jsonify({"status": "ok", "action": "allowed", "domain": domain})
+
+
+@app.route("/api/whitelist/allow-path", methods=["POST"])
+def api_whitelist_allow_path():
+    body = _get_json_body()
+    domain = body.get("domain", "").strip()
+    path_pattern = body.get("path_pattern", "").strip()
+    error = _validate_domain(domain)
+    if error:
+        return jsonify({"error": error}), 400
+    if not path_pattern:
+        return jsonify({"error": "path_pattern is required"}), 400
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    add_to_paths_allow(policy_path, domain, path_pattern)
+    if request.headers.get("HX-Request"):
+        return partial_whitelist()
+    return jsonify({"status": "ok", "action": "path_allowed", "domain": domain, "path_pattern": path_pattern})
 
 
 @app.route("/api/whitelist/dismiss", methods=["POST"])

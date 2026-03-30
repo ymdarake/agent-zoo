@@ -1,37 +1,48 @@
 <h4>Blocked Domain Candidates</h4>
-<p><small>ブロックされたドメインの許可候補。policy.tomlに反映されます。</small></p>
+<p><small>ブロックされたドメインの許可候補。Allow Domainはドメイン全体を許可、Allow Pathは特定パスのみ許可します。</small></p>
 
 {% if candidates %}
-<table>
-    <thead>
-        <tr>
-            <th>Domain</th>
-            <th>Blocked</th>
-            <th>Action</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for c in candidates %}
-        <tr>
-            <td>{{ c.host }}</td>
-            <td>{{ c.count }}</td>
-            <td>
-                <button class="btn-sm"
-                    hx-post="/api/whitelist/allow"
-                    hx-vals='{"domain": "{{ c.host }}"}'
-                                        hx-target="#tab-whitelist"
-                    hx-swap="innerHTML"
-                    hx-confirm="{{ c.host }} を許可しますか？">Allow</button>
-                <button class="btn-sm secondary"
-                    hx-post="/api/whitelist/dismiss"
-                    hx-vals='{"domain": "{{ c.host }}", "reason": "dashboard dismiss"}'
-                                        hx-target="#tab-whitelist"
-                    hx-swap="innerHTML">Dismiss</button>
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+{% for c in candidates %}
+<article style="margin-bottom:1rem;padding:1rem">
+    <header style="margin-bottom:0.5rem">
+        <strong>{{ c.host }}</strong> <span class="badge">{{ c.count }} blocked</span>
+    </header>
+
+    {% if c.paths %}
+    <details style="margin-bottom:0.5rem">
+        <summary><small>Blocked URLs</small></summary>
+        <ul style="font-size:0.8rem;margin:0.3rem 0">
+            {% for url in c.paths %}
+            <li style="word-break:break-all">{{ url }}</li>
+            {% endfor %}
+        </ul>
+    </details>
+    {% endif %}
+
+    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+        <button class="btn-sm"
+            hx-post="/api/whitelist/allow"
+            hx-vals='{"domain": "{{ c.host }}"}'
+            hx-target="#tab-whitelist"
+            hx-swap="innerHTML"
+            hx-confirm="{{ c.host }} をドメインごと許可しますか？">Allow Domain</button>
+        <button class="btn-sm secondary"
+            hx-post="/api/whitelist/dismiss"
+            hx-vals='{"domain": "{{ c.host }}", "reason": "dashboard dismiss"}'
+            hx-target="#tab-whitelist"
+            hx-swap="innerHTML">Dismiss</button>
+        <form style="display:flex;gap:0.3rem;align-items:center;margin:0"
+            hx-post="/api/whitelist/allow-path"
+            hx-target="#tab-whitelist"
+            hx-swap="innerHTML">
+            <input type="hidden" name="domain" value="{{ c.host }}">
+            <input type="text" name="path_pattern" placeholder="/path/*" value="/*"
+                style="padding:0.25rem 0.5rem;font-size:0.75rem;width:150px;margin:0">
+            <button type="submit" class="btn-sm outline">Allow Path</button>
+        </form>
+    </div>
+</article>
+{% endfor %}
 {% else %}
 <p><small>候補なし（全てのブロックドメインが許可済みまたは無視済み）</small></p>
 {% endif %}
@@ -61,7 +72,7 @@
                 <button class="btn-sm contrast"
                     hx-post="/api/whitelist/restore"
                     hx-vals='{"domain": "{{ domain }}"}'
-                                        hx-target="#tab-whitelist"
+                    hx-target="#tab-whitelist"
                     hx-swap="innerHTML">Restore</button>
             </td>
         </tr>

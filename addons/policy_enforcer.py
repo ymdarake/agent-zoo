@@ -214,14 +214,13 @@ class PolicyEnforcer:
         if "text/event-stream" not in content_type:
             return
 
-        # SSEパーサーをフローに紐付けて、ストリーミングハンドラを設定
         sse_buf = AnthropicSSEParser()
 
-        def stream_handler(data):
-            """mitmproxy 10のストリーミングフィルタ: bytesを受け取りbytesを返す"""
+        def stream_filter(data: bytes) -> bytes:
             try:
                 sse_buf.feed(data)
                 for tool_use in sse_buf.drain_completed():
+                    ctx.log.info(f"tool_use detected: {tool_use.name}")
                     self._log_tool_use(tool_use)
                     should_block, reason = self.engine.should_block_tool_use(
                         tool_use.name, tool_use.input
@@ -229,12 +228,42 @@ class PolicyEnforcer:
                     if should_block:
                         ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
                         self._log_block_tool_use(tool_use.name, reason)
-                        return b""  # 空バイトを返してストリーム切断
+                        return b""
             except Exception as e:
-                ctx.log.error(f"SSE stream handler error: {e}")
-            return data  # クライアントにはそのまま透過
+                ctx.log.error(f"SSE stream filter error: {e}")
+            return data
 
-        flow.response.stream = stream_handler
+        flow.response.stream = stream_filter
+
+    def response(self, flow: http.HTTPFlow):
+        """非ストリーミングレスポンスからtool_useを抽出する。"""
+        if not flow.response or not flow.response.content:
+            return
+        content_type = flow.response.headers.get("content-type", "")
+        # SSEはストリーミング透過済み。非ストリーミングのJSONレスポンスを解析
+        if "application/json" not in content_type:
+            return
+        try:
+            import json
+            data = json.loads(flow.response.content)
+            # Anthropic APIの非ストリーミングレスポンスからtool_useを抽出
+            for block in data.get("content", []):
+                if block.get("type") == "tool_use":
+                    from sse_parser import ToolUse
+                    tool_use = ToolUse(
+                        name=block.get("name", ""),
+                        input=json.dumps(block.get("input", {})),
+                        input_size=len(json.dumps(block.get("input", {}))),
+                    )
+                    self._log_tool_use(tool_use)
+                    should_block, reason = self.engine.should_block_tool_use(
+                        tool_use.name, tool_use.input
+                    )
+                    if should_block:
+                        ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
+                        self._log_block_tool_use(tool_use.name, reason)
+        except Exception as e:
+            ctx.log.debug(f"Response parse skipped: {e}")
 
     def done(self):
         """mitmproxyアドオンのライフサイクル終了時にDB接続をクローズする。"""

@@ -84,6 +84,18 @@ def add_to_dismissed(policy_path: str, domain: str, reason: str) -> None:
         _save_policy(policy_path, policy)
 
 
+def add_to_paths_allow(policy_path: str, domain: str, path_pattern: str) -> None:
+    """policy.tomlのpaths.allowにドメイン+パスパターンを追加する。自動でファイルロックを取得。"""
+    with policy_lock(policy_path):
+        policy = _load_policy(policy_path)
+        paths_allow = policy.setdefault("paths", {}).setdefault("allow", {})
+        patterns = paths_allow.get(domain, [])
+        if path_pattern not in patterns:
+            patterns.append(path_pattern)
+        paths_allow[domain] = patterns
+        _save_policy(policy_path, policy)
+
+
 def remove_from_dismissed(policy_path: str, domain: str) -> None:
     """policy.tomlのdomains.dismissedからドメインを削除する。自動でファイルロックを取得。"""
     with policy_lock(policy_path):

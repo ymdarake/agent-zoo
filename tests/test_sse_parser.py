@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from addons.sse_parser import SSEToolUseBuffer
+from addons.sse_parser import AnthropicSSEParser
 
 # Anthropic API の実際のSSEフォーマットに基づくテストデータ
 SSE_TOOL_USE_COMPLETE = (
@@ -52,7 +52,7 @@ SSE_MULTI_DELTA = (
 class TestSSEToolUseComplete(unittest.TestCase):
     def test_single_tool_use(self):
         """完全なtool_useイベントシーケンスで1件取得"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(SSE_TOOL_USE_COMPLETE)
         results = buf.drain_completed()
         self.assertEqual(len(results), 1)
@@ -61,14 +61,14 @@ class TestSSEToolUseComplete(unittest.TestCase):
 
     def test_text_block_ignored(self):
         """type=textのcontent_blockは無視される"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(SSE_TEXT_BLOCK)
         results = buf.drain_completed()
         self.assertEqual(len(results), 0)
 
     def test_multiple_tool_uses(self):
         """テキストブロック + tool_useの連続"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(SSE_TEXT_BLOCK + SSE_TOOL_USE_COMPLETE)
         results = buf.drain_completed()
         self.assertEqual(len(results), 1)
@@ -76,7 +76,7 @@ class TestSSEToolUseComplete(unittest.TestCase):
 
     def test_multi_delta_accumulation(self):
         """input_json_deltaが複数チャンクに分割されたtool_use"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(SSE_MULTI_DELTA)
         results = buf.drain_completed()
         self.assertEqual(len(results), 1)
@@ -87,7 +87,7 @@ class TestSSEToolUseComplete(unittest.TestCase):
 class TestChunkBoundary(unittest.TestCase):
     def test_split_across_chunks(self):
         """SSEデータがチャンク境界を跨いで分割される"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         data = SSE_TOOL_USE_COMPLETE
         mid = len(data) // 2
         buf.feed(data[:mid])
@@ -98,7 +98,7 @@ class TestChunkBoundary(unittest.TestCase):
 
     def test_byte_by_byte(self):
         """1バイトずつ送っても正しくパースできる"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         for byte in SSE_TOOL_USE_COMPLETE:
             buf.feed(bytes([byte]))
         results = buf.drain_completed()
@@ -107,7 +107,7 @@ class TestChunkBoundary(unittest.TestCase):
 
     def test_empty_chunk(self):
         """空チャンクでエラーにならない"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(b"")
         results = buf.drain_completed()
         self.assertEqual(len(results), 0)
@@ -127,7 +127,7 @@ class TestEdgeCases(unittest.TestCase):
             b'data: {"type":"content_block_stop","index":1}\n'
             b'\n'
         )
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(data)
         results = buf.drain_completed()
         # パース失敗でも結果は返る（inputは生のpartial_json文字列）
@@ -142,7 +142,7 @@ class TestEdgeCases(unittest.TestCase):
             b'data: {"type":"message_stop"}\n'
             b'\n'
         )
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(data)
         results = buf.drain_completed()
         self.assertEqual(len(results), 1)
@@ -154,7 +154,7 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_drain_clears_queue(self):
         """drain_completed()後はキューが空になる"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(SSE_TOOL_USE_COMPLETE)
         results1 = buf.drain_completed()
         self.assertEqual(len(results1), 1)
@@ -163,7 +163,7 @@ class TestEdgeCases(unittest.TestCase):
 
     def test_input_size_tracked(self):
         """tool_useのinput_sizeが記録される"""
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(SSE_TOOL_USE_COMPLETE)
         results = buf.drain_completed()
         self.assertGreater(results[0].input_size, 0)
@@ -175,7 +175,7 @@ class TestEdgeCases(unittest.TestCase):
             b'\n'
             + SSE_TOOL_USE_COMPLETE
         )
-        buf = SSEToolUseBuffer()
+        buf = AnthropicSSEParser()
         buf.feed(data)
         results = buf.drain_completed()
         self.assertEqual(len(results), 1)

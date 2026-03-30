@@ -70,11 +70,16 @@ class BaseSSEParser(ABC):
         if not lines:
             return
 
+        event_name = ""
         data_parts = []
         for line in lines:
             if line.startswith(":"):
                 continue
-            if line.startswith("data: "):
+            if line.startswith("event: "):
+                event_name = line[7:]
+            elif line.startswith("event:"):
+                event_name = line[6:]
+            elif line.startswith("data: "):
                 data_parts.append(line[6:])
             elif line.startswith("data:"):
                 data_parts.append(line[5:])
@@ -88,11 +93,14 @@ class BaseSSEParser(ABC):
         except json.JSONDecodeError:
             return
 
-        self._handle_data(data)
+        self._handle_data(event_name, data)
 
     @abstractmethod
-    def _handle_data(self, data: dict) -> None:
-        """Provider-specific: process a parsed SSE data object."""
+    def _handle_data(self, event_name: str, data: dict) -> None:
+        """Provider-specific: process a parsed SSE data object.
+        event_name: SSEのevent:フィールド（空の場合あり）
+        data: パース済みJSONオブジェクト
+        """
         ...
 
     def drain_completed(self) -> list[ToolUse]:
@@ -112,7 +120,8 @@ class AnthropicSSEParser(BaseSSEParser):
         super().__init__()
         self._active_tools: dict[int, dict] = {}
 
-    def _handle_data(self, data: dict) -> None:
+    def _handle_data(self, event_name: str, data: dict) -> None:
+        # Anthropic APIはdata内のtypeフィールドでイベント種別を判定
         event_type = data.get("type", "")
 
         if event_type == "content_block_start":
@@ -150,7 +159,3 @@ class AnthropicSSEParser(BaseSSEParser):
 
         elif event_type == "message_stop":
             self._active_tools.clear()
-
-
-# 後方互換エイリアス
-SSEToolUseBuffer = AnthropicSSEParser

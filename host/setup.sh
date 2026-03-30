@@ -30,7 +30,7 @@ if [ ! -f "${CERTS_DIR}/mitmproxy-ca-cert.pem" ]; then
     mkdir -p "$CERTS_DIR"
     mitmdump --set confdir="${CERTS_DIR}" &
     MITM_PID=$!
-    sleep 3
+    for i in $(seq 1 10); do [ -f "${CERTS_DIR}/mitmproxy-ca-cert.pem" ] && break; sleep 1; done
     kill "$MITM_PID" 2>/dev/null || true
     wait "$MITM_PID" 2>/dev/null || true
     echo "Certificate generated."
@@ -43,6 +43,11 @@ POLICY_PATH="${HARNESS_DIR}/policy.toml" mitmdump \
     --set confdir="${CERTS_DIR}" \
     --listen-port 8080 &
 MITM_PID=$!
+sleep 1
+if ! kill -0 "$MITM_PID" 2>/dev/null; then
+    echo "ERROR: mitmproxy failed to start"
+    exit 1
+fi
 echo "$MITM_PID" > "$PID_FILE"
 
 echo ""

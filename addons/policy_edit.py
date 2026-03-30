@@ -50,59 +50,78 @@ def atomic_write(path: str, content: str) -> None:
             f.write(content)
 
 
+def _runtime_path(policy_path: str) -> str:
+    """policy.tomlに対応するruntime TOMLパスを返す。"""
+    return policy_path.replace(".toml", ".runtime.toml")
+
+
 def _load_policy(path: str) -> dict:
     with open(path, "rb") as f:
         return tomllib.load(f)
 
 
-def _save_policy(path: str, policy: dict) -> None:
-    content = tomli_w.dumps(policy)
-    atomic_write(path, content)
+def _load_runtime(policy_path: str) -> dict:
+    """runtime TOMLを読み込む。存在しなければ空辞書。"""
+    rt_path = _runtime_path(policy_path)
+    if os.path.exists(rt_path):
+        with open(rt_path, "rb") as f:
+            return tomllib.load(f)
+    return {}
+
+
+def _save_runtime(policy_path: str, runtime: dict) -> None:
+    """runtime TOMLに書き込む（base policy.tomlは変更しない）。"""
+    content = tomli_w.dumps(runtime)
+    atomic_write(_runtime_path(policy_path), content)
 
 
 def add_to_allow_list(policy_path: str, domain: str) -> None:
-    """policy.tomlのdomains.allow.listにドメインを追加する。自動でファイルロックを取得。"""
-    with policy_lock(policy_path):
-        policy = _load_policy(policy_path)
-        allow_list = policy.setdefault("domains", {}).setdefault("allow", {}).setdefault(
+    """runtime TOMLのdomains.allow.listにドメインを追加する。"""
+    rt_path = _runtime_path(policy_path)
+    with policy_lock(rt_path):
+        runtime = _load_runtime(policy_path)
+        allow_list = runtime.setdefault("domains", {}).setdefault("allow", {}).setdefault(
             "list", []
         )
         if domain not in allow_list:
             allow_list.append(domain)
-        _save_policy(policy_path, policy)
+        _save_runtime(policy_path, runtime)
 
 
 def add_to_dismissed(policy_path: str, domain: str, reason: str) -> None:
-    """policy.tomlのdomains.dismissedにドメインと理由を追加する。自動でファイルロックを取得。"""
-    with policy_lock(policy_path):
-        policy = _load_policy(policy_path)
-        dismissed = policy.setdefault("domains", {}).setdefault("dismissed", {})
+    """runtime TOMLのdomains.dismissedにドメインと理由を追加する。"""
+    rt_path = _runtime_path(policy_path)
+    with policy_lock(rt_path):
+        runtime = _load_runtime(policy_path)
+        dismissed = runtime.setdefault("domains", {}).setdefault("dismissed", {})
         dismissed[domain] = {
             "reason": reason,
             "date": datetime.now().strftime("%Y-%m-%d"),
         }
-        _save_policy(policy_path, policy)
+        _save_runtime(policy_path, runtime)
 
 
 def add_to_paths_allow(policy_path: str, domain: str, path_pattern: str) -> None:
-    """policy.tomlのpaths.allowにドメイン+パスパターンを追加する。自動でファイルロックを取得。"""
-    with policy_lock(policy_path):
-        policy = _load_policy(policy_path)
-        paths_allow = policy.setdefault("paths", {}).setdefault("allow", {})
+    """runtime TOMLのpaths.allowにドメイン+パスパターンを追加する。"""
+    rt_path = _runtime_path(policy_path)
+    with policy_lock(rt_path):
+        runtime = _load_runtime(policy_path)
+        paths_allow = runtime.setdefault("paths", {}).setdefault("allow", {})
         patterns = paths_allow.get(domain, [])
         if path_pattern not in patterns:
             patterns.append(path_pattern)
         paths_allow[domain] = patterns
-        _save_policy(policy_path, policy)
+        _save_runtime(policy_path, runtime)
 
 
 def remove_from_dismissed(policy_path: str, domain: str) -> None:
-    """policy.tomlのdomains.dismissedからドメインを削除する。自動でファイルロックを取得。"""
-    with policy_lock(policy_path):
-        policy = _load_policy(policy_path)
-        dismissed = policy.get("domains", {}).get("dismissed", {})
+    """runtime TOMLのdomains.dismissedからドメインを削除する。"""
+    rt_path = _runtime_path(policy_path)
+    with policy_lock(rt_path):
+        runtime = _load_runtime(policy_path)
+        dismissed = runtime.get("domains", {}).get("dismissed", {})
         dismissed.pop(domain, None)
-        _save_policy(policy_path, policy)
+        _save_runtime(policy_path, runtime)
 
 
 def get_whitelist_candidates(
@@ -112,11 +131,17 @@ def get_whitelist_candidates(
     既にallow listまたはdismissedにあるドメインは除外する。
     """
     policy = _load_policy(policy_path)
+    runtime = _load_runtime(policy_path)
+    # base + runtime の allow list を結合
     allow_list = set(
         policy.get("domains", {}).get("allow", {}).get("list", [])
+        + runtime.get("domains", {}).get("allow", {}).get("list", [])
     )
+    # base + runtime の dismissed を結合
     dismissed = set(
         policy.get("domains", {}).get("dismissed", {}).keys()
+    ) | set(
+        runtime.get("domains", {}).get("dismissed", {}).keys()
     )
     excluded = allow_list | dismissed
 

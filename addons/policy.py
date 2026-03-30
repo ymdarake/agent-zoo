@@ -22,6 +22,7 @@ class PolicyEngine:
     def __init__(self, policy_path: str):
         self.policy_path = Path(policy_path)
         self._mtime: float = 0.0
+        self._runtime_mtime: float = 0.0
         self.allow_list: list[str] = []
         self.deny_list: list[str] = []
         self.paths_allow: dict[str, list[str]] = {}
@@ -48,15 +49,35 @@ class PolicyEngine:
             policy = tomllib.load(f)
         self._mtime = self.policy_path.stat().st_mtime
 
+        # runtime TOMLをマージ（存在すれば）
+        runtime_path = Path(str(self.policy_path).replace(".toml", ".runtime.toml"))
+        runtime = {}
+        if runtime_path.exists():
+            try:
+                with open(runtime_path, "rb") as f:
+                    runtime = tomllib.load(f)
+                self._runtime_mtime = runtime_path.stat().st_mtime
+            except Exception as e:
+                logger.warning(f"Failed to load runtime policy: {e}")
+        self._runtime_path = runtime_path
+
         domains = policy.get("domains", {})
-        self.allow_list = domains.get("allow", {}).get("list", [])
+        rt_domains = runtime.get("domains", {})
+        # allow: base + runtime を結合（重複排除）
+        base_allow = domains.get("allow", {}).get("list", [])
+        rt_allow = rt_domains.get("allow", {}).get("list", [])
+        self.allow_list = list(dict.fromkeys(base_allow + rt_allow))
+        # deny: baseのみ（runtimeからはdeny操作不可）
         self.deny_list = domains.get("deny", {}).get("list", [])
         self.db_path = policy.get("general", {}).get("log_db", "/data/harness.db")
 
-        # パスベースルール
+        # パスベースルール: base + runtime をマージ
         paths = policy.get("paths", {})
-        self.paths_allow = paths.get("allow", {})
-        self.paths_deny = paths.get("deny", {})
+        rt_paths = runtime.get("paths", {})
+        self.paths_allow = self._merge_path_dicts(
+            paths.get("allow", {}), rt_paths.get("allow", {})
+        )
+        self.paths_deny = paths.get("deny", {})  # denyはbaseのみ
 
         # レート制限
         self.rate_limits = policy.get("rate_limits", {})
@@ -85,6 +106,15 @@ class PolicyEngine:
         self.tool_use_block_args = tool_use_rules.get("block_args", [])
 
     @staticmethod
+    def _merge_path_dicts(base: dict, runtime: dict) -> dict:
+        """2つのpaths辞書をマージ。同一ドメインのパスリストは結合（重複排除）。"""
+        merged = dict(base)
+        for domain, patterns in runtime.items():
+            existing = merged.get(domain, [])
+            merged[domain] = list(dict.fromkeys(existing + patterns))
+        return merged
+
+    @staticmethod
     def _compile_patterns(
         patterns: list[str], flags: int = 0
     ) -> list[re.Pattern]:
@@ -97,12 +127,15 @@ class PolicyEngine:
         return compiled
 
     def maybe_reload(self) -> bool:
-        """policy.tomlが更新されていたらリロードする。
+        """policy.tomlまたはpolicy.runtime.tomlが更新されていたらリロードする。
         不正なTOMLの場合は旧ポリシーを維持してFalseを返す。
         """
         try:
-            mtime = self.policy_path.stat().st_mtime
-            if mtime > self._mtime:
+            base_changed = self.policy_path.stat().st_mtime > self._mtime
+            runtime_changed = False
+            if hasattr(self, '_runtime_path') and self._runtime_path.exists():
+                runtime_changed = self._runtime_path.stat().st_mtime > getattr(self, '_runtime_mtime', 0)
+            if base_changed or runtime_changed:
                 self._load()
                 return True
         except (OSError, tomllib.TOMLDecodeError, KeyError) as e:

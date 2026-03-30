@@ -9,6 +9,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from addons.policy_edit import (
+    _runtime_path,
     add_to_allow_list,
     add_to_dismissed,
     add_to_paths_allow,
@@ -29,6 +30,25 @@ list = ["*.evil.com"]
 
 [domains.dismissed]
 """
+
+
+def _cleanup_runtime(policy_path: str):
+    """runtime TOMLとロックファイルをクリーンアップ。"""
+    rt = _runtime_path(policy_path)
+    for f in [rt, rt + ".lock", os.path.abspath(policy_path) + ".lock",
+              os.path.abspath(rt) + ".lock"]:
+        if os.path.exists(f):
+            os.unlink(f)
+
+
+def _read_runtime(policy_path: str) -> dict:
+    """runtime TOMLを読み込む。"""
+    import tomllib
+    rt = _runtime_path(policy_path)
+    if os.path.exists(rt):
+        with open(rt, "rb") as f:
+            return tomllib.load(f)
+    return {}
 
 
 def _write_policy(content: str) -> str:
@@ -81,59 +101,53 @@ class TestAtomicWrite(unittest.TestCase):
 
 
 class TestAddToAllowList(unittest.TestCase):
-    def test_adds_domain(self):
+    def test_adds_domain_to_runtime(self):
+        """runtime TOMLにドメインが追加される（base TOMLは変更されない）"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_allow_list(path, "github.com")
+        rt = _read_runtime(path)
+        self.assertIn("github.com", rt["domains"]["allow"]["list"])
+        # base TOMLは変更されていない
         with open(path) as f:
-            content = f.read()
-        self.assertIn("github.com", content)
-        self.assertIn("api.anthropic.com", content)  # 既存は維持
+            self.assertNotIn("github.com", f.read())
 
     def test_no_duplicate(self):
-        """既に存在するドメインを追加しても重複しない"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
-        add_to_allow_list(path, "api.anthropic.com")
-        with open(path) as f:
-            content = f.read()
-        self.assertEqual(content.count("api.anthropic.com"), 1)
+        self.addCleanup(_cleanup_runtime, path)
+        add_to_allow_list(path, "test.com")
+        add_to_allow_list(path, "test.com")
+        rt = _read_runtime(path)
+        self.assertEqual(rt["domains"]["allow"]["list"].count("test.com"), 1)
 
     def test_result_is_valid_toml(self):
-        """書き換え後のファイルが有効なTOML"""
-        import tomllib
-
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_allow_list(path, "new-domain.com")
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        self.assertIn("new-domain.com", policy["domains"]["allow"]["list"])
+        rt = _read_runtime(path)
+        self.assertIn("new-domain.com", rt["domains"]["allow"]["list"])
 
 
 class TestAddToDismissed(unittest.TestCase):
-    def test_adds_dismissed(self):
+    def test_adds_dismissed_to_runtime(self):
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_dismissed(path, "registry.npmjs.org", "ホスト側でinstall済み")
-
-        import tomllib
-
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        self.assertIn("registry.npmjs.org", policy["domains"]["dismissed"])
+        rt = _read_runtime(path)
+        self.assertIn("registry.npmjs.org", rt["domains"]["dismissed"])
 
     def test_remove_from_dismissed(self):
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_dismissed(path, "registry.npmjs.org", "test")
         remove_from_dismissed(path, "registry.npmjs.org")
-
-        import tomllib
-
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        self.assertNotIn("registry.npmjs.org", policy["domains"]["dismissed"])
+        rt = _read_runtime(path)
+        self.assertNotIn("registry.npmjs.org", rt.get("domains", {}).get("dismissed", {}))
 
 
 class TestWhitelistCandidates(unittest.TestCase):
@@ -194,90 +208,67 @@ class TestWhitelistCandidates(unittest.TestCase):
 
 class TestAddToPathsAllow(unittest.TestCase):
     def test_adds_path_pattern(self):
-        """パスパターンを追加できる"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_paths_allow(path, "github.com", "/anthropics/*")
-
-        import tomllib
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        self.assertIn("github.com", policy["paths"]["allow"])
-        self.assertIn("/anthropics/*", policy["paths"]["allow"]["github.com"])
+        rt = _read_runtime(path)
+        self.assertIn("github.com", rt["paths"]["allow"])
+        self.assertIn("/anthropics/*", rt["paths"]["allow"]["github.com"])
 
     def test_no_duplicate_path(self):
-        """同じパスパターンを二重追加しない"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_paths_allow(path, "github.com", "/anthropics/*")
         add_to_paths_allow(path, "github.com", "/anthropics/*")
-
-        import tomllib
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        patterns = policy["paths"]["allow"]["github.com"]
-        self.assertEqual(patterns.count("/anthropics/*"), 1)
+        rt = _read_runtime(path)
+        self.assertEqual(rt["paths"]["allow"]["github.com"].count("/anthropics/*"), 1)
 
     def test_multiple_paths_for_same_domain(self):
-        """同じドメインに複数パスパターンを追加"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_paths_allow(path, "github.com", "/anthropics/*")
         add_to_paths_allow(path, "github.com", "/user/repo/*")
-
-        import tomllib
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        patterns = policy["paths"]["allow"]["github.com"]
+        rt = _read_runtime(path)
+        patterns = rt["paths"]["allow"]["github.com"]
         self.assertIn("/anthropics/*", patterns)
         self.assertIn("/user/repo/*", patterns)
 
     def test_result_is_valid_toml(self):
-        """書き換え後のファイルが有効なTOML"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
         add_to_paths_allow(path, "example.com", "/api/*")
-
-        import tomllib
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        self.assertIn("example.com", policy["paths"]["allow"])
+        rt = _read_runtime(path)
+        self.assertIn("example.com", rt["paths"]["allow"])
 
 
 class TestFileLock(unittest.TestCase):
     def test_lock_allows_sequential_access(self):
-        """関数内部のロックで正常に読み書きできる"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
-
-        # add_to_allow_list は内部で自動ロックを取得する
+        self.addCleanup(_cleanup_runtime, path)
         add_to_allow_list(path, "test.com")
-
-        import tomllib
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        self.assertIn("test.com", policy["domains"]["allow"]["list"])
+        rt = _read_runtime(path)
+        self.assertIn("test.com", rt["domains"]["allow"]["list"])
 
     def test_lock_file_created(self):
-        """ロックファイルが作成される"""
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
-        lock_path = os.path.abspath(path) + ".lock"
-
+        self.addCleanup(_cleanup_runtime, path)
         add_to_allow_list(path, "test.com")
-
+        rt_path = _runtime_path(path)
+        lock_path = os.path.abspath(rt_path) + ".lock"
         self.assertTrue(os.path.exists(lock_path))
-        if os.path.exists(lock_path):
-            os.unlink(lock_path)
 
     def test_concurrent_writes_protected(self):
-        """並行書き込みが内部ロックで直列化される"""
         import threading
-
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
 
-        # add_to_allow_list は内部でpolicy_lockを使うので外側でロック不要
         def add_domain(domain):
             add_to_allow_list(path, domain)
 
@@ -288,10 +279,8 @@ class TestFileLock(unittest.TestCase):
         t1.join()
         t2.join()
 
-        import tomllib
-        with open(path, "rb") as f:
-            policy = tomllib.load(f)
-        allow_list = policy["domains"]["allow"]["list"]
+        rt = _read_runtime(path)
+        allow_list = rt["domains"]["allow"]["list"]
         self.assertIn("domain1.com", allow_list)
         self.assertIn("domain2.com", allow_list)
 

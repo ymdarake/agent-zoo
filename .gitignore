@@ -2,6 +2,9 @@
 .env*
 .venv/
 
+# Runtime policy (dashboard writes here, base policy.toml is preserved)
+*.runtime.toml
+
 # Data (runtime generated)
 data/*.db
 data/*.db-wal

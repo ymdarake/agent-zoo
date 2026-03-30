@@ -46,6 +46,7 @@ make certs            # mitmproxy CA証明書の事前生成
 make build            # Dockerイメージビルド
 make run              # 対話モード（Claude Codeが起動）
 make task PROMPT="..."  # 自律実行モード（--dangerously-skip-permissions）
+make reload           # policy.toml変更を反映（proxy再起動）
 make down             # コンテナ停止
 ```
 

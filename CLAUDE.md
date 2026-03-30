@@ -46,6 +46,7 @@ make test             # Dockerスモークテスト
 # ビルド・管理
 make certs            # mitmproxy CA証明書の事前生成
 make build            # Dockerイメージビルド
+make reload           # policy.toml変更を反映（proxy再起動）
 make down             # コンテナ停止
 
 # ログ分析（ホスト側Claude CLI利用）

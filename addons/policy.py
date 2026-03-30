@@ -1,7 +1,10 @@
 """Policy engine for agent-harness. Pure logic, no mitmproxy dependency."""
 
 import logging
+import re
+import time
 import tomllib
+from collections import deque
 from fnmatch import fnmatch
 from pathlib import Path
 
@@ -15,6 +18,12 @@ class PolicyEngine:
         self.allow_list: list[str] = []
         self.deny_list: list[str] = []
         self.db_path: str = ""
+        self.rate_limits: dict[str, dict] = {}
+        self.block_patterns: list[re.Pattern] = []
+        self.secret_patterns: list[re.Pattern] = []
+        # レート制限の内部状態（ホットリロードでもリセットしない）
+        self._rate_windows: dict[str, deque] = {}
+        self._burst_windows: dict[str, deque] = {}
         self._load()
 
     def _load(self):
@@ -26,6 +35,28 @@ class PolicyEngine:
         self.allow_list = domains.get("allow", {}).get("list", [])
         self.deny_list = domains.get("deny", {}).get("list", [])
         self.db_path = policy.get("general", {}).get("log_db", "/data/harness.db")
+
+        # レート制限
+        self.rate_limits = policy.get("rate_limits", {})
+
+        # ペイロードルール
+        payload_rules = policy.get("payload_rules", {})
+        self.block_patterns = self._compile_patterns(
+            payload_rules.get("block_patterns", [])
+        )
+        self.secret_patterns = self._compile_patterns(
+            payload_rules.get("secret_patterns", [])
+        )
+
+    @staticmethod
+    def _compile_patterns(patterns: list[str]) -> list[re.Pattern]:
+        compiled = []
+        for p in patterns:
+            try:
+                compiled.append(re.compile(p))
+            except re.error as e:
+                logger.warning(f"Invalid regex pattern '{p}': {e}")
+        return compiled
 
     def maybe_reload(self) -> bool:
         """policy.tomlが更新されていたらリロードする。
@@ -43,7 +74,6 @@ class PolicyEngine:
     def is_allowed(self, host: str) -> tuple[bool, str]:
         """ホスト名がポリシーで許可されているか判定する。
         deny list → allow list → default deny の順で評価。
-        ホスト名は小文字に正規化してからマッチする（DNSはcase-insensitive）。
         """
         host = host.lower()
 
@@ -58,3 +88,66 @@ class PolicyEngine:
                 return True, ""
 
         return False, "not in allow list"
+
+    def check_rate_limit(self, host: str) -> tuple[bool, str]:
+        """ドメインのレート制限をチェックする。
+        2段階ウィンドウ: 60秒RPM + 1秒burst。
+        (True, "") = 許可, (False, reason) = ブロック。
+        """
+        config = self.rate_limits.get(host)
+        if not config:
+            return True, ""
+
+        now = time.time()
+        rpm = config.get("rpm", 60)
+        burst = config.get("burst", rpm)
+
+        # RPMウィンドウ（60秒）
+        if host not in self._rate_windows:
+            self._rate_windows[host] = deque()
+        rpm_window = self._rate_windows[host]
+
+        # 60秒より古いエントリを除去
+        while rpm_window and rpm_window[0] < now - 60:
+            rpm_window.popleft()
+
+        if len(rpm_window) >= rpm:
+            return False, f"rate limit exceeded: {len(rpm_window)}/{rpm} rpm for {host}"
+
+        # Burstウィンドウ（1秒）
+        if host not in self._burst_windows:
+            self._burst_windows[host] = deque()
+        burst_window = self._burst_windows[host]
+
+        while burst_window and burst_window[0] < now - 1:
+            burst_window.popleft()
+
+        if len(burst_window) >= burst:
+            return False, f"burst limit exceeded: {len(burst_window)}/{burst} per second for {host}"
+
+        # 両方のウィンドウに記録
+        rpm_window.append(now)
+        burst_window.append(now)
+        return True, ""
+
+    def check_payload(self, body: bytes | None) -> tuple[bool, str]:
+        """リクエストボディに危険パターンや機密情報が含まれていないかチェックする。
+        (True, reason) = ブロック, (False, "") = 通過。
+        """
+        if not body:
+            return False, ""
+
+        try:
+            text = body.decode("utf-8")
+        except UnicodeDecodeError:
+            return False, ""
+
+        for pattern in self.block_patterns:
+            if pattern.search(text):
+                return True, f"block_pattern matched: {pattern.pattern}"
+
+        for pattern in self.secret_patterns:
+            if pattern.search(text):
+                return True, f"secret_pattern matched: {pattern.pattern}"
+
+        return False, ""

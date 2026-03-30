@@ -94,10 +94,10 @@ block_patterns = ["rm -rf /", "chmod 777", "base64.*\\|.*curl"]
 secret_patterns = ["AWS_SECRET_ACCESS_KEY", "-----BEGIN.*PRIVATE KEY-----"]
 
 [alerts]
-# tool_use検出時にアラートを生成する条件（ログのみ、ブロックはしない）
-suspicious_tools = ["Bash"]                           # ツール名でアラート
-suspicious_args = ["~/.ssh", "~/.aws", ".env"]        # 引数の部分文字列でアラート
-tool_arg_size_alert = 10000                           # 引数サイズ（バイト）でアラート
+# tool_use検出時にアラートを生成する条件（それぞれ独立、ログのみでブロックはしない）
+suspicious_tools = []                                 # 全使用をログするツール（デバッグ用、通常は空）
+suspicious_args = ["~/.ssh", "~/.aws", ".env"]        # 引数にこの文字列が含まれたらアラート
+tool_arg_size_alert = 10000                           # 引数サイズ（バイト）超過でアラート
 ```
 
 ## アーキテクチャ

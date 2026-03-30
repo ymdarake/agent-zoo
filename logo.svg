@@ -1,48 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 120" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 140" fill="none">
   <!-- Background -->
-  <rect width="400" height="120" rx="12" fill="#1a1b26"/>
+  <rect width="420" height="140" rx="14" fill="#1a1b26"/>
 
-  <!-- Shield (security) -->
-  <path d="M40 25 L70 15 L100 25 L100 65 C100 80 70 95 70 95 C70 95 40 80 40 65 Z"
-        fill="none" stroke="#7aa2f7" stroke-width="2.5"/>
+  <!-- Cage bars -->
+  <line x1="18" y1="18" x2="18" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="38" y1="18" x2="38" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="58" y1="18" x2="58" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="78" y1="18" x2="78" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="98" y1="18" x2="98" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <!-- Top/bottom bars -->
+  <line x1="12" y1="18" x2="104" y2="18" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
+  <line x1="12" y1="122" x2="104" y2="122" stroke="#565f89" stroke-width="2.5" stroke-linecap="round" opacity="0.4"/>
 
-  <!-- Lock inside shield -->
-  <rect x="58" y="50" width="24" height="18" rx="3" fill="#7aa2f7" opacity="0.8"/>
-  <path d="M63 50 L63 42 C63 36 77 36 77 42 L77 50"
-        fill="none" stroke="#7aa2f7" stroke-width="2.5" stroke-linecap="round"/>
-  <circle cx="70" cy="58" r="2.5" fill="#1a1b26"/>
+  <!-- Hamster body -->
+  <ellipse cx="58" cy="82" rx="26" ry="24" fill="#e0af68"/>
+  <!-- Hamster belly -->
+  <ellipse cx="58" cy="88" rx="16" ry="14" fill="#fcebd2"/>
+  <!-- Hamster head -->
+  <circle cx="58" cy="56" r="20" fill="#e0af68"/>
+  <!-- Ears -->
+  <ellipse cx="42" cy="40" rx="8" ry="10" fill="#e0af68"/>
+  <ellipse cx="42" cy="40" rx="5" ry="7" fill="#f5c89a"/>
+  <ellipse cx="74" cy="40" rx="8" ry="10" fill="#e0af68"/>
+  <ellipse cx="74" cy="40" rx="5" ry="7" fill="#f5c89a"/>
+  <!-- Eyes -->
+  <circle cx="50" cy="54" r="4" fill="#1a1b26"/>
+  <circle cx="66" cy="54" r="4" fill="#1a1b26"/>
+  <circle cx="51.5" cy="52.5" r="1.5" fill="white"/>
+  <circle cx="67.5" cy="52.5" r="1.5" fill="white"/>
+  <!-- Nose -->
+  <ellipse cx="58" cy="61" rx="3" ry="2" fill="#c0846b"/>
+  <!-- Mouth -->
+  <path d="M55 63 Q58 67 61 63" fill="none" stroke="#c0846b" stroke-width="1" stroke-linecap="round"/>
+  <!-- Cheeks -->
+  <circle cx="44" cy="60" r="5" fill="#f7768e" opacity="0.25"/>
+  <circle cx="72" cy="60" r="5" fill="#f7768e" opacity="0.25"/>
+  <!-- Paws holding bar -->
+  <ellipse cx="37" cy="76" rx="5" ry="4" fill="#e0af68"/>
+  <ellipse cx="79" cy="76" rx="5" ry="4" fill="#e0af68"/>
+  <!-- Tiny tail -->
+  <circle cx="84" cy="90" r="4" fill="#e0af68"/>
 
-  <!-- Network lines (proxy/isolation) -->
-  <line x1="105" y1="35" x2="125" y2="35" stroke="#565f89" stroke-width="1.5" stroke-dasharray="3,3"/>
-  <line x1="105" y1="55" x2="125" y2="55" stroke="#565f89" stroke-width="1.5" stroke-dasharray="3,3"/>
-  <line x1="105" y1="75" x2="125" y2="75" stroke="#565f89" stroke-width="1.5" stroke-dasharray="3,3"/>
+  <!-- Shield badge on cage -->
+  <path d="M88 96 L98 92 L108 96 L108 110 C108 116 98 122 98 122 C98 122 88 116 88 110 Z"
+        fill="#7aa2f7" opacity="0.8"/>
+  <rect x="94" y="104" width="8" height="6" rx="1" fill="white" opacity="0.9"/>
+  <path d="M96 104 L96 101 C96 98 100 98 100 101 L100 104"
+        fill="none" stroke="white" stroke-width="1.2" opacity="0.9"/>
 
   <!-- Title -->
-  <text x="135" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#c0caf5">
+  <text x="125" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="#c0caf5">
     Agent
   </text>
-  <text x="255" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="700" fill="#7aa2f7">
+  <text x="270" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="40" font-weight="800" fill="#7aa2f7">
     Zoo
   </text>
 
   <!-- Subtitle -->
-  <text x="135" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#565f89">
+  <text x="125" y="90" font-family="system-ui, -apple-system, sans-serif" font-size="13" fill="#565f89" letter-spacing="0.5">
     Security Harness for AI Coding Agents
   </text>
 
-  <!-- Cage bars (zoo motif) -->
-  <line x1="295" y1="15" x2="295" y2="105" stroke="#565f89" stroke-width="1" opacity="0.3"/>
-  <line x1="315" y1="15" x2="315" y2="105" stroke="#565f89" stroke-width="1" opacity="0.3"/>
-  <line x1="335" y1="15" x2="335" y2="105" stroke="#565f89" stroke-width="1" opacity="0.3"/>
-  <line x1="355" y1="15" x2="355" y2="105" stroke="#565f89" stroke-width="1" opacity="0.3"/>
-  <line x1="375" y1="15" x2="375" y2="105" stroke="#565f89" stroke-width="1" opacity="0.3"/>
+  <!-- Feature pills -->
+  <rect x="125" y="102" rx="8" ry="8" width="70" height="20" fill="#7aa2f7" opacity="0.15"/>
+  <text x="138" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#7aa2f7">Network</text>
 
-  <!-- Agent icon inside cage -->
-  <circle cx="335" cy="50" r="12" fill="#7aa2f7" opacity="0.15"/>
-  <circle cx="335" cy="45" r="5" fill="#7aa2f7" opacity="0.5"/>
-  <path d="M325 62 C325 55 345 55 345 62" fill="#7aa2f7" opacity="0.5"/>
+  <rect x="203" y="102" rx="8" ry="8" width="60" height="20" fill="#9ece6a" opacity="0.15"/>
+  <text x="215" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#9ece6a">Proxy</text>
 
-  <!-- Blocked signal -->
-  <circle cx="335" cy="85" r="6" fill="none" stroke="#f7768e" stroke-width="1.5" opacity="0.6"/>
-  <line x1="331" y1="89" x2="339" y2="81" stroke="#f7768e" stroke-width="1.5" opacity="0.6"/>
+  <rect x="271" y="102" rx="8" ry="8" width="60" height="20" fill="#e0af68" opacity="0.15"/>
+  <text x="282" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#e0af68">Policy</text>
+
+  <rect x="339" y="102" rx="8" ry="8" width="60" height="20" fill="#f7768e" opacity="0.15"/>
+  <text x="352" y="116" font-family="system-ui, sans-serif" font-size="10" fill="#f7768e">Alerts</text>
 </svg>

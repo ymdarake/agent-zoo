@@ -258,9 +258,7 @@ class PolicyEngine:
             )
 
         for pattern in self.suspicious_args:
-            # ワード境界マッチ: 英数字・アンダースコアに挟まれた部分一致を除外
-            escaped = re.escape(pattern)
-            if re.search(rf'(?:^|[^a-zA-Z0-9_]){escaped}(?:$|[^a-zA-Z0-9_])', input_str):
+            if self._match_word_boundary(pattern, input_str):
                 alerts.append(
                     Alert("suspicious_arg", f"suspicious arg '{pattern}' in {tool_name}")
                 )
@@ -268,25 +266,25 @@ class PolicyEngine:
         # 組み合わせ条件ルール（各ルール内はAND、ルール間はOR）
         for rule in self.alert_rules:
             rule_name = rule.get("name", "unnamed")
+            tools = rule.get("tools") or []
+            args = rule.get("args") or []
+            min_size = rule.get("min_size")
 
-            # tools条件（指定あればOR: いずれかにマッチ）
-            if "tools" in rule and tool_name not in rule["tools"]:
+            # 条件が1つもないルールはスキップ（無条件発火を防止）
+            if not tools and not args and min_size is None:
                 continue
 
-            # min_size条件
-            if "min_size" in rule and input_size <= rule["min_size"]:
+            # tools条件（空=全ツール対象、非空=いずれかにマッチ）
+            if tools and tool_name not in tools:
                 continue
 
-            # args条件（指定あればOR: いずれかにワード境界マッチ）
-            if "args" in rule:
-                matched = False
-                for pattern in rule["args"]:
-                    escaped = re.escape(pattern)
-                    if re.search(rf'(?:^|[^a-zA-Z0-9_]){escaped}(?:$|[^a-zA-Z0-9_])', input_str):
-                        matched = True
-                        break
-                if not matched:
-                    continue
+            # min_size条件（超過で発火）
+            if min_size is not None and input_size <= min_size:
+                continue
+
+            # args条件（空=引数条件なし、非空=いずれかにワード境界マッチ）
+            if args and not self._match_any_word_boundary(args, input_str):
+                continue
 
             # 全条件にマッチ
             alerts.append(
@@ -294,6 +292,21 @@ class PolicyEngine:
             )
 
         return alerts
+
+    @staticmethod
+    def _match_word_boundary(pattern: str, text: str) -> bool:
+        """パターンがテキスト内にワード境界付きで存在するか。"""
+        escaped = re.escape(pattern)
+        return bool(re.search(rf'(?:^|[^a-zA-Z0-9_]){escaped}(?:$|[^a-zA-Z0-9_])', text))
+
+    @staticmethod
+    def _match_any_word_boundary(patterns: list[str], text: str) -> bool:
+        """パターンリストのいずれかがワード境界付きでマッチするか。"""
+        for pattern in patterns:
+            escaped = re.escape(pattern)
+            if re.search(rf'(?:^|[^a-zA-Z0-9_]){escaped}(?:$|[^a-zA-Z0-9_])', text):
+                return True
+        return False
 
     def should_block_tool_use(self, tool_name: str, input_str: str) -> tuple[bool, str]:
         """tool_useをブロックすべきか判定する。

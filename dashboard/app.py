@@ -252,11 +252,10 @@ def partial_whitelist():
         if os.path.exists(rt_path):
             with open(rt_path, "rb") as f:
                 runtime = tomllib.load(f)
-        # dismissed: base + runtime
-        dismissed = {
-            **policy.get("domains", {}).get("dismissed", {}),
-            **runtime.get("domains", {}).get("dismissed", {}),
-        }
+        # dismissed: base（手動編集のみ） + runtime（UI操作可能）
+        base_dismissed = policy.get("domains", {}).get("dismissed", {})
+        runtime_dismissed = runtime.get("domains", {}).get("dismissed", {})
+        dismissed = {**base_dismissed, **runtime_dismissed}
     except Exception:
         pass
 
@@ -277,7 +276,8 @@ def partial_whitelist():
     return render_template(
         "partials/whitelist.html",
         candidates=candidates,
-        dismissed=dismissed,
+        base_dismissed=base_dismissed,
+        runtime_dismissed=runtime_dismissed,
         current_policy=current_policy,
     )
 

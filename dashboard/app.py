@@ -209,6 +209,26 @@ def partial_stats():
 
 # === Whitelist Nurturing API ===
 
+import re
+
+_DOMAIN_RE = re.compile(r"^(\*\.)?[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$")
+
+
+def _validate_domain(domain: str) -> str | None:
+    """ドメイン名のバリデーション。不正なら理由を返す。"""
+    if not domain:
+        return "domain is required"
+    if len(domain) > 253:
+        return "domain too long"
+    if not _DOMAIN_RE.match(domain):
+        return "invalid domain format"
+    return None
+
+
+def _get_json_body() -> dict:
+    """request.jsonがNoneの場合に安全にハンドルする。"""
+    return request.get_json(silent=True) or {}
+
 
 @app.route("/api/whitelist-candidates")
 def api_whitelist_candidates():
@@ -220,9 +240,11 @@ def api_whitelist_candidates():
 
 @app.route("/api/whitelist/allow", methods=["POST"])
 def api_whitelist_allow():
-    domain = request.json.get("domain", "").strip()
-    if not domain:
-        return jsonify({"error": "domain is required"}), 400
+    body = _get_json_body()
+    domain = body.get("domain", "").strip()
+    error = _validate_domain(domain)
+    if error:
+        return jsonify({"error": error}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     add_to_allow_list(policy_path, domain)
     return jsonify({"status": "ok", "action": "allowed", "domain": domain})
@@ -230,10 +252,12 @@ def api_whitelist_allow():
 
 @app.route("/api/whitelist/dismiss", methods=["POST"])
 def api_whitelist_dismiss():
-    domain = request.json.get("domain", "").strip()
-    reason = request.json.get("reason", "").strip()
-    if not domain:
-        return jsonify({"error": "domain is required"}), 400
+    body = _get_json_body()
+    domain = body.get("domain", "").strip()
+    reason = body.get("reason", "").strip()
+    error = _validate_domain(domain)
+    if error:
+        return jsonify({"error": error}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     add_to_dismissed(policy_path, domain, reason or "dismissed via dashboard")
     return jsonify({"status": "ok", "action": "dismissed", "domain": domain})
@@ -241,9 +265,11 @@ def api_whitelist_dismiss():
 
 @app.route("/api/whitelist/restore", methods=["POST"])
 def api_whitelist_restore():
-    domain = request.json.get("domain", "").strip()
-    if not domain:
-        return jsonify({"error": "domain is required"}), 400
+    body = _get_json_body()
+    domain = body.get("domain", "").strip()
+    error = _validate_domain(domain)
+    if error:
+        return jsonify({"error": error}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     remove_from_dismissed(policy_path, domain)
     return jsonify({"status": "ok", "action": "restored", "domain": domain})

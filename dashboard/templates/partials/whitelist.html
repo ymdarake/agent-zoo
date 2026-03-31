@@ -63,8 +63,8 @@
 <hr>
 
 <!-- ブロック候補 -->
-<h4>Blocked Domain Candidates</h4>
-<p><small>ブロックされたドメインの許可候補。Allow Domainはドメイン全体を許可、Allow Pathは特定パスのみ許可します。</small></p>
+<h4>Review Blocked Domains</h4>
+<p><small>これらのドメインへの通信がブロックされました。必要なものを許可してください。</small></p>
 
 {% if candidates %}
 {% for c in candidates %}
@@ -75,7 +75,7 @@
 
     {% if c.paths %}
     <details style="margin-bottom:0.5rem" open>
-        <summary><small>Blocked URLs (click to suggest path pattern)</small></summary>
+        <summary><small>ブロックされたURL（クリックでパスパターンを自動入力）</small></summary>
         <ul style="font-size:0.8rem;margin:0.3rem 0">
             {% for url in c.paths %}
             <li style="word-break:break-all;cursor:pointer"
@@ -92,19 +92,19 @@
         <form style="display:inline;margin:0" hx-post="/api/whitelist/allow" hx-target="#tab-whitelist" hx-swap="innerHTML"
             hx-confirm="{{ c.host }} をドメインごと許可しますか？">
             <input type="hidden" name="domain" value="{{ c.host }}">
-            <button type="submit" class="btn-sm">Allow Domain</button>
+            <button type="submit" class="btn-sm">ドメインを許可</button>
         </form>
         <form style="display:inline;margin:0" hx-post="/api/whitelist/dismiss" hx-target="#tab-whitelist" hx-swap="innerHTML">
             <input type="hidden" name="domain" value="{{ c.host }}">
             <input type="hidden" name="reason" value="dashboard dismiss">
-            <button type="submit" class="btn-sm secondary">Dismiss</button>
+            <button type="submit" class="btn-sm secondary">不要（無視）</button>
         </form>
         <form style="display:flex;gap:0.3rem;align-items:center;margin:0"
             hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
             <input type="hidden" name="domain" value="{{ c.host }}">
             <input type="text" name="path_pattern" id="path-{{ c.host|replace('.', '-') }}" placeholder="/path/*" value="/*"
                 style="padding:0.25rem 0.5rem;font-size:0.75rem;width:200px;margin:0">
-            <button type="submit" class="btn-sm outline">Allow Path</button>
+            <button type="submit" class="btn-sm outline">パスだけ許可</button>
         </form>
     </div>
 </article>

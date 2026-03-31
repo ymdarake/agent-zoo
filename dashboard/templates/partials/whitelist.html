@@ -68,7 +68,7 @@
             <li style="word-break:break-all;cursor:pointer"
                 data-url="{{ url }}"
                 data-target="path-{{ c.host|replace('.', '-') }}"
-                onclick="try { var u = new URL(this.dataset.url); document.getElementById(this.dataset.target).value = u.pathname.replace(/\/[^\/]+$/, '/*'); } catch(e) {}"
+                onclick="try { var u = new URL(this.dataset.url); var p = u.pathname; document.getElementById(this.dataset.target).value = p.lastIndexOf('/') > 0 ? p.substring(0, p.lastIndexOf('/')) + '/*' : p + '*'; } catch(e) {}"
                 title="クリックでパスパターンを自動入力">
                 {{ url }}
             </li>

@@ -63,17 +63,34 @@
     {% if c.paths %}
     <details style="margin-bottom:0.5rem" open>
         <summary><small>ブロックされたURL（クリックでパスパターンを自動入力）</small></summary>
-        <ul style="font-size:0.8rem;margin:0.3rem 0">
+        <ul style="font-size:0.8rem;margin:0.3rem 0" class="url-suggest-list">
             {% for url in c.paths %}
-            <li style="word-break:break-all;cursor:pointer"
+            <li style="word-break:break-all;cursor:pointer;text-decoration:underline"
                 data-url="{{ url }}"
                 data-target="path-{{ c.host|replace('.', '-') }}"
-                onclick="try { var u = new URL(this.dataset.url); var p = u.pathname; document.getElementById(this.dataset.target).value = p.lastIndexOf('/') > 0 ? p.substring(0, p.lastIndexOf('/')) + '/*' : p + '*'; } catch(e) {}"
                 title="クリックでパスパターンを自動入力">
                 {{ url }}
             </li>
             {% endfor %}
         </ul>
+        <script>
+        (function() {
+            var items = document.querySelectorAll('.url-suggest-list li[data-url]');
+            items.forEach(function(li) {
+                li.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    try {
+                        var u = new URL(this.dataset.url);
+                        var p = u.pathname;
+                        var v = p.lastIndexOf('/') > 0 ? p.substring(0, p.lastIndexOf('/')) + '/*' : p + '*';
+                        document.getElementById(this.dataset.target).value = v;
+                        this.style.color = 'var(--pico-primary)';
+                    } catch(ex) {}
+                });
+            });
+        })();
+        </script>
     </details>
     {% endif %}
 

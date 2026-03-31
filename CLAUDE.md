@@ -40,7 +40,7 @@ make up-dashboard     # ダッシュボード（http://localhost:8080）
 make up-strict        # CoreDNS strictモード（DNS漏洩対策）
 
 # テスト
-make unit             # ユニットテスト（130件）
+make unit             # ユニットテスト（144件）
 make test             # Dockerスモークテスト
 
 # ビルド・管理
@@ -58,7 +58,7 @@ make clear-logs       # ログDB削除
 
 ## 実装状態
 
-Phase 1-3 実装済み。ユニットテスト130件、Dockerスモークテスト。
+Phase 1-3 実装済み。ユニットテスト144件、Dockerスモークテスト。
 
 ## テスト実行ルール
 

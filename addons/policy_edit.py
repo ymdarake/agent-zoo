@@ -121,9 +121,12 @@ def remove_from_allow_list(policy_path: str, domain: str) -> None:
     rt_path = _runtime_path(policy_path)
     with policy_lock(rt_path):
         runtime = _load_runtime(policy_path)
-        allow_list = runtime.get("domains", {}).get("allow", {}).get("list", [])
-        if domain in allow_list:
-            allow_list.remove(domain)
+        domains = runtime.get("domains", {})
+        allow = domains.get("allow", {})
+        allow_list = allow.get("list", [])
+        if domain not in allow_list:
+            return
+        allow_list.remove(domain)
         _save_runtime(policy_path, runtime)
 
 

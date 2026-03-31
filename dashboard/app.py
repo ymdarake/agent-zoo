@@ -411,6 +411,8 @@ def api_whitelist_revoke_path():
         return jsonify({"error": error}), 400
     if not path_pattern:
         return jsonify({"error": "path_pattern is required"}), 400
+    if not path_pattern.startswith("/"):
+        return jsonify({"error": "invalid path_pattern"}), 400
     policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
     remove_from_paths_allow(policy_path, domain, path_pattern)
     if request.headers.get("HX-Request"):

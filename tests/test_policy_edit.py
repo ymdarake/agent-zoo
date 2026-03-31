@@ -16,6 +16,8 @@ from addons.policy_edit import (
     atomic_write,
     get_whitelist_candidates,
     policy_lock,
+    remove_from_allow_list,
+    remove_from_paths_allow,
     remove_from_dismissed,
 )
 
@@ -243,6 +245,52 @@ class TestAddToPathsAllow(unittest.TestCase):
         add_to_paths_allow(path, "example.com", "/api/*")
         rt = _read_runtime(path)
         self.assertIn("example.com", rt["paths"]["allow"])
+
+
+class TestRemoveFromAllowList(unittest.TestCase):
+    def test_removes_domain(self):
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
+        add_to_allow_list(path, "test.com")
+        remove_from_allow_list(path, "test.com")
+        rt = _read_runtime(path)
+        allow_list = rt.get("domains", {}).get("allow", {}).get("list", [])
+        self.assertNotIn("test.com", allow_list)
+
+    def test_remove_nonexistent_no_error(self):
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
+        remove_from_allow_list(path, "nonexistent.com")
+
+
+class TestRemoveFromPathsAllow(unittest.TestCase):
+    def test_removes_path(self):
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
+        add_to_paths_allow(path, "github.com", "/anthropics/*")
+        remove_from_paths_allow(path, "github.com", "/anthropics/*")
+        rt = _read_runtime(path)
+        self.assertNotIn("github.com", rt.get("paths", {}).get("allow", {}))
+
+    def test_removes_one_keeps_others(self):
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
+        add_to_paths_allow(path, "github.com", "/a/*")
+        add_to_paths_allow(path, "github.com", "/b/*")
+        remove_from_paths_allow(path, "github.com", "/a/*")
+        rt = _read_runtime(path)
+        self.assertNotIn("/a/*", rt["paths"]["allow"]["github.com"])
+        self.assertIn("/b/*", rt["paths"]["allow"]["github.com"])
+
+    def test_remove_nonexistent_no_error(self):
+        path = _write_policy(BASIC_POLICY)
+        self.addCleanup(os.unlink, path)
+        self.addCleanup(_cleanup_runtime, path)
+        remove_from_paths_allow(path, "github.com", "/nope")
 
 
 class TestFileLock(unittest.TestCase):

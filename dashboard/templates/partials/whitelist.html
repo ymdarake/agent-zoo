@@ -48,10 +48,10 @@
         <td>
             {% for p in patterns %}
             <code style="border:1px solid var(--pico-primary)">{{ p }}</code>
-            <form style="display:inline;margin:0" hx-post="/api/whitelist/revoke-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
+            <form style="display:inline-block;margin:0;width:auto" hx-post="/api/whitelist/revoke-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
                 <input type="hidden" name="domain" value="{{ domain }}">
                 <input type="hidden" name="path_pattern" value="{{ p }}">
-                <button type="submit" class="btn-sm" style="color:var(--pico-del-color);font-size:0.65rem;padding:1px 4px">✕</button>
+                <button type="submit" class="btn-sm" style="color:var(--pico-del-color);font-size:0.65rem;padding:1px 4px;margin:0;width:auto">✕</button>
             </form>
             {% endfor %}
         </td>

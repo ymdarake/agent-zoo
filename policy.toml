@@ -81,6 +81,16 @@ block_args = [
     "/etc/passwd",
 ]
 
+# 組み合わせ条件（ルール内AND、ルール間OR）
+# tools: ツール名のいずれかにマッチ（省略=全ツール対象）
+# args: 引数パターンのいずれかにワード境界マッチ（省略=引数条件なし）
+# min_size: 引数サイズ閾値（省略=サイズ条件なし）
+
+[[tool_use_rules.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
 [alerts]
 # tool_use検出時にアラートを生成する条件（それぞれ独立、ログのみでブロックはしない）
 

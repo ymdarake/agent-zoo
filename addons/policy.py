@@ -39,6 +39,7 @@ class PolicyEngine:
         self.log_retention_days: int = 0
         self.tool_use_block_tools: list[str] = []
         self.tool_use_block_args: list[str] = []
+        self.tool_use_block_rules: list[dict] = []
         # レート制限の内部状態（ホットリロードでもリセットしない）
         self._rate_windows: dict[str, deque] = {}
         self._burst_windows: dict[str, deque] = {}
@@ -104,6 +105,7 @@ class PolicyEngine:
         tool_use_rules = policy.get("tool_use_rules", {})
         self.tool_use_block_tools = tool_use_rules.get("block_tools", [])
         self.tool_use_block_args = tool_use_rules.get("block_args", [])
+        self.tool_use_block_rules = tool_use_rules.get("rules", [])
 
     @staticmethod
     def _merge_path_dicts(base: dict, runtime: dict) -> dict:
@@ -376,16 +378,36 @@ class PolicyEngine:
 
     def should_block_tool_use(self, tool_name: str, input_str: str) -> tuple[bool, str]:
         """tool_useをブロックすべきか判定する。
+        独立条件（block_tools/block_args）+ 組み合わせ条件（rules）。
         (True, reason) = ブロック, (False, "") = 通過。
         """
-        if not self.tool_use_block_tools and not self.tool_use_block_args:
-            return False, ""
-
+        # 1. 独立条件
         if tool_name in self.tool_use_block_tools:
             return True, f"tool blocked: {tool_name}"
 
         for pattern in self.tool_use_block_args:
             if self._match_word_boundary(pattern, input_str):
                 return True, f"tool_use arg blocked: '{pattern}' in {tool_name}"
+
+        # 2. 組み合わせ条件（ルール内AND、ルール間OR）
+        for rule in self.tool_use_block_rules:
+            rule_name = rule.get("name", "unnamed")
+            tools = rule.get("tools") or []
+            args = rule.get("args") or []
+            min_size = rule.get("min_size")
+
+            if not tools and not args and min_size is None:
+                continue
+
+            if tools and tool_name not in tools:
+                continue
+
+            if min_size is not None and len(input_str) <= min_size:
+                continue
+
+            if args and not self._match_any_word_boundary(args, input_str):
+                continue
+
+            return True, f"tool_use rule '{rule_name}' blocked {tool_name}"
 
         return False, ""

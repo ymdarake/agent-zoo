@@ -8,7 +8,7 @@ Agent Zooの未実装機能と将来の拡張計画。
 
 ### セキュリティ
 
-- [ ] **tool_use_rulesの組み合わせ条件**: 現在は`block_tools`/`block_args`の独立条件のみ。alerts.rulesと同様の`[[tool_use_rules.rules]]`で「Bashかつ`~/.ssh`を含む場合だけブロック」のような複合条件を定義可能にする。Claude Codeのpermissions.denyと同等の粒度
+- [x] **tool_use_rulesの組み合わせ条件**: 現在は`block_tools`/`block_args`の独立条件のみ。alerts.rulesと同様の`[[tool_use_rules.rules]]`で「Bashかつ`~/.ssh`を含む場合だけブロック」のような複合条件を定義可能にする。Claude Codeのpermissions.denyと同等の粒度
 - [ ] **ダッシュボード認証**: Basic認証 or APIキー（localhost専用のため優先度低）
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列を検知。`[payload_rules.advanced] entropy_threshold = 4.5`
 

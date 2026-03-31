@@ -39,7 +39,9 @@ make task PROMPT="…"  # 自律実行
 make reload           # policy.toml反映
 make down             # 停止
 make host             # ホストモード（Docker不要）
-make analyze          # AI支援ログ分析
+make analyze          # AI支援ログ分析（ブロックログ→改善提案）
+make summarize        # tool_use履歴→最小権限設定提案
+make alerts           # アラート分析
 make clear-logs       # ログクリア
 make unit             # テスト（144件）
 make test             # Dockerスモークテスト

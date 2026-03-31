@@ -124,7 +124,6 @@ args = ["~/.ssh", "~/.aws", ".env"]
 [alerts]
 # 独立条件（それぞれ単発で発火）
 suspicious_args = ["~/.ssh", "~/.aws", ".env"]        # 引数にこの文字列が含まれたらアラート
-tool_arg_size_alert = 10000                           # 引数サイズ（バイト）超過でアラート
 
 # 組み合わせ条件（ルール内AND、ルール間OR）
 [[alerts.rules]]

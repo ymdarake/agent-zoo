@@ -385,7 +385,7 @@ class PolicyEngine:
             return True, f"tool blocked: {tool_name}"
 
         for pattern in self.tool_use_block_args:
-            if pattern in input_str:
+            if self._match_word_boundary(pattern, input_str):
                 return True, f"tool_use arg blocked: '{pattern}' in {tool_name}"
 
         return False, ""

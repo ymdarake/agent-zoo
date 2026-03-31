@@ -11,10 +11,10 @@
 - [x] ホワイトリストページのインジケーター固定（Jinja2 loop.parent修正）
 - [x] ドキュメント整備（README/CLAUDE.md/ROADMAP.md最新化）
 - [x] レビュー陣と総チェック（Claude + Gemini 2段階）
+- [x] 許可したものを逆に戻す操作（Revoke機能、base/runtime視覚的区別+✕ボタン）
+- [x] Requestsタブのフィルタリング機能（ステータス別フィルター）
 
 ## 未対応
 
-- [x] 許可したものを逆に戻す操作（Revoke機能、runtime設定のみ✕ボタンで取り消し可能）
-- [ ] SSEストリーミング透過の復元（mitmproxyのstream callable対応待ち。現在はバッファリングでレイテンシ増加）
-- [ ] ダッシュボードのフィルタリング・検索機能
+- [ ] SSEストリーミング透過の復元（mitmproxy 10.xのstream callable非対応のため保留）
 - [ ] ダッシュボードのHTMXローディングインジケータ

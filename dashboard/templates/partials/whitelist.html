@@ -125,7 +125,7 @@
     </details>
     {% endif %}
 
-    <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+    <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem">
         <form style="display:inline;margin:0" hx-post="/api/whitelist/allow" hx-target="#tab-whitelist" hx-swap="innerHTML"
             hx-confirm="{{ c.host }} をドメインごと許可しますか？">
             <input type="hidden" name="domain" value="{{ c.host }}">
@@ -136,12 +136,14 @@
             <input type="hidden" name="reason" value="dashboard dismiss">
             <button type="submit" class="btn-sm secondary">不要（無視）</button>
         </form>
-        <form style="display:flex;gap:0.3rem;align-items:center;margin:0"
+    </div>
+    <div style="display:flex;gap:0.3rem;align-items:center">
+        <form style="display:flex;gap:0.3rem;align-items:center;margin:0;flex:1"
             hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
             <input type="hidden" name="domain" value="{{ c.host }}">
             <input type="text" name="path_pattern" id="path-{{ c.host|replace('.', '-') }}" placeholder="/path/*" value="/*"
-                style="padding:0.25rem 0.5rem;font-size:0.75rem;width:200px;margin:0">
-            <button type="submit" class="btn-sm outline">パスだけ許可</button>
+                style="padding:0.25rem 0.5rem;font-size:0.8rem;margin:0;flex:1">
+            <button type="submit" class="btn-sm outline" style="white-space:nowrap">パスだけ許可</button>
         </form>
     </div>
 </article>

@@ -197,7 +197,17 @@ def partial_requests():
                 "SELECT id, ts, host, url, method, status, body_size "
                 "FROM requests ORDER BY id DESC LIMIT 30"
             ).fetchall()
-        return render_template("partials/requests.html", rows=rows)
+        # URLからパス部分を抽出
+        from urllib.parse import urlparse
+        processed = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["path"] = urlparse(d.get("url", "")).path
+            except Exception:
+                d["path"] = d.get("url", "")
+            processed.append(d)
+        return render_template("partials/requests.html", rows=processed)
     finally:
         db.close()
 

@@ -1,63 +1,50 @@
 <!-- 現在のポリシー設定 -->
 <h4>Current Policy</h4>
 
-<details open>
-    <summary><strong>Allowed Domains</strong> ({{ current_policy.allow_domains|length }})</summary>
-    {% if current_policy.allow_domains %}
-    <ul style="font-size:0.85rem">
-        {% for d in current_policy.allow_domains %}
-        <li>{{ d }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p><small>なし（全ドメインブロック）</small></p>
-    {% endif %}
-</details>
-
-<details>
-    <summary><strong>Denied Domains</strong> ({{ current_policy.deny_domains|length }})</summary>
-    {% if current_policy.deny_domains %}
-    <ul style="font-size:0.85rem">
-        {% for d in current_policy.deny_domains %}
-        <li>{{ d }}</li>
-        {% endfor %}
-    </ul>
-    {% else %}
-    <p><small>なし（デフォルト全拒否で十分）</small></p>
-    {% endif %}
-</details>
-
-<details open>
-    <summary><strong>Path Rules</strong></summary>
-    {% if current_policy.paths_allow %}
-    <table style="font-size:0.8rem">
-        <thead><tr><th>Domain</th><th>Allowed Paths</th></tr></thead>
-        <tbody>
-        {% for domain, patterns in current_policy.paths_allow.items() %}
+<h5 style="margin-bottom:0.5rem">Domain Rules</h5>
+<table style="font-size:0.85rem">
+    <thead><tr><th>Type</th><th>Domains</th></tr></thead>
+    <tbody>
         <tr>
-            <td>{{ domain }}</td>
-            <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+            <td><span style="color:var(--pico-ins-color)">Allow</span> ({{ current_policy.allow_domains|length }})</td>
+            <td>{% for d in current_policy.allow_domains %}<code>{{ d }}</code> {% endfor %}{% if not current_policy.allow_domains %}<small>なし（全ブロック）</small>{% endif %}</td>
         </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p><small>パスルールなし</small></p>
-    {% endif %}
-    {% if current_policy.paths_deny %}
-    <p><small><strong>Denied paths:</strong></small></p>
-    <table style="font-size:0.8rem">
-        <thead><tr><th>Domain</th><th>Denied Paths</th></tr></thead>
-        <tbody>
-        {% for domain, patterns in current_policy.paths_deny.items() %}
         <tr>
-            <td>{{ domain }}</td>
-            <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+            <td><span style="color:var(--pico-del-color)">Deny</span> ({{ current_policy.deny_domains|length }})</td>
+            <td>{% for d in current_policy.deny_domains %}<code>{{ d }}</code> {% endfor %}{% if not current_policy.deny_domains %}<small>なし</small>{% endif %}</td>
         </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
+    </tbody>
+</table>
+
+<h5 style="margin-bottom:0.5rem">Path Rules</h5>
+{% if current_policy.paths_allow %}
+<table style="font-size:0.8rem">
+    <thead><tr><th>Domain</th><th style="color:var(--pico-ins-color)">Allowed Paths</th></tr></thead>
+    <tbody>
+    {% for domain, patterns in current_policy.paths_allow.items() %}
+    <tr>
+        <td>{{ domain }}</td>
+        <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p><small>パスルールなし</small></p>
+{% endif %}
+{% if current_policy.paths_deny %}
+<table style="font-size:0.8rem">
+    <thead><tr><th>Domain</th><th style="color:var(--pico-del-color)">Denied Paths</th></tr></thead>
+    <tbody>
+    {% for domain, patterns in current_policy.paths_deny.items() %}
+    <tr>
+        <td>{{ domain }}</td>
+        <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endif %}
 </details>
 
 <hr>

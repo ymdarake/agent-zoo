@@ -116,6 +116,31 @@ def add_to_paths_allow(policy_path: str, domain: str, path_pattern: str) -> None
         _save_runtime(policy_path, runtime)
 
 
+def remove_from_allow_list(policy_path: str, domain: str) -> None:
+    """runtime TOMLのdomains.allow.listからドメインを削除する。"""
+    rt_path = _runtime_path(policy_path)
+    with policy_lock(rt_path):
+        runtime = _load_runtime(policy_path)
+        allow_list = runtime.get("domains", {}).get("allow", {}).get("list", [])
+        if domain in allow_list:
+            allow_list.remove(domain)
+        _save_runtime(policy_path, runtime)
+
+
+def remove_from_paths_allow(policy_path: str, domain: str, path_pattern: str) -> None:
+    """runtime TOMLのpaths.allowからパスパターンを削除する。"""
+    rt_path = _runtime_path(policy_path)
+    with policy_lock(rt_path):
+        runtime = _load_runtime(policy_path)
+        paths_allow = runtime.get("paths", {}).get("allow", {})
+        patterns = paths_allow.get(domain, [])
+        if path_pattern in patterns:
+            patterns.remove(path_pattern)
+            if not patterns:
+                paths_allow.pop(domain, None)
+        _save_runtime(policy_path, runtime)
+
+
 def remove_from_dismissed(policy_path: str, domain: str) -> None:
     """runtime TOMLのdomains.dismissedからドメインを削除する。"""
     rt_path = _runtime_path(policy_path)

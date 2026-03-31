@@ -3,28 +3,59 @@
 
 <h5 style="margin-bottom:0.5rem">Domain Rules</h5>
 <table style="font-size:0.85rem">
-    <thead><tr><th>Type</th><th>Domains</th></tr></thead>
+    <thead><tr><th>Type</th><th>Domains</th><th></th></tr></thead>
     <tbody>
         <tr>
-            <td><span style="color:var(--pico-ins-color)">Allow</span> ({{ current_policy.allow_domains|length }})</td>
-            <td>{% for d in current_policy.allow_domains %}<code>{{ d }}</code> {% endfor %}{% if not current_policy.allow_domains %}<small>なし（全ブロック）</small>{% endif %}</td>
+            <td><span style="color:var(--pico-ins-color)">Allow</span></td>
+            <td>
+                {% for d in current_policy.base_allow_domains %}<code>{{ d }}</code> {% endfor %}
+                {% for d in current_policy.runtime_allow_domains %}
+                <code style="border:1px solid var(--pico-primary)">{{ d }}</code>
+                <form style="display:inline;margin:0" hx-post="/api/whitelist/revoke-domain" hx-target="#tab-whitelist" hx-swap="innerHTML"
+                    hx-confirm="{{ d }} の許可を取り消しますか？">
+                    <input type="hidden" name="domain" value="{{ d }}">
+                    <button type="submit" class="btn-sm" style="color:var(--pico-del-color);font-size:0.65rem;padding:1px 4px">✕</button>
+                </form>
+                {% endfor %}
+                {% if not current_policy.base_allow_domains and not current_policy.runtime_allow_domains %}<small>なし</small>{% endif %}
+            </td>
+            <td></td>
         </tr>
         <tr>
-            <td><span style="color:var(--pico-del-color)">Deny</span> ({{ current_policy.deny_domains|length }})</td>
+            <td><span style="color:var(--pico-del-color)">Deny</span></td>
             <td>{% for d in current_policy.deny_domains %}<code>{{ d }}</code> {% endfor %}{% if not current_policy.deny_domains %}<small>なし</small>{% endif %}</td>
+            <td></td>
         </tr>
     </tbody>
 </table>
 
 <h5 style="margin-bottom:0.5rem">Path Rules</h5>
-{% if current_policy.paths_allow %}
+{% set has_paths = current_policy.base_paths_allow or current_policy.runtime_paths_allow %}
+{% if has_paths %}
 <table style="font-size:0.8rem">
-    <thead><tr><th>Domain</th><th style="color:var(--pico-ins-color)">Allowed Paths</th></tr></thead>
+    <thead><tr><th>Domain</th><th style="color:var(--pico-ins-color)">Allowed Paths</th><th></th></tr></thead>
     <tbody>
-    {% for domain, patterns in current_policy.paths_allow.items() %}
+    {% for domain, patterns in current_policy.base_paths_allow.items() %}
     <tr>
         <td>{{ domain }}</td>
         <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
+        <td><small style="color:var(--pico-muted-color)">base</small></td>
+    </tr>
+    {% endfor %}
+    {% for domain, patterns in current_policy.runtime_paths_allow.items() %}
+    <tr>
+        <td>{{ domain }}</td>
+        <td>
+            {% for p in patterns %}
+            <code style="border:1px solid var(--pico-primary)">{{ p }}</code>
+            <form style="display:inline;margin:0" hx-post="/api/whitelist/revoke-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
+                <input type="hidden" name="domain" value="{{ domain }}">
+                <input type="hidden" name="path_pattern" value="{{ p }}">
+                <button type="submit" class="btn-sm" style="color:var(--pico-del-color);font-size:0.65rem;padding:1px 4px">✕</button>
+            </form>
+            {% endfor %}
+        </td>
+        <td><small style="color:var(--pico-primary)">runtime</small></td>
     </tr>
     {% endfor %}
     </tbody>
@@ -45,7 +76,6 @@
     </tbody>
 </table>
 {% endif %}
-</details>
 
 <hr>
 

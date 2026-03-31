@@ -24,7 +24,9 @@ from policy_edit import (
     add_to_dismissed,
     add_to_paths_allow,
     get_whitelist_candidates,
+    remove_from_allow_list,
     remove_from_dismissed,
+    remove_from_paths_allow,
 )
 
 app = Flask(__name__)
@@ -263,15 +265,11 @@ def partial_whitelist():
 
     # 現在の設定まとめ
     current_policy = {
-        "allow_domains": (
-            policy.get("domains", {}).get("allow", {}).get("list", [])
-            + runtime.get("domains", {}).get("allow", {}).get("list", [])
-        ),
+        "base_allow_domains": policy.get("domains", {}).get("allow", {}).get("list", []),
+        "runtime_allow_domains": runtime.get("domains", {}).get("allow", {}).get("list", []),
         "deny_domains": policy.get("domains", {}).get("deny", {}).get("list", []),
-        "paths_allow": {
-            **policy.get("paths", {}).get("allow", {}),
-            **runtime.get("paths", {}).get("allow", {}),
-        },
+        "base_paths_allow": policy.get("paths", {}).get("allow", {}),
+        "runtime_paths_allow": runtime.get("paths", {}).get("allow", {}),
         "paths_deny": policy.get("paths", {}).get("deny", {}),
     }
 
@@ -379,6 +377,37 @@ def api_whitelist_restore():
     if request.headers.get("HX-Request"):
         return partial_whitelist()
     return jsonify({"status": "ok", "action": "restored", "domain": domain})
+
+
+@app.route("/api/whitelist/revoke-domain", methods=["POST"])
+def api_whitelist_revoke_domain():
+    body = _get_json_body()
+    domain = body.get("domain", "").strip()
+    error = _validate_domain(domain)
+    if error:
+        return jsonify({"error": error}), 400
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    remove_from_allow_list(policy_path, domain)
+    if request.headers.get("HX-Request"):
+        return partial_whitelist()
+    return jsonify({"status": "ok", "action": "revoked", "domain": domain})
+
+
+@app.route("/api/whitelist/revoke-path", methods=["POST"])
+def api_whitelist_revoke_path():
+    body = _get_json_body()
+    domain = body.get("domain", "").strip()
+    path_pattern = body.get("path_pattern", "").strip()
+    error = _validate_domain(domain)
+    if error:
+        return jsonify({"error": error}), 400
+    if not path_pattern:
+        return jsonify({"error": "path_pattern is required"}), 400
+    policy_path = os.environ.get("POLICY_PATH", "/app/policy.toml")
+    remove_from_paths_allow(policy_path, domain, path_pattern)
+    if request.headers.get("HX-Request"):
+        return partial_whitelist()
+    return jsonify({"status": "ok", "action": "revoked", "domain": domain, "path_pattern": path_pattern})
 
 
 if __name__ == "__main__":

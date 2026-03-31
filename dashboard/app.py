@@ -185,10 +185,18 @@ def api_domains():
 def partial_requests():
     db = get_db()
     try:
-        rows = db.execute(
-            "SELECT id, ts, host, url, method, status, body_size "
-            "FROM requests ORDER BY id DESC LIMIT 30"
-        ).fetchall()
+        status = request.args.get("status", "").strip()
+        if status:
+            rows = db.execute(
+                "SELECT id, ts, host, url, method, status, body_size "
+                "FROM requests WHERE status=? ORDER BY id DESC LIMIT 30",
+                (status,),
+            ).fetchall()
+        else:
+            rows = db.execute(
+                "SELECT id, ts, host, url, method, status, body_size "
+                "FROM requests ORDER BY id DESC LIMIT 30"
+            ).fetchall()
         return render_template("partials/requests.html", rows=rows)
     finally:
         db.close()

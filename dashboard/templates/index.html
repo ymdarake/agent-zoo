@@ -51,7 +51,19 @@
 
         <!-- Requests Tab -->
         <div id="tab-requests">
-            <div hx-get="/partials/requests" hx-trigger="load, every 3s" hx-swap="innerHTML">
+            <form id="requests-filter-form" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center"
+                hx-get="/partials/requests" hx-target="#requests-container" hx-swap="innerHTML"
+                hx-trigger="change from:#status-filter, load, every 5s" hx-include="#status-filter">
+                <small>Filter:</small>
+                <select id="status-filter" name="status" style="padding:0.2rem 0.5rem;font-size:0.8rem;width:auto;margin:0">
+                    <option value="">All</option>
+                    <option value="ALLOWED">ALLOWED</option>
+                    <option value="BLOCKED">BLOCKED</option>
+                    <option value="RATE_LIMITED">RATE_LIMITED</option>
+                    <option value="PAYLOAD_BLOCKED">PAYLOAD_BLOCKED</option>
+                </select>
+            </form>
+            <div id="requests-container">
                 <p aria-busy="true">Loading...</p>
             </div>
         </div>

@@ -208,23 +208,26 @@ class PolicyEnforcer:
         self._log_request(host, method, url, "ALLOWED", body_size)
 
     def responseheaders(self, flow: http.HTTPFlow):
-        """SSEストリーミングレスポンスからtool_useを抽出しつつ透過する。"""
-        if not flow.response:
+        """SSEレスポンスはバッファリングしてresponse()でtool_useを抽出する。
+        mitmproxy 10.xではstream callableが使えないため、ストリーミング透過せずバッファする。
+        """
+        # stream=Trueを設定しない → mitmproxyがボディ全体をバッファ → response()でcontent取得可能
+        pass
+
+    def response(self, flow: http.HTTPFlow):
+        """レスポンスからtool_useを抽出する。SSE/JSON両対応。"""
+        if not flow.response or not flow.response.content:
             return
+
         content_type = flow.response.headers.get("content-type", "")
-        if "text/event-stream" not in content_type:
-            return
 
-        sse_buf = AnthropicSSEParser()
-        blocked_flag = {"blocked": False}
-
-        def stream_filter(data: bytes) -> bytes:
-            if blocked_flag["blocked"]:
-                return b""  # ブロック確定後は全チャンク空にする
+        # SSEレスポンス（バッファ済み）からtool_useを抽出
+        if "text/event-stream" in content_type:
             try:
-                sse_buf.feed(data)
+                sse_buf = AnthropicSSEParser()
+                sse_buf.feed(flow.response.content)
                 for tool_use in sse_buf.drain_completed():
-                    ctx.log.info(f"tool_use detected: {tool_use.name}")
+                    ctx.log.info(f"tool_use detected (SSE): {tool_use.name}")
                     self._log_tool_use(tool_use)
                     should_block, reason = self.engine.should_block_tool_use(
                         tool_use.name, tool_use.input
@@ -232,24 +235,16 @@ class PolicyEnforcer:
                     if should_block:
                         ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
                         self._log_block_tool_use(tool_use.name, reason)
-                        blocked_flag["blocked"] = True
-                        return b""
+                        flow.response = http.Response.make(
+                            403, b"Tool use blocked by policy",
+                            {"Content-Type": "text/plain"},
+                        )
+                        return
             except Exception as e:
-                ctx.log.error(f"SSE stream filter error: {e}")
-            return data
-
-        flow.response.stream = stream_filter
-        flow.metadata["sse_streaming"] = True  # responseフックでの二重処理防止
-
-    def response(self, flow: http.HTTPFlow):
-        """非ストリーミングレスポンスからtool_useを抽出する。"""
-        if not flow.response or not flow.response.content:
+                ctx.log.debug(f"SSE parse error: {e}")
             return
-        # SSEストリーミング済みフローは二重処理しない
-        if flow.metadata.get("sse_streaming"):
-            return
-        content_type = flow.response.headers.get("content-type", "")
-        # SSEはストリーミング透過済み。非ストリーミングのJSONレスポンスを解析
+
+        # JSONレスポンスからtool_useを抽出
         if "application/json" not in content_type:
             return
         try:

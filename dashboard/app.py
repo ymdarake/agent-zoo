@@ -19,6 +19,7 @@ for p in [
         sys.path.insert(0, p)
         break
 from policy_edit import (
+    _runtime_path,
     add_to_allow_list,
     add_to_dismissed,
     add_to_paths_allow,
@@ -249,7 +250,7 @@ def partial_whitelist():
     try:
         with open(policy_path, "rb") as f:
             policy = tomllib.load(f)
-        rt_path = policy_path.replace(".toml", ".runtime.toml")
+        rt_path = _runtime_path(policy_path)
         if os.path.exists(rt_path):
             with open(rt_path, "rb") as f:
                 runtime = tomllib.load(f)

@@ -79,7 +79,7 @@
         <ul style="font-size:0.8rem;margin:0.3rem 0">
             {% for url in c.paths %}
             <li style="word-break:break-all;cursor:pointer"
-                onclick="document.getElementById('path-{{ c.host|replace('.', '-') }}').value = new URL('{{ url }}').pathname.replace(/\/[^\/]+$/, '/*')"
+                onclick="document.getElementById('path-{{ c.host|replace('.', '-') }}').value = new URL({{ url|tojson }}).pathname.replace(/\/[^\/]+$/, '/*')"
                 title="Click to use as path pattern">
                 {{ url }}
             </li>

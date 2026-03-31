@@ -207,12 +207,9 @@ class PolicyEnforcer:
 
         self._log_request(host, method, url, "ALLOWED", body_size)
 
-    def responseheaders(self, flow: http.HTTPFlow):
-        """SSEレスポンスはバッファリングしてresponse()でtool_useを抽出する。
-        mitmproxy 10.xではstream callableが使えないため、ストリーミング透過せずバッファする。
-        """
-        # stream=Trueを設定しない → mitmproxyがボディ全体をバッファ → response()でcontent取得可能
-        pass
+    # Note: responseheaders()は意図的に未定義。
+    # mitmproxy 10.xではstream callableが使えないため、SSEレスポンスをバッファし
+    # response()でtool_useを抽出する。ストリーミング透過はROADMAPの将来対応。
 
     def response(self, flow: http.HTTPFlow):
         """レスポンスからtool_useを抽出する。SSE/JSON両対応。"""
@@ -221,54 +218,49 @@ class PolicyEnforcer:
 
         content_type = flow.response.headers.get("content-type", "")
 
-        # SSEレスポンス（バッファ済み）からtool_useを抽出
+        # tool_useを抽出（SSE/JSON両対応）
+        tool_uses = []
         if "text/event-stream" in content_type:
             try:
                 sse_buf = AnthropicSSEParser()
                 sse_buf.feed(flow.response.content)
-                for tool_use in sse_buf.drain_completed():
-                    ctx.log.info(f"tool_use detected (SSE): {tool_use.name}")
-                    self._log_tool_use(tool_use)
-                    should_block, reason = self.engine.should_block_tool_use(
-                        tool_use.name, tool_use.input
-                    )
-                    if should_block:
-                        ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
-                        self._log_block_tool_use(tool_use.name, reason)
-                        flow.response = http.Response.make(
-                            403, b"Tool use blocked by policy",
-                            {"Content-Type": "text/plain"},
-                        )
-                        return
+                tool_uses = sse_buf.drain_completed()
             except Exception as e:
                 ctx.log.debug(f"SSE parse error: {e}")
+        elif "application/json" in content_type:
+            try:
+                data = json.loads(flow.response.content)
+                for block in data.get("content", []):
+                    if block.get("type") == "tool_use":
+                        input_str = json.dumps(block.get("input", {}))
+                        tool_uses.append(ToolUse(
+                            name=block.get("name", ""),
+                            input=input_str,
+                            input_size=len(input_str),
+                        ))
+            except Exception as e:
+                ctx.log.debug(f"JSON parse error: {e}")
+        else:
             return
 
-        # JSONレスポンスからtool_useを抽出
-        if "application/json" not in content_type:
-            return
-        try:
-            data = json.loads(flow.response.content)
-            for block in data.get("content", []):
-                if block.get("type") == "tool_use":
-                    input_str = json.dumps(block.get("input", {}))
-                    tool_use = ToolUse(
-                        name=block.get("name", ""),
-                        input=input_str,
-                        input_size=len(input_str),
-                    )
-                    self._log_tool_use(tool_use)
-                    should_block, reason = self.engine.should_block_tool_use(
-                        tool_use.name, tool_use.input
-                    )
-                    if should_block:
-                        ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
-                        self._log_block_tool_use(tool_use.name, reason)
-                        flow.response = http.Response.make(
-                            403, b"Tool use blocked by policy",
-                            {"Content-Type": "text/plain"},
-                        )
-                        return
+        # 全tool_useをログしてからブロック判定
+        should_block_response = False
+        for tool_use in tool_uses:
+            ctx.log.info(f"tool_use detected: {tool_use.name}")
+            self._log_tool_use(tool_use)
+            should_block, reason = self.engine.should_block_tool_use(
+                tool_use.name, tool_use.input
+            )
+            if should_block:
+                ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
+                self._log_block_tool_use(tool_use.name, reason)
+                should_block_response = True
+
+        if should_block_response:
+            flow.response = http.Response.make(
+                403, b"Tool use blocked by policy",
+                {"Content-Type": "text/plain"},
+            )
         except Exception as e:
             ctx.log.debug(f"Response parse skipped: {e}")
 

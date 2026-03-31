@@ -52,7 +52,9 @@ def atomic_write(path: str, content: str) -> None:
 
 def _runtime_path(policy_path: str) -> str:
     """policy.tomlに対応するruntime TOMLパスを返す。"""
-    return policy_path.replace(".toml", ".runtime.toml")
+    if policy_path.endswith(".toml"):
+        return policy_path[:-5] + ".runtime.toml"
+    return policy_path + ".runtime"
 
 
 def _load_policy(path: str) -> dict:

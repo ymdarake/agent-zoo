@@ -244,7 +244,8 @@ def partial_whitelist():
     # 現在のポリシー設定を取得（base + runtime）
     policy = {}
     runtime = {}
-    dismissed = {}
+    base_dismissed = {}
+    runtime_dismissed = {}
     try:
         with open(policy_path, "rb") as f:
             policy = tomllib.load(f)

@@ -261,8 +261,6 @@ class PolicyEnforcer:
                 403, b"Tool use blocked by policy",
                 {"Content-Type": "text/plain"},
             )
-        except Exception as e:
-            ctx.log.debug(f"Response parse skipped: {e}")
 
     def done(self):
         """mitmproxyアドオンのライフサイクル終了時にDB接続をクローズする。"""

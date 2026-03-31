@@ -82,72 +82,79 @@
 
 <!-- ブロック候補 -->
 <h4>Review Blocked Domains</h4>
-<p><small>これらのドメインへの通信がブロックされました。必要なものを許可してください。</small></p>
+<p><small>ブロックされたドメイン。アクションを選んでください。</small></p>
 
 {% if candidates %}
-{% for c in candidates %}
-<article style="margin-bottom:1rem;padding:1rem">
-    <header style="margin-bottom:0.5rem">
-        <strong>{{ c.host }}</strong> <span class="badge">{{ c.count }} blocked</span>
-    </header>
-
-    {% if c.paths %}
-    <details style="margin-bottom:0.5rem" open>
-        <summary><small>ブロックされたURL（クリックでパスパターンを自動入力）</small></summary>
-        <ul style="font-size:0.8rem;margin:0.3rem 0" class="url-suggest-list">
-            {% for url in c.paths %}
-            <li style="word-break:break-all;cursor:pointer;text-decoration:underline"
-                data-url="{{ url }}"
-                data-target="path-{{ c.host|replace('.', '-') }}"
-                title="クリックでパスパターンを自動入力">
-                {{ url }}
-            </li>
-            {% endfor %}
-        </ul>
-        <script>
-        (function() {
-            var items = document.querySelectorAll('.url-suggest-list li[data-url]');
-            items.forEach(function(li) {
-                li.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    try {
-                        var u = new URL(this.dataset.url);
-                        var p = u.pathname;
-                        var v = p.lastIndexOf('/') > 0 ? p.substring(0, p.lastIndexOf('/')) + '/*' : p + '*';
-                        document.getElementById(this.dataset.target).value = v;
-                        this.style.color = 'var(--pico-primary)';
-                    } catch(ex) {}
-                });
-            });
-        })();
-        </script>
-    </details>
-    {% endif %}
-
-    <div style="display:flex;gap:0.5rem;align-items:center;margin-bottom:0.5rem">
-        <form style="display:inline;margin:0" hx-post="/api/whitelist/allow" hx-target="#tab-whitelist" hx-swap="innerHTML"
-            hx-confirm="{{ c.host }} をドメインごと許可しますか？">
-            <input type="hidden" name="domain" value="{{ c.host }}">
-            <button type="submit" class="btn-sm">ドメインを許可</button>
-        </form>
-        <form style="display:inline;margin:0" hx-post="/api/whitelist/dismiss" hx-target="#tab-whitelist" hx-swap="innerHTML">
-            <input type="hidden" name="domain" value="{{ c.host }}">
-            <input type="hidden" name="reason" value="dashboard dismiss">
-            <button type="submit" class="btn-sm secondary">不要（無視）</button>
-        </form>
-    </div>
-    <div style="display:flex;gap:0.3rem;align-items:center">
-        <form style="display:flex;gap:0.3rem;align-items:center;margin:0;flex:1"
-            hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
-            <input type="hidden" name="domain" value="{{ c.host }}">
-            <input type="text" name="path_pattern" id="path-{{ c.host|replace('.', '-') }}" placeholder="/path/*" value="/*"
-                style="padding:0.25rem 0.5rem;font-size:0.8rem;margin:0;flex:1">
-            <button type="submit" class="btn-sm outline" style="white-space:nowrap">パスだけ許可</button>
-        </form>
-    </div>
-</article>
-{% endfor %}
+<table style="font-size:0.85rem">
+    <thead>
+        <tr>
+            <th>Action</th>
+            <th>Domain</th>
+            <th>Count</th>
+            <th>Blocked URLs</th>
+            <th>Path Allow</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for c in candidates %}
+    <tr>
+        <td style="white-space:nowrap">
+            <form style="display:inline;margin:0" hx-post="/api/whitelist/allow" hx-target="#tab-whitelist" hx-swap="innerHTML"
+                hx-confirm="{{ c.host }} をドメインごと許可しますか？">
+                <input type="hidden" name="domain" value="{{ c.host }}">
+                <button type="submit" class="btn-sm">許可</button>
+            </form>
+            <form style="display:inline;margin:0" hx-post="/api/whitelist/dismiss" hx-target="#tab-whitelist" hx-swap="innerHTML">
+                <input type="hidden" name="domain" value="{{ c.host }}">
+                <input type="hidden" name="reason" value="dashboard dismiss">
+                <button type="submit" class="btn-sm secondary">無視</button>
+            </form>
+        </td>
+        <td><strong>{{ c.host }}</strong></td>
+        <td><span class="badge">{{ c.count }}</span></td>
+        <td style="font-size:0.75rem;max-width:250px">
+            {% if c.paths %}
+            <ul style="margin:0;padding-left:1rem" class="url-suggest-list">
+                {% for url in c.paths %}
+                <li style="cursor:pointer;text-decoration:underline;word-break:break-all"
+                    data-url="{{ url }}"
+                    data-target="path-{{ c.host|replace('.', '-') }}"
+                    title="クリックでパスパターン入力">{{ url }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+        </td>
+        <td style="white-space:nowrap">
+            <form style="display:flex;gap:0.2rem;align-items:center;margin:0"
+                hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
+                <input type="hidden" name="domain" value="{{ c.host }}">
+                <input type="text" name="path_pattern" id="path-{{ c.host|replace('.', '-') }}" placeholder="/path/*" value="/*"
+                    style="padding:0.2rem 0.4rem;font-size:0.75rem;width:120px;margin:0">
+                <button type="submit" class="btn-sm outline" style="white-space:nowrap">許可</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<script>
+(function() {
+    var items = document.querySelectorAll('.url-suggest-list li[data-url]');
+    items.forEach(function(li) {
+        li.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+            try {
+                var u = new URL(this.dataset.url);
+                var p = u.pathname;
+                var v = p.lastIndexOf('/') > 0 ? p.substring(0, p.lastIndexOf('/')) + '/*' : p + '*';
+                document.getElementById(this.dataset.target).value = v;
+                this.style.color = 'var(--pico-primary)';
+            } catch(ex) {}
+        });
+    });
+})();
+</script>
 {% else %}
 <p><small>候補なし</small></p>
 {% endif %}

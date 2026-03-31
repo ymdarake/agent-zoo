@@ -173,7 +173,13 @@ def get_whitelist_candidates(
     ) | set(
         runtime.get("domains", {}).get("dismissed", {}).keys()
     )
-    excluded = allow_list | dismissed
+    # base + runtime の paths.allow に含まれるドメインも除外
+    paths_allow_domains = set(
+        policy.get("paths", {}).get("allow", {}).keys()
+    ) | set(
+        runtime.get("paths", {}).get("allow", {}).keys()
+    )
+    excluded = allow_list | dismissed | paths_allow_domains
 
     db = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
     db.row_factory = sqlite3.Row

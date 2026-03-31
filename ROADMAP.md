@@ -30,7 +30,7 @@ Agent Zooの未実装機能と将来の拡張計画。
 
 ## 実装済み
 
-Phase 1-3 + P0-P2。詳細は [agent-harness-design.md](agent-harness-design.md) のセクション11を参照。
+Phase 1-3 + P0-P2。詳細は [docs/architecture.md](docs/architecture.md) を参照。
 
 主な実装済み機能:
 - ドメイン制御 + パスベースallow/deny

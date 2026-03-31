@@ -8,7 +8,7 @@ AIコーディングエージェント（Claude Code, Codex CLI, Aider, Cline等
 
 セキュリティの根本思想: **「読めても送れない」— ネットワーク隔離が防御の本質。**
 
-設計ドキュメント: `agent-harness-design.md` / 未実装・将来計画: `ROADMAP.md`
+ドキュメント: `docs/` / 未実装・将来計画: `ROADMAP.md`
 
 ## アーキテクチャ
 

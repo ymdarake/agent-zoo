@@ -16,7 +16,7 @@
             <td>{{ row.host }}</td>
             <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ row.url }}">{{ row.url }}</td>
             <td>{{ row.method }}</td>
-            <td><span class="status-{{ row.status }}">{{ row.status }}</span></td>
+            <td><span class="status-badge status-{{ row.status }}">{{ row.status }}</span></td>
             <td>{{ row.body_size }}</td>
         </tr>
         {% endfor %}

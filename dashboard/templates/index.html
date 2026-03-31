@@ -12,12 +12,13 @@
         .stat-card { text-align: center; padding: 1rem; }
         .stat-card h2 { margin: 0; font-size: 2rem; }
         .stat-card small { color: var(--pico-muted-color); }
-        .status-ALLOWED { color: var(--pico-ins-color); }
-        .status-BLOCKED, .status-PAYLOAD_BLOCKED { color: var(--pico-del-color); }
-        .status-RATE_LIMITED { color: orange; }
+        .status-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .status-ALLOWED { background: #d4edda; color: #155724; }
+        .status-BLOCKED, .status-PAYLOAD_BLOCKED { background: #f8d7da; color: #721c24; }
+        .status-RATE_LIMITED { background: #fff3cd; color: #856404; }
         table { font-size: 0.85rem; }
         nav h1 { margin: 0; }
-        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; margin: 0 0.15rem; }
+        .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; margin: 0 0.15rem; cursor: pointer; }
         .tab-nav { display: flex; gap: 0; margin-bottom: 1.5rem; }
         .tab-nav a { padding: 0.5rem 1.5rem; border-bottom: 2px solid transparent; text-decoration: none; color: var(--pico-muted-color); }
         .tab-nav a.active { border-bottom-color: var(--pico-primary); color: var(--pico-color); }

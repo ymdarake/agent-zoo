@@ -19,7 +19,21 @@ log_retention_days = 30
 # platform.claude.com: OAuth認証
 # code.claude.com: Claude Code Web
 # claude.ai: Claude Web
-list = ["api.anthropic.com", "statsig.anthropic.com", "platform.claude.com", "code.claude.com", "claude.ai", "mcp-proxy.anthropic.com"]
+# api.openai.com: OpenAI / Codex API通信
+# auth0.openai.com + *.auth.openai.com: OpenAI認証フロー
+# *.chatgpt.com: CodexのChatGPTサインイン導線
+list = [
+    "api.anthropic.com",
+    "statsig.anthropic.com",
+    "platform.claude.com",
+    "code.claude.com",
+    "claude.ai",
+    "mcp-proxy.anthropic.com",
+    "api.openai.com",
+    "auth0.openai.com",
+    "*.auth.openai.com",
+    "*.chatgpt.com",
+]
 
 [domains.deny]
 # allowより優先して拒否するドメイン（allowのワイルドカードから例外的に除外する用途）
@@ -46,26 +60,28 @@ list = ["*.evil.com"]
 # ドメイン別のレート制限。rpm=1分あたりの上限、burst=1秒あたりの上限
 # 超過時は 429 Retry-After レスポンスを返す
 "api.anthropic.com" = { rpm = 120, burst = 50 }
+"api.openai.com" = { rpm = 120, burst = 50 }
 
 [payload_rules]
-# エージェント → Anthropic API へのリクエスト本文を検査する
+# エージェント → LLM API へのリクエスト本文を検査する
 # 会話履歴にはエージェントが読んだファイル内容やコマンド出力が含まれるため、
-# ここで機密情報がAnthropicに送信されるのを防止する
+# ここで機密情報が外部LLMに送信されるのを防止する
 
 # リクエスト本文内の危険パターン（正規表現）
 # ※実行コマンドのブロックは [tool_use_rules] で行う
 block_patterns = []
 
 # 機密情報の流出を検知するパターン（正規表現、大文字小文字を区別しない）
-# エージェントが.env等を読んだ結果がAnthropicに送信されるのを防ぐ
+# エージェントが.env等を読んだ結果が外部LLMに送信されるのを防ぐ
 secret_patterns = [
     "AWS_SECRET_ACCESS_KEY",
     "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
     "-----BEGIN.*PRIVATE KEY-----",
 ]
 
 [tool_use_rules]
-# Anthropic API → エージェントへのレスポンス内のtool_useを検査する
+# LLM API → エージェントへのレスポンス内のtool_useを検査する
 # 危険なtool実行をSSEストリーム切断で阻止する（方式B: 事後キル）
 
 # 完全にブロックするツール名

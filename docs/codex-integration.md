@@ -26,13 +26,15 @@ FROM node:20-slim
 - `cap_drop: [ALL]`で動作すること
 - 認証方式に応じた環境変数（`OPENAI_API_KEY`等）
 
-`docker-compose.yml`で切り替え:
+`docker-compose.yml`ではClaude用/ Codex用サービスを分離しておくと扱いやすい:
 ```yaml
-claude:
+codex:
   build:
     context: ./container
-    dockerfile: Dockerfile.codex  # ← ここを変えるだけ
+    dockerfile: Dockerfile.codex
 ```
+
+共有するのは `workspace` / `certs` / `policy*` で、認証ボリュームは `claude` と `codex` で分離する。
 
 ## 2. OpenAI SSEパーサー（`addons/openai_sse_parser.py`）
 
@@ -125,16 +127,22 @@ Codex CLI用の推奨設定ファイルを作成:
 
 ## 5. docker-compose.yml
 
-現在の`claude`サービスをそのまま使い、`dockerfile`を切り替えるだけ。環境変数を変える:
+`claude` と `codex` を別サービスにしておく。共有するのは `workspace` / `certs` / `policy*` のみで、認証ディレクトリは分離する:
 
 ```yaml
 claude:
   build:
     context: ./container
-    dockerfile: ${AGENT_DOCKERFILE:-Dockerfile}
+    dockerfile: Dockerfile
+  environment:
+    - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
+
+codex:
+  build:
+    context: ./container
+    dockerfile: Dockerfile.codex
   environment:
     - OPENAI_API_KEY=${OPENAI_API_KEY:-}
-    # or ANTHROPIC系の環境変数
 ```
 
 ## テスト実行

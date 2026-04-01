@@ -1,0 +1,14 @@
+# Codex CLI host mode template for Agent Zoo
+# Copy to .codex/config.toml or merge into your existing config.
+
+model_provider = "openai"
+approval_policy = "untrusted"
+sandbox_mode = "workspace-write"
+network_access = true
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+exclude = ["*_TOKEN", "*_SECRET", "*_KEY"]
+set = {}
+include_only = []

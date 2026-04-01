@@ -18,7 +18,11 @@ from mitmproxy import ctx, http
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
 from policy import PolicyEngine
-from sse_parser import AnthropicSSEParser, ToolUse
+from sse_parser import (
+    OpenAIResponsesStreamParser,
+    ToolUse,
+    create_sse_parser_for_host,
+)
 
 
 class PolicyEnforcer:
@@ -26,6 +30,7 @@ class PolicyEnforcer:
         policy_path = os.environ.get("POLICY_PATH", "/config/policy.toml")
         self.engine = PolicyEngine(policy_path)
         self._db: sqlite3.Connection | None = None
+        self._ws_parsers: dict[str, OpenAIResponsesStreamParser] = {}
         self._init_db()
         self._cleanup_old_logs()
         ctx.log.info(
@@ -163,6 +168,72 @@ class PolicyEnforcer:
         except Exception as e:
             ctx.log.error(f"DB write failed (tool_use block): {e}")
 
+    def _extract_anthropic_json_tool_uses(self, data: dict) -> list[ToolUse]:
+        tool_uses = []
+        for block in data.get("content", []):
+            if block.get("type") != "tool_use":
+                continue
+            input_str = json.dumps(block.get("input", {}))
+            tool_uses.append(
+                ToolUse(
+                    name=block.get("name", ""),
+                    input=input_str,
+                    input_size=len(input_str),
+                )
+            )
+        return tool_uses
+
+    def _extract_openai_json_tool_uses(self, data: dict) -> list[ToolUse]:
+        tool_uses = []
+        for choice in data.get("choices", []):
+            if not isinstance(choice, dict):
+                continue
+            message = choice.get("message", {})
+            if not isinstance(message, dict):
+                continue
+            for tool_call in message.get("tool_calls", []):
+                if not isinstance(tool_call, dict):
+                    continue
+                function = tool_call.get("function", {})
+                if not isinstance(function, dict):
+                    continue
+                arguments = function.get("arguments", "")
+                if not isinstance(arguments, str):
+                    arguments = json.dumps(arguments)
+                tool_uses.append(
+                    ToolUse(
+                        name=function.get("name", ""),
+                        input=arguments,
+                        input_size=len(arguments),
+                    )
+                )
+        return tool_uses
+
+    def _extract_json_tool_uses(self, host: str, body: bytes) -> list[ToolUse]:
+        data = json.loads(body)
+        if "api.openai.com" in (host or "").lower():
+            return self._extract_openai_json_tool_uses(data)
+        return self._extract_anthropic_json_tool_uses(data)
+
+    def _process_tool_uses(self, tool_uses: list[ToolUse]) -> bool:
+        should_block_response = False
+        for tool_use in tool_uses:
+            ctx.log.info(f"tool_use detected: {tool_use.name}")
+            self._log_tool_use(tool_use)
+            should_block, reason = self.engine.should_block_tool_use(
+                tool_use.name, tool_use.input
+            )
+            if should_block:
+                ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
+                self._log_block_tool_use(tool_use.name, reason)
+                should_block_response = True
+        return should_block_response
+
+    def _is_codex_websocket_flow(self, flow: http.HTTPFlow) -> bool:
+        host = (flow.request.host or "").lower()
+        path = flow.request.path or ""
+        return host == "chatgpt.com" and path.startswith("/backend-api/codex/responses")
+
     def request(self, flow: http.HTTPFlow):
         self.engine.maybe_reload()
 
@@ -222,48 +293,60 @@ class PolicyEnforcer:
         tool_uses = []
         if "text/event-stream" in content_type:
             try:
-                sse_buf = AnthropicSSEParser()
+                sse_buf = create_sse_parser_for_host(flow.request.host)
                 sse_buf.feed(flow.response.content)
                 tool_uses = sse_buf.drain_completed()
             except Exception as e:
                 ctx.log.debug(f"SSE parse error: {e}")
         elif "application/json" in content_type:
             try:
-                data = json.loads(flow.response.content)
-                for block in data.get("content", []):
-                    if block.get("type") == "tool_use":
-                        input_str = json.dumps(block.get("input", {}))
-                        tool_uses.append(ToolUse(
-                            name=block.get("name", ""),
-                            input=input_str,
-                            input_size=len(input_str),
-                        ))
+                tool_uses = self._extract_json_tool_uses(
+                    flow.request.host,
+                    flow.response.content,
+                )
             except Exception as e:
                 ctx.log.debug(f"JSON parse error: {e}")
         else:
             return
 
-        # 全tool_useをログしてからブロック判定
-        should_block_response = False
-        for tool_use in tool_uses:
-            ctx.log.info(f"tool_use detected: {tool_use.name}")
-            self._log_tool_use(tool_use)
-            should_block, reason = self.engine.should_block_tool_use(
-                tool_use.name, tool_use.input
-            )
-            if should_block:
-                ctx.log.warn(f"TOOL_USE_BLOCKED: {reason}")
-                self._log_block_tool_use(tool_use.name, reason)
-                should_block_response = True
-
-        if should_block_response:
+        if self._process_tool_uses(tool_uses):
             flow.response = http.Response.make(
                 403, b"Tool use blocked by policy",
                 {"Content-Type": "text/plain"},
             )
 
+    def websocket_start(self, flow: http.HTTPFlow):
+        if self._is_codex_websocket_flow(flow):
+            self._ws_parsers[flow.id] = OpenAIResponsesStreamParser()
+
+    def websocket_message(self, flow: http.HTTPFlow):
+        if not self._is_codex_websocket_flow(flow) or not flow.websocket:
+            return
+
+        parser = self._ws_parsers.setdefault(flow.id, OpenAIResponsesStreamParser())
+        message = flow.websocket.messages[-1]
+        if message.from_client or not message.is_text:
+            return
+
+        try:
+            parser.feed_event(json.loads(message.text))
+        except json.JSONDecodeError:
+            return
+        except Exception as e:
+            ctx.log.debug(f"WebSocket parse error: {e}")
+            return
+
+        if self._process_tool_uses(parser.drain_completed()):
+            # Dropping the tool-call message prevents Codex from receiving the
+            # finalized invocation details over the WebSocket stream.
+            message.drop()
+
+    def websocket_end(self, flow: http.HTTPFlow):
+        self._ws_parsers.pop(flow.id, None)
+
     def done(self):
         """mitmproxyアドオンのライフサイクル終了時にDB接続をクローズする。"""
+        self._ws_parsers.clear()
         if self._db:
             self._db.close()
             self._db = None

@@ -1,20 +1,32 @@
+x-agent-env: &agent-env
+  HTTP_PROXY: http://proxy:8080
+  HTTPS_PROXY: http://proxy:8080
+  NODE_EXTRA_CA_CERTS: /certs/mitmproxy-ca-cert.pem
+  SSL_CERT_FILE: /certs/mitmproxy-ca-cert.pem
+  GIT_SSL_CAINFO: /certs/mitmproxy-ca-cert.pem
+
+x-agent-common: &agent-common
+  depends_on:
+    proxy:
+      condition: service_healthy
+  networks: [intnet]
+  stdin_open: true
+  tty: true
+  entrypoint: ["/usr/local/bin/entrypoint.sh"]
+  cap_drop: [ALL]
+
 services:
   claude:
+    <<: *agent-common
+    profiles: ["claude"]
     build:
       context: ./container
+      dockerfile: Dockerfile
       args:
         HOST_UID: ${HOST_UID:-1001}
-    depends_on:
-      proxy:
-        condition: service_healthy
     environment:
-      - HTTP_PROXY=http://proxy:8080
-      - HTTPS_PROXY=http://proxy:8080
-      - NODE_EXTRA_CA_CERTS=/certs/mitmproxy-ca-cert.pem
-      - SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem
-      - GIT_SSL_CAINFO=/certs/mitmproxy-ca-cert.pem
-      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
-    networks: [intnet]
+      <<: *agent-env
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
     volumes:
       - ./certs:/certs:ro
       - ${WORKSPACE:-./workspace}:/workspace
@@ -22,10 +34,25 @@ services:
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ./templates/CLAUDE.harness.md:/harness/CLAUDE.harness.md:ro
-    stdin_open: true
-    tty: true
-    entrypoint: ["/usr/local/bin/entrypoint.sh"]
-    cap_drop: [ALL]
+
+  codex:
+    <<: *agent-common
+    profiles: ["codex"]
+    build:
+      context: ./container
+      dockerfile: Dockerfile.codex
+      args:
+        HOST_UID: ${HOST_UID:-1001}
+    environment:
+      <<: *agent-env
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    volumes:
+      - ./certs:/certs:ro
+      - ${WORKSPACE:-./workspace}:/workspace
+      - codex-auth:/home/codex/.codex
+      - ./policy.toml:/harness/policy.toml:ro
+      - ./policy_candidate.toml:/harness/policy_candidate.toml
+      - ./templates/CODEX.harness.md:/harness/CODEX.harness.md:ro
 
   proxy:
     image: mitmproxy/mitmproxy:10
@@ -86,3 +113,4 @@ networks:
 
 volumes:
   claude-auth:  # OAuth認証+セッション永続化（docker compose down -v で削除）
+  codex-auth:  # Codex CLI認証+設定永続化（docker compose down -v で削除）

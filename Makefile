@@ -1,4 +1,25 @@
 HOST_UID := $(shell id -u)
+AGENT ?= claude
+
+ifneq ($(filter $(AGENT),claude codex),$(AGENT))
+$(error AGENT must be one of: claude, codex)
+endif
+
+ifeq ($(AGENT),claude)
+AGENT_REQUIRED_ENV := CLAUDE_CODE_OAUTH_TOKEN
+AGENT_RUN_HINT := 対話モード: 初回はコンテナ内で /login が必要です
+AGENT_RUN_CMD := docker compose exec claude claude --append-system-prompt-file /harness/CLAUDE.harness.md
+AGENT_RUN_DANGEROUS_CMD := docker compose exec claude claude --dangerously-skip-permissions --append-system-prompt-file /harness/CLAUDE.harness.md
+AGENT_TASK_CMD := docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions --append-system-prompt-file /harness/CLAUDE.harness.md
+AGENT_ALLOWED_URL := https://api.anthropic.com/
+else
+AGENT_REQUIRED_ENV := OPENAI_API_KEY
+AGENT_RUN_HINT := 対話モード: 初回は OPENAI_API_KEY またはコンテナ内で codex login が必要です
+AGENT_RUN_CMD := docker compose exec codex /usr/local/bin/run-codex.sh interactive
+AGENT_RUN_DANGEROUS_CMD := docker compose exec codex /usr/local/bin/run-codex.sh interactive-dangerous
+AGENT_TASK_CMD := docker compose exec -e USER_PROMPT="$(PROMPT)" codex /usr/local/bin/run-codex.sh task
+AGENT_ALLOWED_URL := https://api.openai.com/
+endif
 
 # === 証明書管理 ===
 certs/mitmproxy-ca-cert.pem:
@@ -16,37 +37,43 @@ certs: certs/mitmproxy-ca-cert.pem
 # === ビルド ===
 .PHONY: build
 build: certs
-	HOST_UID=$(HOST_UID) docker compose build
+	HOST_UID=$(HOST_UID) docker compose build $(AGENT) dashboard
 
 # === コンテナモード ===
 .PHONY: run
 run: certs
 	@touch policy.runtime.toml policy_candidate.toml
-	HOST_UID=$(HOST_UID) docker compose up -d
-	@echo "対話モード: 初回はコンテナ内で /login が必要です (WORKSPACE=$(or $(WORKSPACE),./workspace))"
-	docker compose exec claude claude --append-system-prompt-file /harness/CLAUDE.harness.md
+	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
+	@echo "$(AGENT_RUN_HINT) (AGENT=$(AGENT), WORKSPACE=$(or $(WORKSPACE),./workspace))"
+	$(AGENT_RUN_CMD)
 
 .PHONY: run-dangerous
 run-dangerous: certs
 	@touch policy.runtime.toml policy_candidate.toml
-	HOST_UID=$(HOST_UID) docker compose up -d
+	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	@echo "箱庭モード: 承認なし自律実行（ネットワーク隔離で保護）"
-	docker compose exec claude claude --dangerously-skip-permissions --append-system-prompt-file /harness/CLAUDE.harness.md
+	$(AGENT_RUN_DANGEROUS_CMD)
 
 .PHONY: task
 task: certs
+ifeq ($(AGENT),claude)
 ifndef CLAUDE_CODE_OAUTH_TOKEN
 	$(error CLAUDE_CODE_OAUTH_TOKEN is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="...")
 endif
-ifndef PROMPT
-	$(error PROMPT is required. Usage: CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="...")
+else
+ifndef OPENAI_API_KEY
+	$(error OPENAI_API_KEY is required. Usage: OPENAI_API_KEY=xxx AGENT=codex make task PROMPT="...")
 endif
-	HOST_UID=$(HOST_UID) docker compose up -d
-	docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions --append-system-prompt-file /harness/CLAUDE.harness.md
+endif
+ifndef PROMPT
+	$(error PROMPT is required. Usage: $(AGENT_REQUIRED_ENV)=xxx AGENT=$(AGENT) make task PROMPT="...")
+endif
+	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
+	$(AGENT_TASK_CMD)
 
 .PHONY: up
 up: certs
-	HOST_UID=$(HOST_UID) docker compose up -d
+	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 
 .PHONY: up-dashboard
 up-dashboard: certs
@@ -60,7 +87,7 @@ reload:
 
 .PHONY: up-strict
 up-strict: certs
-	HOST_UID=$(HOST_UID) docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml up -d
+	HOST_UID=$(HOST_UID) docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml up -d $(AGENT) dashboard
 
 .PHONY: down
 down:
@@ -103,14 +130,14 @@ test: certs
 	@STATUS=$$(docker compose run --rm --no-deps --entrypoint="" \
 		-e HTTP_PROXY=http://proxy:8080 -e HTTPS_PROXY=http://proxy:8080 \
 		-e SSL_CERT_FILE=/certs/mitmproxy-ca-cert.pem \
-		claude curl -x http://proxy:8080 --cacert /certs/mitmproxy-ca-cert.pem \
-		-s -o /dev/null -w "%{http_code}" https://api.anthropic.com/ 2>/dev/null); \
+		$(AGENT) curl -x http://proxy:8080 --cacert /certs/mitmproxy-ca-cert.pem \
+		-s -o /dev/null -w "%{http_code}" $(AGENT_ALLOWED_URL) 2>/dev/null); \
 	if [ "$$STATUS" -gt 0 ] 2>/dev/null; then echo "  PASS (HTTP $$STATUS)"; else echo "  FAIL (no response)"; exit 1; fi
 	@echo ""
 	@echo "--- Test 2: Blocked domain → expect 403 ---"
 	@STATUS=$$(docker compose run --rm --no-deps --entrypoint="" \
 		-e HTTP_PROXY=http://proxy:8080 -e HTTPS_PROXY=http://proxy:8080 \
-		claude curl -x http://proxy:8080 \
+		$(AGENT) curl -x http://proxy:8080 \
 		-s -o /dev/null -w "%{http_code}" --connect-timeout 5 https://evil.com/ 2>/dev/null); \
 	if [ "$$STATUS" = "403" ]; then echo "  PASS (403 Blocked)"; \
 	elif [ "$$STATUS" = "000" ]; then echo "  PASS (connection reset)"; \
@@ -119,7 +146,7 @@ test: certs
 	@echo "--- Test 3: Direct access without proxy → expect failure ---"
 	@docker compose run --rm --no-deps --entrypoint="" \
 		-e HTTP_PROXY= -e HTTPS_PROXY= \
-		claude curl -s --connect-timeout 3 https://api.anthropic.com/ >/dev/null 2>&1; \
+		$(AGENT) curl -s --connect-timeout 3 $(AGENT_ALLOWED_URL) >/dev/null 2>&1; \
 	if [ $$? -ne 0 ]; then echo "  PASS (network isolated)"; else echo "  FAIL (direct access succeeded)"; exit 1; fi
 	@echo ""
 	@echo "--- Test 4: SQLite logs → expect ALLOWED and BLOCKED records ---"

@@ -63,6 +63,7 @@ AGENT=codex make test # CodexイメージのDockerスモークテスト
 ## ダッシュボード
 
 `make up-dashboard` で起動（ http://localhost:8080 ）。
+
 リクエスト・tool_use・ブロックをリアルタイム監視し、ホワイトリストを育成できる。
 
 | Requests | Tool Uses | Whitelist |

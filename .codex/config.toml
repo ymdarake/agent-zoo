@@ -1,0 +1,141 @@
+# https://developers.openai.com/codex/config-sample
+
+model = "gpt-5.4"
+model_provider = "openai"
+model_reasoning_effort = "xhigh"
+plan_mode_reasoning_effort = "xhigh"
+
+personality = "pragmatic"
+
+web_search="live"
+
+network_access = true
+
+
+# service_tier = "flex"  # fast | flex
+
+
+################################################################################
+# Approval & Sandbox
+################################################################################
+
+# When to ask for command approval:
+# - untrusted: only known-safe read-only commands auto-run; others prompt
+# - on-request: model decides when to ask (default)
+# - never: never prompt (risky)
+# - { granular = { ... } }: allow or auto-reject selected prompt categories
+approval_policy = "on-request"
+# Example granular policy:
+# approval_policy = { granular = {
+#   sandbox_approval = true,
+#   rules = true,
+#   mcp_elicitations = true,
+#   request_permissions = false,
+#   skill_approval = false
+# } }
+
+# Allow login-shell semantics for shell-based tools when they request `login = true`.
+# Default: true. Set false to force non-login shells and reject explicit login-shell requests.
+allow_login_shell = true
+
+
+
+# Filesystem/network sandbox policy for tool calls:
+# - read-only (default)
+# - workspace-write
+# - danger-full-access (no sandbox; extremely risky)
+sandbox_mode = "workspace-write"
+
+# Check for updates on startup. Default: true
+check_for_update_on_startup = false
+
+
+################################################################################
+# Shell Environment Policy for spawned processes (table)
+################################################################################
+
+[shell_environment_policy]
+# inherit: all (default) | core | none
+inherit = "all"
+# Skip default excludes for names containing KEY/SECRET/TOKEN (case-insensitive). Default: false
+ignore_default_excludes = false
+# Case-insensitive glob patterns to remove (e.g., "AWS_*", "AZURE_*"). Default: []
+exclude = []
+# Explicit key/value overrides (always win). Default: {}
+set = {}
+# Whitelist; if non-empty, keep only matching vars. Default: []
+include_only = []
+# Experimental: run via user shell profile. Default: false
+experimental_use_profile = false
+
+################################################################################
+# Managed network proxy settings
+################################################################################
+
+[permissions.network]
+# enabled = true
+# proxy_url = "http://127.0.0.1:43128"
+# admin_url = "http://127.0.0.1:43129"
+# enable_socks5 = false
+# socks_url = "http://127.0.0.1:43130"
+# enable_socks5_udp = false
+# allow_upstream_proxy = false
+# dangerously_allow_non_loopback_proxy = false
+# dangerously_allow_non_loopback_admin = false
+# dangerously_allow_all_unix_sockets = false
+# mode = "limited"                           # limited | full
+# allowed_domains = ["api.openai.com"]
+# denied_domains = ["example.com"]
+# allow_unix_sockets = ["/var/run/docker.sock"]
+# allow_local_binding = false
+
+################################################################################
+# UI, Notifications, and Misc (tables)
+################################################################################
+
+[tui]
+# Desktop notifications from the TUI: boolean or filtered list. Default: true
+# Examples: false | ["agent-turn-complete", "approval-requested"]
+notifications = false
+
+# Notification mechanism for terminal alerts: auto | osc9 | bel. Default: "auto"
+# notification_method = "auto"
+
+# Enables welcome/status/spinner animations. Default: true
+animations = true
+
+# Show onboarding tooltips in the welcome screen. Default: true
+show_tooltips = true
+
+# Control alternate screen usage (auto skips it in Zellij to preserve scrollback).
+# alternate_screen = "auto"
+
+# Ordered list of footer status-line item IDs. When unset, Codex uses:
+# ["model-with-reasoning", "context-remaining", "current-dir"].
+# Set to [] to hide the footer.
+# status_line = ["model", "context-remaining", "git-branch"]
+
+# Syntax-highlighting theme (kebab-case). Use /theme in the TUI to preview and save.
+# You can also add custom .tmTheme files under $CODEX_HOME/themes.
+# theme = "catppuccin-mocha"
+
+# Internal tooltip state keyed by model slug. Usually managed by Codex.
+# [tui.model_availability_nux]
+# "gpt-5.4" = 1
+
+# Enable or disable analytics for this machine. When unset, Codex uses its default behavior.
+[analytics]
+enabled = true
+
+# Control whether users can submit feedback from `/feedback`. Default: true
+[feedback]
+enabled = true
+
+# In-product notices (mostly set automatically by Codex).
+[notice]
+# hide_full_access_warning = true
+# hide_world_writable_warning = true
+# hide_rate_limit_model_nudge = true
+# hide_gpt5_1_migration_prompt = true
+# "hide_gpt-5.1-codex-max_migration_prompt" = true
+# model_migrations = { "gpt-4.1" = "gpt-5.1" }

@@ -6,11 +6,16 @@
 
 AIコーディングエージェントを安全に自律実行するためのセキュリティハーネス。
 
-Docker Compose隔離 + mitmproxyペイロード検査 + TOMLポリシー制御。Claude Code, Codex CLI, Aider, Cline等、エージェント非依存で動作。
+mitmproxyペイロード検査 + TOMLポリシー制御。エージェント非依存で動作。
+
+## モード
+
+- **スタンドアロン** — プロキシのみ起動（`make host`）。ホスト上の任意のエージェントに適用可能
+- **Docker Compose隔離** — `internal: true` ネットワークでエージェントを隔離。「読めても送れない」
+  - 対応済み: Claude Code, Codex CLI
 
 ## 特徴
 
-- **ネットワーク隔離** — Docker `internal: true` で直接外部通信を遮断。「読めても送れない」
 - **ペイロード検査** — mitmproxyで通信を傍受・検査・ブロック（Base64デコード対応）
 - **tool_use検知+ブロック** — エージェントの行動をリアルタイム抽出、危険な実行を阻止
 - **ダッシュボード** — WebUIでリアルタイム監視 + ホワイトリスト育成

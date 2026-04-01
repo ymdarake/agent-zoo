@@ -12,5 +12,8 @@ dev = [
     "tomli_w>=1.0",
 ]
 
+[tool.uv]
+exclude-newer = "2026-03-01T00:00:00Z"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

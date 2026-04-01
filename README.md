@@ -34,8 +34,9 @@ CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="テストを追加して"
 ## コマンド
 
 ```bash
-make run              # 対話モード
-make task PROMPT="…"  # 自律実行
+make run              # 対話モード（承認あり）
+make run-dangerous    # 箱庭モード（承認なし、ネットワーク隔離で保護）
+make task PROMPT="…"  # 自律実行（非対話）
 make reload           # policy.toml反映
 make down             # 停止
 make host             # ホストモード（Docker不要）

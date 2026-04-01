@@ -33,8 +33,8 @@ Docker不要。macOS Seatbeltサンドボックスと併用。
 | ファイル | 役割 | 依存 |
 |---|---|---|
 | `addons/policy.py` | ポリシーエンジン（ドメイン/パス制御、レート制限、ペイロード検査、アラート、tool_useブロック判定） | なし |
-| `addons/sse_parser.py` | SSEストリーミングからtool_useを抽出。`BaseSSEParser` ABC + `AnthropicSSEParser` / `OpenAISSEParser` 実装 | なし |
-| `addons/policy_enforcer.py` | mitmproxyアドオン。request/responseフックでpolicy.pyを呼び出す | mitmproxy |
+| `addons/sse_parser.py` | SSE / JSON / OpenAI Responsesイベントからtool_useを抽出。`BaseSSEParser` + `AnthropicSSEParser` / `OpenAISSEParser` / `OpenAIResponsesStreamParser` / `AutoDetectSSEParser` を実装 | なし |
+| `addons/policy_enforcer.py` | mitmproxyアドオン。HTTP response と WebSocket message を検査し、tool_use抽出とブロックを行う | mitmproxy |
 | `addons/policy_edit.py` | ポリシー編集・ホワイトリスト育成（atomic write、ファイルロック） | tomli_w |
 | `dashboard/app.py` | Flask + HTMX ダッシュボード | Flask |
 | `policy.toml` | ベースポリシー（人間が編集、コメント付き、git管理） | — |
@@ -57,8 +57,9 @@ Docker不要。macOS Seatbeltサンドボックスと併用。
 
 ```
 API response → policy_enforcer.response()
-  SSE: AnthropicSSEParser / OpenAISSEParser でtool_useを抽出
-  JSON: content[].type == "tool_use" を抽出
+  SSE: 既知ホストは AnthropicSSEParser / OpenAISSEParser、未知ホストは AutoDetectSSEParser で抽出
+  JSON: content[].type == "tool_use" / choices[].message.tool_calls / output[].type == function_call|mcp_call を抽出
+  WebSocket: OpenAI Responses の response.* イベントを OpenAIResponsesStreamParser で抽出
   → should_block_tool_use() でブロック判定
   → SQLite tool_uses + alerts テーブルに記録
 ```
@@ -83,8 +84,11 @@ BaseSSEParser (ABC)
   ├── reset()               # 共通: 状態リセット
   └── _handle_data(event_name, data)  # 抽象: プロバイダごとに実装
         │
-        ├── AnthropicSSEParser   # content_block_start/delta/stop
-        └── OpenAISSEParser      # tool_calls in delta
+    ├── AnthropicSSEParser   # content_block_start/delta/stop
+    └── OpenAISSEParser      # tool_calls in delta
+
+OpenAIResponsesStreamParser      # response.function_call_arguments.* など
+AutoDetectSSEParser              # payload shape で Anthropic/OpenAI を判定
 ```
 
 ## ダッシュボード

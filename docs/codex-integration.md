@@ -4,11 +4,12 @@ Agent ZooにCodex CLI対応を追加するための作業ガイド。
 
 ## 概要
 
-Agent Zooはエージェント非依存のセキュリティハーネス。現在Claude Code用のDockerfile + SSEパーサーが実装済み。Codex CLI対応には以下が必要:
+Agent Zooはエージェント非依存のセキュリティハーネス。Codex CLI対応では Docker イメージ、OpenAI 互換レスポンスの tool_call 抽出、設定テンプレート、Compose/Makefile 連携を追加する。
 
 1. Codex CLI用Dockerイメージ
-2. OpenAI形式のSSEパーサー
+2. OpenAI互換 SSE / JSON / Responses stream parser
 3. 設定テンプレート
+4. `claude` / `codex` の service 分離
 
 ## 1. Dockerfile（`container/Dockerfile.codex`）
 
@@ -36,9 +37,13 @@ codex:
 
 共有するのは `workspace` / `certs` / `policy*` で、認証ボリュームは `claude` と `codex` で分離する。
 
-## 2. OpenAI SSEパーサー（`addons/openai_sse_parser.py`）
+## 2. OpenAI互換パーサー（`addons/sse_parser.py`）
 
-`addons/sse_parser.py`の`BaseSSEParser`を継承して実装。
+実装は `addons/sse_parser.py` に集約する。現在は以下を持つ:
+
+- `OpenAISSEParser`: Chat Completions系 SSE の `choices[].delta.tool_calls`
+- `OpenAIResponsesStreamParser`: Responses API / Codex WebSocket の `response.*` イベント
+- `AutoDetectSSEParser`: 未知ホスト向け。payload shape で Anthropic / OpenAI を自動判定
 
 ### BaseSSEParserインターフェース
 
@@ -55,26 +60,6 @@ class BaseSSEParser(ABC):
 ```
 
 ### 実装すべきもの
-
-```python
-# addons/openai_sse_parser.py
-from sse_parser import BaseSSEParser, ToolUse
-
-class OpenAISSEParser(BaseSSEParser):
-    def __init__(self):
-        super().__init__()
-        self._active_tool_calls: dict[int, dict] = {}
-
-    def _handle_data(self, event_name: str, data: dict) -> None:
-        # OpenAI形式: data.choices[0].delta.tool_calls
-        # tool_callsの各エントリにindex, function.name, function.argumentsがある
-        # argumentsはストリーミングで分割して届く
-        ...
-
-    def reset(self) -> None:
-        super().reset()
-        self._active_tool_calls.clear()
-```
 
 ### OpenAI SSEフォーマット
 
@@ -98,32 +83,40 @@ data: [DONE]
 - `[DONE]`はJSON形式ではない（特別扱い）
 - 完了したら`ToolUse(name=function.name, input=arguments全体, input_size=len(arguments))`を返す
 
-### テスト（`tests/test_openai_sse_parser.py`）
+### OpenAI Responses / Codex WebSocket イベント
 
-`tests/test_sse_parser.py`を参考にテストを作成:
-- 単一tool_callの完全シーケンス
-- 複数tool_callsの同時処理
-- arguments分割の正しい結合
-- チャンク境界を跨ぐケース
-- `[DONE]`の処理
-- 不正JSONのハンドリング
+Codex は `chatgpt.com` 側の WebSocket で `response.*` イベントを流すことがある。`response.function_call_arguments.delta` / `.done` や `response.output_item.done` を `OpenAIResponsesStreamParser` で追跡する。
+
+### テスト
+
+以下をカバーする:
+- `tests/test_openai_sse_parser.py`: Chat Completions SSE、AutoDetect、JSON shape helper
+- `tests/test_openai_responses_stream_parser.py`: Responses / Codex WebSocket event parser
 
 ## 3. policy_enforcer.pyの変更
 
-`addons/policy_enforcer.py`のresponseフックでContent-TypeやURLパターンからプロバイダを判別し、適切なパーサーを使う。
+`addons/policy_enforcer.py` では HTTP response と WebSocket message の両方を扱う。
 
 ```python
-# 判別ロジック案
-if "api.openai.com" in flow.request.host:
-    parser = OpenAISSEParser()
-else:
-    parser = AnthropicSSEParser()
+# SSE:
+parser = create_sse_parser_for_host(flow.request.host)
+
+# JSON:
+tool_uses = extract_tool_uses_from_openai_response_data(data)
+if not tool_uses:
+    tool_uses = extract_tool_uses_from_anthropic_response_data(data)
+
+# WebSocket:
+if looks_like_openai_responses_event(event):
+    parser.feed_event(event)
 ```
+
+LiteLLM のように host が変わるケースがあるため、JSON / WebSocket は host 名ではなく payload shape で判定する。
 
 ## 4. 設定テンプレート（`templates/codex-cli/`）
 
-Codex CLI用の推奨設定ファイルを作成:
-- `templates/codex-cli/config.json`（あれば）
+Codex CLI用の推奨設定ファイル:
+- `templates/codex-cli/config.toml`
 
 ## 5. docker-compose.yml
 
@@ -149,7 +142,7 @@ codex:
 
 ```bash
 # ユニットテスト
-uv run python -m pytest tests/test_openai_sse_parser.py -v
+python -m pytest tests/test_openai_sse_parser.py tests/test_openai_responses_stream_parser.py -q
 
 # 全テスト
 make unit

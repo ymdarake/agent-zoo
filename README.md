@@ -26,6 +26,7 @@ cd agent-zoo
 WORKSPACE=/path/to/my-project make run
 
 # Codex CLI: 対話モード
+# 初回は OPENAI_API_KEY を渡すか、コンテナ内で codex login
 WORKSPACE=/path/to/my-project AGENT=codex OPENAI_API_KEY=xxx make run
 
 # 自律実行モード
@@ -41,6 +42,7 @@ OPENAI_API_KEY=xxx AGENT=codex make task PROMPT="テストを追加して"
 make run                         # 対話モード（既定: AGENT=claude）
 AGENT=codex make run             # Codex CLIで対話モード
 make run-dangerous               # 箱庭モード（承認なし、ネットワーク隔離で保護）
+AGENT=codex make run-dangerous   # Codex CLIで承認スキップ対話モード
 make task PROMPT="…"             # Claude自律実行（非対話）
 AGENT=codex make task PROMPT="…" # Codex自律実行（非対話）
 make reload           # policy.toml反映
@@ -59,6 +61,7 @@ AGENT=codex make test # CodexイメージのDockerスモークテスト
 | ドキュメント | 内容 |
 |---|---|
 | [アーキテクチャ](docs/architecture.md) | コンポーネント、データフロー、内部設計 |
+| [Codex統合ガイド](docs/codex-integration.md) | Codex CLI対応の構成と実装メモ |
 | [セキュリティモデル](docs/security.md) | 多層防御、既知の制約、運用原則 |
 | [ポリシーリファレンス](docs/policy-reference.md) | policy.toml全設定項目 |
 | [ROADMAP](ROADMAP.md) | 未実装機能・将来計画 |

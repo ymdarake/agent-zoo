@@ -16,6 +16,13 @@ from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
+ANTHROPIC_SSE_EVENT_TYPES = {
+    "content_block_start",
+    "content_block_delta",
+    "content_block_stop",
+    "message_stop",
+}
+
 
 @dataclass
 class ToolUse:
@@ -255,12 +262,165 @@ class OpenAISSEParser(BaseSSEParser):
         self._active_tool_calls.clear()
 
 
+def detect_sse_provider(data: dict) -> str | None:
+    """Detect provider from parsed SSE payload shape."""
+    if not isinstance(data, dict):
+        return None
+
+    event_type = data.get("type")
+    if isinstance(event_type, str) and event_type in ANTHROPIC_SSE_EVENT_TYPES:
+        return "anthropic"
+
+    if isinstance(data.get("choices"), list):
+        return "openai"
+
+    return None
+
+
+def extract_tool_uses_from_anthropic_response_data(data: dict) -> list[ToolUse]:
+    """Extract tool_use blocks from a non-streaming Anthropic response body."""
+    tool_uses = []
+    for block in data.get("content", []):
+        if not isinstance(block, dict) or block.get("type") != "tool_use":
+            continue
+        input_str = json.dumps(block.get("input", {}))
+        tool_uses.append(
+            ToolUse(
+                name=block.get("name", ""),
+                input=input_str,
+                input_size=len(input_str),
+            )
+        )
+    return tool_uses
+
+
+def _extract_tool_uses_from_openai_output_items(items: list) -> list[ToolUse]:
+    tool_uses = []
+    if not isinstance(items, list):
+        return tool_uses
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        if item.get("type") not in ("function_call", "mcp_call"):
+            continue
+
+        arguments = item.get("arguments", "")
+        if not isinstance(arguments, str):
+            arguments = json.dumps(arguments)
+
+        tool_uses.append(
+            ToolUse(
+                name=item.get("name", ""),
+                input=arguments,
+                input_size=len(arguments),
+            )
+        )
+
+    return tool_uses
+
+
+def extract_tool_uses_from_openai_response_data(data: dict) -> list[ToolUse]:
+    """Extract tool calls from OpenAI-compatible JSON responses."""
+    tool_uses = []
+
+    for choice in data.get("choices", []):
+        if not isinstance(choice, dict):
+            continue
+        message = choice.get("message", {})
+        if not isinstance(message, dict):
+            continue
+        for tool_call in message.get("tool_calls", []):
+            if not isinstance(tool_call, dict):
+                continue
+            function = tool_call.get("function", {})
+            if not isinstance(function, dict):
+                continue
+            arguments = function.get("arguments", "")
+            if not isinstance(arguments, str):
+                arguments = json.dumps(arguments)
+            tool_uses.append(
+                ToolUse(
+                    name=function.get("name", ""),
+                    input=arguments,
+                    input_size=len(arguments),
+                )
+            )
+
+    tool_uses.extend(_extract_tool_uses_from_openai_output_items(data.get("output", [])))
+
+    response = data.get("response", {})
+    if isinstance(response, dict):
+        tool_uses.extend(
+            _extract_tool_uses_from_openai_output_items(response.get("output", []))
+        )
+
+    deduped = []
+    seen = set()
+    for tool_use in tool_uses:
+        key = (tool_use.name, tool_use.input)
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(tool_use)
+    return deduped
+
+
+def looks_like_openai_responses_event(event: dict) -> bool:
+    """Return True when a WebSocket JSON message matches Responses event shape."""
+    if not isinstance(event, dict):
+        return False
+
+    event_type = event.get("type")
+    if not isinstance(event_type, str) or not event_type.startswith("response."):
+        return False
+
+    return any(
+        key in event
+        for key in ("item", "item_id", "response", "delta", "arguments", "name")
+    )
+
+
+class AutoDetectSSEParser(BaseSSEParser):
+    """Detect Anthropic vs OpenAI SSE from payload shape instead of host."""
+
+    def __init__(self):
+        super().__init__()
+        self._provider: str | None = None
+        self._anthropic = AnthropicSSEParser()
+        self._openai = OpenAISSEParser()
+
+    def _handle_data(self, event_name: str, data: dict) -> None:
+        if self._provider is None:
+            self._provider = detect_sse_provider(data)
+
+        if self._provider == "anthropic":
+            self._anthropic._handle_data(event_name, data)
+            self._completed.extend(self._anthropic.drain_completed())
+        elif self._provider == "openai":
+            self._openai._handle_data(event_name, data)
+            self._completed.extend(self._openai.drain_completed())
+
+    def _handle_done(self, event_name: str) -> None:
+        if self._provider == "openai":
+            self._openai._handle_done(event_name)
+            self._completed.extend(self._openai.drain_completed())
+
+    def reset(self) -> None:
+        super().reset()
+        self._provider = None
+        self._anthropic.reset()
+        self._openai.reset()
+
+
 def create_sse_parser_for_host(host: str) -> BaseSSEParser:
     """Return the provider-specific SSE parser for the target host."""
     host = (host or "").lower()
     if host == "api.openai.com" or host.endswith(".api.openai.com"):
         return OpenAISSEParser()
-    return AnthropicSSEParser()
+    if host == "api.anthropic.com" or host.endswith(".anthropic.com"):
+        return AnthropicSSEParser()
+    return AutoDetectSSEParser()
 
 
 class OpenAIResponsesStreamParser:

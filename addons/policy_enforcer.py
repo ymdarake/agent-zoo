@@ -22,6 +22,9 @@ from sse_parser import (
     OpenAIResponsesStreamParser,
     ToolUse,
     create_sse_parser_for_host,
+    extract_tool_uses_from_anthropic_response_data,
+    extract_tool_uses_from_openai_response_data,
+    looks_like_openai_responses_event,
 )
 
 
@@ -168,52 +171,12 @@ class PolicyEnforcer:
         except Exception as e:
             ctx.log.error(f"DB write failed (tool_use block): {e}")
 
-    def _extract_anthropic_json_tool_uses(self, data: dict) -> list[ToolUse]:
-        tool_uses = []
-        for block in data.get("content", []):
-            if block.get("type") != "tool_use":
-                continue
-            input_str = json.dumps(block.get("input", {}))
-            tool_uses.append(
-                ToolUse(
-                    name=block.get("name", ""),
-                    input=input_str,
-                    input_size=len(input_str),
-                )
-            )
-        return tool_uses
-
-    def _extract_openai_json_tool_uses(self, data: dict) -> list[ToolUse]:
-        tool_uses = []
-        for choice in data.get("choices", []):
-            if not isinstance(choice, dict):
-                continue
-            message = choice.get("message", {})
-            if not isinstance(message, dict):
-                continue
-            for tool_call in message.get("tool_calls", []):
-                if not isinstance(tool_call, dict):
-                    continue
-                function = tool_call.get("function", {})
-                if not isinstance(function, dict):
-                    continue
-                arguments = function.get("arguments", "")
-                if not isinstance(arguments, str):
-                    arguments = json.dumps(arguments)
-                tool_uses.append(
-                    ToolUse(
-                        name=function.get("name", ""),
-                        input=arguments,
-                        input_size=len(arguments),
-                    )
-                )
-        return tool_uses
-
-    def _extract_json_tool_uses(self, host: str, body: bytes) -> list[ToolUse]:
+    def _extract_json_tool_uses(self, body: bytes) -> list[ToolUse]:
         data = json.loads(body)
-        if "api.openai.com" in (host or "").lower():
-            return self._extract_openai_json_tool_uses(data)
-        return self._extract_anthropic_json_tool_uses(data)
+        tool_uses = extract_tool_uses_from_openai_response_data(data)
+        if tool_uses:
+            return tool_uses
+        return extract_tool_uses_from_anthropic_response_data(data)
 
     def _process_tool_uses(self, tool_uses: list[ToolUse]) -> bool:
         should_block_response = False
@@ -228,11 +191,6 @@ class PolicyEnforcer:
                 self._log_block_tool_use(tool_use.name, reason)
                 should_block_response = True
         return should_block_response
-
-    def _is_codex_websocket_flow(self, flow: http.HTTPFlow) -> bool:
-        host = (flow.request.host or "").lower()
-        path = flow.request.path or ""
-        return host == "chatgpt.com" and path.startswith("/backend-api/codex/responses")
 
     def request(self, flow: http.HTTPFlow):
         self.engine.maybe_reload()
@@ -300,10 +258,7 @@ class PolicyEnforcer:
                 ctx.log.debug(f"SSE parse error: {e}")
         elif "application/json" in content_type:
             try:
-                tool_uses = self._extract_json_tool_uses(
-                    flow.request.host,
-                    flow.response.content,
-                )
+                tool_uses = self._extract_json_tool_uses(flow.response.content)
             except Exception as e:
                 ctx.log.debug(f"JSON parse error: {e}")
         else:
@@ -316,25 +271,29 @@ class PolicyEnforcer:
             )
 
     def websocket_start(self, flow: http.HTTPFlow):
-        if self._is_codex_websocket_flow(flow):
-            self._ws_parsers[flow.id] = OpenAIResponsesStreamParser()
+        return
 
     def websocket_message(self, flow: http.HTTPFlow):
-        if not self._is_codex_websocket_flow(flow) or not flow.websocket:
+        if not flow.websocket:
             return
 
-        parser = self._ws_parsers.setdefault(flow.id, OpenAIResponsesStreamParser())
         message = flow.websocket.messages[-1]
         if message.from_client or not message.is_text:
             return
 
         try:
-            parser.feed_event(json.loads(message.text))
+            event = json.loads(message.text)
         except json.JSONDecodeError:
             return
         except Exception as e:
             ctx.log.debug(f"WebSocket parse error: {e}")
             return
+
+        if not looks_like_openai_responses_event(event):
+            return
+
+        parser = self._ws_parsers.setdefault(flow.id, OpenAIResponsesStreamParser())
+        parser.feed_event(event)
 
         if self._process_tool_uses(parser.drain_completed()):
             # Dropping the tool-call message prevents Codex from receiving the

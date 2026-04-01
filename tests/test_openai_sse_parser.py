@@ -8,7 +8,14 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from addons.openai_sse_parser import OpenAISSEParser
-from addons.sse_parser import BaseSSEParser, create_sse_parser_for_host
+from addons.sse_parser import (
+    AutoDetectSSEParser,
+    BaseSSEParser,
+    create_sse_parser_for_host,
+    detect_sse_provider,
+    extract_tool_uses_from_openai_response_data,
+    looks_like_openai_responses_event,
+)
 
 def _sse_json(data: dict) -> bytes:
     return f"data: {json.dumps(data, separators=(',', ':'))}\n\n".encode()
@@ -230,10 +237,87 @@ class TestParserSelection(unittest.TestCase):
         self.assertIsInstance(parser, OpenAISSEParser)
         self.assertIsInstance(parser, BaseSSEParser)
 
-    def test_non_openai_host_defaults_to_anthropic_parser(self):
+    def test_anthropic_host_selects_anthropic_parser(self):
         parser = create_sse_parser_for_host("api.anthropic.com")
         self.assertNotIsInstance(parser, OpenAISSEParser)
         self.assertIsInstance(parser, BaseSSEParser)
+
+    def test_unknown_host_uses_auto_detect_parser(self):
+        parser = create_sse_parser_for_host("litellm.internal")
+        self.assertIsInstance(parser, AutoDetectSSEParser)
+        self.assertIsInstance(parser, BaseSSEParser)
+
+    def test_auto_detect_parser_handles_openai_stream(self):
+        parser = create_sse_parser_for_host("litellm.internal")
+        parser.feed(SSE_TOOL_CALL_COMPLETE)
+
+        results = parser.drain_completed()
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "bash")
+
+
+class TestOpenAIShapeHelpers(unittest.TestCase):
+    def test_detect_sse_provider_openai(self):
+        provider = detect_sse_provider(
+            {"choices": [{"delta": {"tool_calls": [{"index": 0}]}}]}
+        )
+        self.assertEqual(provider, "openai")
+
+    def test_detect_sse_provider_anthropic(self):
+        provider = detect_sse_provider(
+            {"type": "content_block_start", "content_block": {"type": "tool_use"}}
+        )
+        self.assertEqual(provider, "anthropic")
+
+    def test_extract_openai_tool_uses_from_chat_completions_json(self):
+        results = extract_tool_uses_from_openai_response_data(
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "tool_calls": [
+                                {
+                                    "function": {
+                                        "name": "bash",
+                                        "arguments": '{"command": "ls"}',
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "bash")
+
+    def test_extract_openai_tool_uses_from_responses_json(self):
+        results = extract_tool_uses_from_openai_response_data(
+            {
+                "output": [
+                    {
+                        "type": "function_call",
+                        "name": "grep",
+                        "arguments": '{"pattern": "TODO"}',
+                    }
+                ]
+            }
+        )
+
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0].name, "grep")
+
+    def test_looks_like_openai_responses_event(self):
+        self.assertTrue(
+            looks_like_openai_responses_event(
+                {
+                    "type": "response.output_item.added",
+                    "item": {"type": "function_call"},
+                }
+            )
+        )
 
 
 if __name__ == "__main__":

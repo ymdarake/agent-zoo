@@ -7,10 +7,10 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from addons.openai_sse_parser import OpenAISSEParser
 from addons.sse_parser import (
     AutoDetectSSEParser,
     BaseSSEParser,
+    OpenAISSEParser,
     create_sse_parser_for_host,
     detect_sse_provider,
     extract_tool_uses_from_openai_response_data,

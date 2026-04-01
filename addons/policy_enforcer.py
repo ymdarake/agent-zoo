@@ -270,9 +270,6 @@ class PolicyEnforcer:
                 {"Content-Type": "text/plain"},
             )
 
-    def websocket_start(self, flow: http.HTTPFlow):
-        return
-
     def websocket_message(self, flow: http.HTTPFlow):
         if not flow.websocket:
             return

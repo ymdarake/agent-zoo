@@ -21,6 +21,7 @@ services:
       - claude-auth:/home/claude/.claude
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
+      - ./templates/CLAUDE.harness.md:/harness/CLAUDE.harness.md:ro
     stdin_open: true
     tty: true
     entrypoint: ["/usr/local/bin/entrypoint.sh"]

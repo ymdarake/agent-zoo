@@ -5,28 +5,33 @@
 ## ネットワーク制約
 
 `/harness/policy.toml` を読んで、許可されている通信先を把握してください。
-- `domains.allow.list` に含まれるドメインのみ通信可能
+- `domains.allow.list` のドメインのみ通信可能
 - `paths.allow` で特定パスのみ許可されているドメインがある
-- それ以外への通信は全てブロックされる
+- それ以外は全てブロックされる
 
 ## 制約を超える作業が必要な場合
 
-許可されていないドメインやパスへのアクセスが必要になった場合:
-1. `/harness/policy_candidate.toml` にリクエストを追記してください
-2. フォーマット:
+`/harness/policy_candidate.toml` に以下の形式で追記してください:
 
 ```toml
 [[candidates]]
-type = "domain"  # or "path" or "tool"
-domain = "example.com"
-reason = "npm パッケージのインストールに必要"
-priority = "high"
+type = "domain"
+value = "example.com"
+reason = "npm installに必要"
 ```
 
-3. リクエストを書いた後、その作業はスキップして他のタスクを続けてください
-4. 人間がリクエストを確認し、policy.tomlに反映します
+パス単位の場合:
+```toml
+[[candidates]]
+type = "path"
+domain = "registry.npmjs.org"
+value = "/some-package/*"
+reason = "依存パッケージのインストール"
+```
+
+リクエストを書いた後、その作業はスキップして他のタスクを続けてください。
 
 ## tool_use制約
 
-`/harness/policy.toml` の `[tool_use_rules]` セクションも確認してください。
+`/harness/policy.toml` の `[tool_use_rules]` も確認してください。
 特定のツール使用やファイルアクセスがブロックされている場合があります。

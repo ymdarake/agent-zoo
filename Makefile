@@ -21,14 +21,14 @@ build: certs
 # === コンテナモード ===
 .PHONY: run
 run: certs
-	@touch policy.runtime.toml
+	@touch policy.runtime.toml policy_candidate.toml
 	HOST_UID=$(HOST_UID) docker compose up -d
 	@echo "対話モード: 初回はコンテナ内で /login が必要です (WORKSPACE=$(or $(WORKSPACE),./workspace))"
 	docker compose exec claude claude
 
 .PHONY: run-dangerous
 run-dangerous: certs
-	@touch policy.runtime.toml
+	@touch policy.runtime.toml policy_candidate.toml
 	HOST_UID=$(HOST_UID) docker compose up -d
 	@echo "箱庭モード: 承認なし自律実行（ネットワーク隔離で保護）"
 	docker compose exec claude claude --dangerously-skip-permissions

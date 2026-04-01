@@ -2,11 +2,15 @@
 # エージェントが「許可されていないが必要」と判断したリクエストを記録する。
 # 人間が確認し、policy.tomlに反映するかどうか判断する。
 #
+# エージェントは以下の形式で追記してください:
+#
 # [[candidates]]
-# type = "domain" | "path" | "tool"
-# domain = "example.com"
-# path = "/api/*"
-# tool = "Bash"
-# args = "~/.config"
+# type = "domain"
+# value = "example.com"
 # reason = "npm installに必要"
-# priority = "high" | "medium" | "low"
+#
+# [[candidates]]
+# type = "path"
+# domain = "registry.npmjs.org"
+# value = "/some-package/*"
+# reason = "依存パッケージのインストール"

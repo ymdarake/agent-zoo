@@ -153,6 +153,12 @@ summarize:
 	  "SELECT tool_name, input, input_size, ts FROM tool_uses ORDER BY ts DESC LIMIT 100" \
 	| claude -p "このtool_use履歴からホストモード用settings.jsonの最小権限設定を提案して"
 
+.PHONY: candidates
+candidates:
+	@echo "=== Policy Candidates ==="
+	@cat policy_candidate.toml
+	@echo ""
+
 .PHONY: alerts
 alerts:
 	@sqlite3 data/harness.db -json \

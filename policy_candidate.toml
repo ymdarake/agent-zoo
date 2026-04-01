@@ -1,0 +1,12 @@
+# Policy Candidates
+# エージェントが「許可されていないが必要」と判断したリクエストを記録する。
+# 人間が確認し、policy.tomlに反映するかどうか判断する。
+#
+# [[candidates]]
+# type = "domain" | "path" | "tool"
+# domain = "example.com"
+# path = "/api/*"
+# tool = "Bash"
+# args = "~/.config"
+# reason = "npm installに必要"
+# priority = "high" | "medium" | "low"

@@ -25,9 +25,8 @@ cd agent-zoo
 # Claude Code: 対話モード（初回は /login 必要）
 WORKSPACE=/path/to/my-project make run
 
-# Codex CLI: 対話モード
-# 初回は OPENAI_API_KEY を渡すか、コンテナ内で codex login
-WORKSPACE=/path/to/my-project AGENT=codex OPENAI_API_KEY=xxx make run
+# Codex CLI: 対話モード（初回は codex login 必要）
+WORKSPACE=/path/to/my-project AGENT=codex make run
 
 # 自律実行モード
 CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="テストを追加して"

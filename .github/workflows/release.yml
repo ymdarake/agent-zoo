@@ -33,13 +33,18 @@ jobs:
 
       - name: Verify wheel contents
         run: |
-          python -m zipfile -l dist/*.whl | grep zoo/_assets || \
+          whl=$(ls -1 dist/*.whl | head -n 1)
+          python -m zipfile -l "$whl" | grep zoo/_assets || \
             (echo "Assets missing from wheel!" && exit 1)
 
       - name: Extract version
         id: version
         run: |
-          echo "version=$(ls dist/*.whl | sed -E 's#.*agent_zoo-([0-9.]+).*#\1#')" >> "$GITHUB_OUTPUT"
+          python -c '
+          import tomllib, pathlib
+          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+          print(f"version={data[\"project\"][\"version\"]}")
+          ' >> "$GITHUB_OUTPUT"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

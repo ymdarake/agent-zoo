@@ -20,6 +20,67 @@ from typing import Any
 
 from . import runner
 
+_BUNDLED_FILES = [
+    "docker-compose.yml",
+    "docker-compose.strict.yml",
+    "policy.toml",
+    "Makefile",
+]
+_BUNDLED_DIRS = ["container", "addons", "dashboard", "templates", "host", "dns"]
+
+
+def _asset_source() -> Path:
+    """Locate bundled assets, preferring installed package data, else repo root."""
+    try:
+        import importlib.resources as resources
+
+        pkg_assets = resources.files("zoo").joinpath("_assets")
+        if pkg_assets.is_dir():
+            return Path(str(pkg_assets))
+    except (ModuleNotFoundError, AttributeError, OSError):
+        pass
+    return runner.repo_root()
+
+
+def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
+    """Bootstrap a ready-to-use agent-zoo workspace at ``target_dir``.
+
+    Copies bundled docker-compose / policy / container / addons files into
+    the target and creates the empty mount directories (``data/``,
+    ``workspace/``, ``certs/``).  Existing files are preserved unless
+    ``force=True``.
+
+    Returns the resolved target path.
+    """
+    target = Path(target_dir).expanduser().resolve()
+    target.mkdir(parents=True, exist_ok=True)
+    source = _asset_source()
+
+    for name in _BUNDLED_FILES:
+        src = source / name
+        if not src.exists():
+            continue
+        dst = target / name
+        if dst.exists() and not force:
+            continue
+        shutil.copy2(src, dst)
+
+    for name in _BUNDLED_DIRS:
+        src = source / name
+        if not src.exists():
+            continue
+        dst = target / name
+        if dst.exists() and not force:
+            continue
+        shutil.copytree(src, dst)
+
+    for d in ("data", "workspace", "certs"):
+        (target / d).mkdir(exist_ok=True)
+    for f in ("policy_candidate.toml", "policy.runtime.toml"):
+        (target / f).touch(exist_ok=True)
+
+    return target
+
 
 def run(
     *,

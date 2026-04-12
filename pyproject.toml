@@ -24,6 +24,18 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src/zoo"]
 
+[tool.hatch.build.targets.wheel.force-include]
+"docker-compose.yml" = "zoo/_assets/docker-compose.yml"
+"docker-compose.strict.yml" = "zoo/_assets/docker-compose.strict.yml"
+"policy.toml" = "zoo/_assets/policy.toml"
+"Makefile" = "zoo/_assets/Makefile"
+"container" = "zoo/_assets/container"
+"addons" = "zoo/_assets/addons"
+"dashboard" = "zoo/_assets/dashboard"
+"templates" = "zoo/_assets/templates"
+"host" = "zoo/_assets/host"
+"dns" = "zoo/_assets/dns"
+
 [tool.uv]
 exclude-newer = "2026-03-01T00:00:00Z"
 

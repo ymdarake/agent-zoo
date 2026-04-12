@@ -85,6 +85,17 @@ def certs() -> None:
     api.certs()
 
 
+@app.command()
+def init(
+    target: str = typer.Argument(".", help="ワークスペースを展開するディレクトリ"),
+    force: bool = typer.Option(False, "--force", "-f", help="既存ファイルを上書き"),
+) -> None:
+    """パッケージ同梱のアセットから agent-zoo ワークスペースを展開。"""
+    resolved = api.init(target_dir=target, force=force)
+    typer.echo(f"Workspace ready: {resolved}")
+    typer.echo("  cd into it and run `zoo build` then `zoo run`.")
+
+
 # === ホストモード ===
 
 host_app = typer.Typer(help="ホストモード（Docker を使わずローカルで mitmproxy を起動）", no_args_is_help=True)

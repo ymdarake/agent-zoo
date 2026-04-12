@@ -61,6 +61,19 @@ class TestInit:
         api.init(target_dir=target, force=True)
         assert (target / "policy.toml").read_text() == "policy-source"
 
+    def test_force_overwrites_existing_directory(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """copytree raises FileExistsError on existing dirs — force must rmtree first."""
+        target = tmp_path / "ws"
+        target.mkdir()
+        (target / "addons").mkdir()
+        (target / "addons" / "stale.py").write_text("old-addon")
+
+        api.init(target_dir=target, force=True)
+        assert not (target / "addons" / "stale.py").exists()
+        assert (target / "addons" / "policy.py").read_text() == "# addon"
+
     def test_idempotent_directory_copy(self, repo_root: Path, tmp_path: Path) -> None:
         target = tmp_path / "ws"
         api.init(target_dir=target)

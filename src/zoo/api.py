@@ -70,8 +70,10 @@ def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
         if not src.exists():
             continue
         dst = target / name
-        if dst.exists() and not force:
-            continue
+        if dst.exists():
+            if not force:
+                continue
+            shutil.rmtree(dst)
         shutil.copytree(src, dst)
 
     for d in ("data", "workspace", "certs"):

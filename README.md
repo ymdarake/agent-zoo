@@ -4,6 +4,8 @@
 
 # Agent Zoo
 
+[![CI](https://github.com/ymdarake/agent-zoo/actions/workflows/ci.yml/badge.svg)](https://github.com/ymdarake/agent-zoo/actions/workflows/ci.yml)
+
 AIコーディングエージェントを安全に自律実行するためのセキュリティハーネス。
 
 mitmproxyペイロード検査 + TOMLポリシー制御。エージェント非依存で動作。

@@ -213,16 +213,17 @@ def _pipe_to_claude(sqlite_query: str, prompt: str, *, extra_context: str = "") 
         ["sqlite3", str(db_path), "-json", sqlite_query],
         stdout=subprocess.PIPE,
     )
-    assert sqlite.stdout is not None
-    if extra_context:
-        data = sqlite.stdout.read()
-        sqlite.wait()
-        input_bytes = (extra_context + "\n" + data.decode()).encode()
-        claude = subprocess.Popen(["claude", "-p", prompt], stdin=subprocess.PIPE)
-        assert claude.stdin is not None
-        claude.stdin.write(input_bytes)
-        claude.stdin.close()
+    try:
+        if extra_context:
+            data = sqlite.stdout.read()  # type: ignore[union-attr]
+            sqlite.wait()
+            input_bytes = (extra_context + "\n" + data.decode()).encode()
+            claude = subprocess.Popen(["claude", "-p", prompt], stdin=subprocess.PIPE)
+            claude.stdin.write(input_bytes)  # type: ignore[union-attr]
+            claude.stdin.close()
+            return claude.wait()
+        claude = subprocess.Popen(["claude", "-p", prompt], stdin=sqlite.stdout)
+        sqlite.stdout.close()  # type: ignore[union-attr]
         return claude.wait()
-    claude = subprocess.Popen(["claude", "-p", prompt], stdin=sqlite.stdout)
-    sqlite.stdout.close()
-    return claude.wait()
+    finally:
+        sqlite.wait()

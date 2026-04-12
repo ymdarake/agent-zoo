@@ -1,8 +1,37 @@
 [project]
 name = "agent-zoo"
 version = "0.1.0"
-description = "Security harness for AI coding agents"
+description = "Security harness for AI coding agents (Claude Code, Codex CLI, etc.) — mitmproxy payload inspection + TOML policy control."
+readme = "README.md"
 requires-python = ">=3.11"
+license = { file = "LICENSE" }
+authors = [
+    { name = "ymdarake" },
+]
+keywords = [
+    "ai",
+    "agent",
+    "claude",
+    "codex",
+    "security",
+    "sandbox",
+    "mitmproxy",
+    "harness",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Networking :: Monitoring",
+]
 dependencies = [
     "typer>=0.12",
 ]
@@ -16,6 +45,12 @@ dev = [
 
 [project.scripts]
 zoo = "zoo.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/ymdarake/agent-zoo"
+Repository = "https://github.com/ymdarake/agent-zoo"
+Issues = "https://github.com/ymdarake/agent-zoo/issues"
+Changelog = "https://github.com/ymdarake/agent-zoo/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = ["hatchling"]
@@ -35,6 +70,26 @@ packages = ["src/zoo"]
 "templates" = "zoo/_assets/templates"
 "host" = "zoo/_assets/host"
 "dns" = "zoo/_assets/dns"
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/zoo",
+    "docker-compose.yml",
+    "docker-compose.strict.yml",
+    "policy.toml",
+    "Makefile",
+    "container",
+    "addons",
+    "dashboard",
+    "templates",
+    "host",
+    "dns",
+    "tests",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs",
+]
 
 [tool.uv]
 exclude-newer = "2026-03-01T00:00:00Z"

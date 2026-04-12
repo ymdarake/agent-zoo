@@ -47,20 +47,24 @@ OPENAI_API_KEY=xxx zoo task --agent codex -p "テストを追加して"
 
 ## コマンド
 
-```bash
-zoo run [-a claude|codex] [-w PATH] [--dangerous]   # 対話モード
-zoo task -p "..." [-a claude|codex] [-w PATH]       # 自律実行（非対話）
-zoo up [--dashboard-only] [--strict]                # 起動のみ（exec しない）
-zoo down                                             # 停止
-zoo reload                                           # policy.toml 反映
-zoo build [-a claude|codex]                          # Docker イメージビルド
-zoo certs                                            # CA 証明書生成
-zoo host start | zoo host stop                       # ホストモード（Docker 不要）
-zoo logs clear | analyze | summarize | alerts | candidates   # ログ操作
-zoo test unit | zoo test smoke [-a claude|codex]     # テスト
-```
+`zoo`（推奨）と `make`（従来互換）どちらでも同じことができます。
 
-`zoo --help` / `zoo <cmd> --help` で詳細。`make` も互換で残しています。
+| 操作 | zoo | make |
+|---|---|---|
+| 対話モード | `zoo run [-a claude\|codex] [-w PATH]` | `make run` / `AGENT=codex make run` |
+| 箱庭モード（承認なし） | `zoo run --dangerous` | `make run-dangerous` |
+| 自律実行（非対話） | `zoo task -p "..." [-a ...] [-w ...]` | `make task PROMPT="…"` |
+| サービス起動のみ | `zoo up [--dashboard-only] [--strict]` | `make up-dashboard` / `make up-strict` |
+| 停止 | `zoo down` | `make down` |
+| policy 反映 | `zoo reload` | `make reload` |
+| イメージビルド | `zoo build [-a ...]` | `make build` |
+| CA 証明書生成 | `zoo certs` | `make certs` |
+| ホストモード | `zoo host start` / `zoo host stop` | `make host` / `make host-stop` |
+| ログクリア | `zoo logs clear` | `make clear-logs` |
+| ログ分析 | `zoo logs analyze` / `summarize` / `alerts` / `candidates` | `make analyze` / `summarize` / `alerts` / `candidates` |
+| テスト | `zoo test unit` / `zoo test smoke` | `make unit` / `make test` |
+
+`zoo --help` / `zoo <cmd> --help` で詳細を確認できます。
 
 ## ダッシュボード
 

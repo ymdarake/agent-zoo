@@ -174,24 +174,21 @@ def _pipe_to_claude(sqlite_query: str, prompt: str, *, extra_context: str = "") 
         ["sqlite3", str(db_path), "-json", sqlite_query],
         stdout=subprocess.PIPE,
     )
-    assert sqlite.stdout is not None
-    if extra_context:
-        # sqlite の出力の前後に文脈を足す場合
-        data = sqlite.stdout.read()
+    try:
+        if extra_context:
+            data = sqlite.stdout.read()  # type: ignore[union-attr]
+            sqlite.wait()
+            input_bytes = (extra_context + "\n" + data.decode()).encode()
+            claude = subprocess.Popen(["claude", "-p", prompt], stdin=subprocess.PIPE)
+            claude.stdin.write(input_bytes)  # type: ignore[union-attr]
+            claude.stdin.close()
+            sys.exit(claude.wait())
+        else:
+            claude = subprocess.Popen(["claude", "-p", prompt], stdin=sqlite.stdout)
+            sqlite.stdout.close()  # type: ignore[union-attr]
+            sys.exit(claude.wait())
+    finally:
         sqlite.wait()
-        input_bytes = (extra_context + "\n" + data.decode()).encode()
-        claude = subprocess.Popen(
-            ["claude", "-p", prompt],
-            stdin=subprocess.PIPE,
-        )
-        assert claude.stdin is not None
-        claude.stdin.write(input_bytes)
-        claude.stdin.close()
-        sys.exit(claude.wait())
-    else:
-        claude = subprocess.Popen(["claude", "-p", prompt], stdin=sqlite.stdout)
-        sqlite.stdout.close()
-        sys.exit(claude.wait())
 
 
 @logs_app.command("analyze")

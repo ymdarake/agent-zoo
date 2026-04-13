@@ -6,10 +6,18 @@ on:
       - "v*.*.*"
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Build only (no publish)"
-        type: boolean
-        default: true
+      target:
+        description: "Deployment target (prd PyPI は tag push 専用)"
+        type: choice
+        options:
+          - none
+          - testpypi
+        default: testpypi
+
+# 同一タグ / 同一ブランチで重複実行を防ぐ。走行中の release を途中キャンセルしない。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -52,9 +60,32 @@ jobs:
           name: dist
           path: dist/
 
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/agent-zoo
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
   publish-pypi:
     name: Publish to PyPI
-    if: github.event_name == 'push' || inputs.dry_run == false
+    # 本番 PyPI は tag push (`v*.*.*`) でのみ発火させる。手動実行 (workflow_dispatch)
+    # からの本番公開は意図的に塞いでいる。
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -73,7 +104,7 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs: publish-pypi
     runs-on: ubuntu-latest
     permissions:

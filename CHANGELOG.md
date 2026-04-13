@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - GitHub Actions CI — pytest (Python 3.11/3.12) と CLI smoke を自動実行
 - PyPI 公開用のメタデータ（classifiers, urls, license など）
 - Release workflow に TestPyPI デプロイ対応 — `workflow_dispatch` の
-  `target` 入力で `none` / `testpypi` / `pypi` / `both` を選択可能。
-  `both` の場合は TestPyPI が成功した時のみ PyPI に公開（フェイルセーフ）。
+  `target` 入力で `none` / `testpypi` を選択可能。本番 PyPI へのリリースは
+  `v*.*.*` タグ push 専用とし、手動実行からの本番公開経路は塞いでいる。
 
 ### Changed
 - `pyproject.toml` を hatchling ビルドに切り替え、assets を wheel に同梱

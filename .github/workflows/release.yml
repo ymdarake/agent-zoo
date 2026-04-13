@@ -6,10 +6,20 @@ on:
       - "v*.*.*"
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Build only (no publish)"
-        type: boolean
-        default: true
+      target:
+        description: "Deployment target"
+        type: choice
+        options:
+          - none
+          - testpypi
+          - pypi
+          - both
+        default: testpypi
+
+# 同一タグ / 同一ブランチで重複実行を防ぐ。走行中の release を途中キャンセルしない。
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -52,10 +62,37 @@ jobs:
           name: dist
           path: dist/
 
+  publish-testpypi:
+    name: Publish to TestPyPI
+    if: github.event_name == 'workflow_dispatch' && (inputs.target == 'testpypi' || inputs.target == 'both')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/agent-zoo
+    permissions:
+      id-token: write   # required for OIDC trusted publishing
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to TestPyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
   publish-pypi:
     name: Publish to PyPI
-    if: github.event_name == 'push' || inputs.dry_run == false
-    needs: build
+    # tag push で常時発火、または手動実行で pypi / both が選択された場合。
+    # `both` のときは TestPyPI 成功を待つ（'skipped' は tag push / target=pypi のケース）。
+    if: |
+      always() &&
+      needs.build.result == 'success' &&
+      (needs.publish-testpypi.result == 'success' || needs.publish-testpypi.result == 'skipped') &&
+      (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (inputs.target == 'pypi' || inputs.target == 'both')))
+    needs: [build, publish-testpypi]
     runs-on: ubuntu-latest
     environment:
       name: pypi

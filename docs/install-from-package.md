@@ -12,6 +12,27 @@ uv tool install git+https://github.com/ymdarake/agent-zoo  # 現状はこちら
 pip install agent-zoo
 ```
 
+### TestPyPI (プレリリース検証用)
+
+公式リリース前の動作確認は TestPyPI からインストールできます。
+依存関係は本番 PyPI から解決するために `--extra-index-url` を指定します。
+
+```bash
+# pip
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            agent-zoo
+
+# uv tool
+uv tool install --index-url https://test.pypi.org/simple/ \
+                --extra-index-url https://pypi.org/simple/ \
+                agent-zoo
+```
+
+> TestPyPI は同一バージョンの再アップロードを禁じているため、
+> 検証時は `pyproject.toml` の `version` を `.devN` / `rcN` などで
+> インクリメントしてから workflow を再実行してください。
+
 ## セットアップ
 
 任意のディレクトリで `zoo init` を実行すると、パッケージに同梱された

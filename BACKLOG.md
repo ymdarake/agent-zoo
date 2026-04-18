@@ -27,7 +27,10 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 | 優先度 | タスク | アクション |
 |---|---|---|
+| 🔴 **P0** | **[2026-04-18 包括レビュー](docs/dev/reviews/2026-04-18-comprehensive-review.md) Phase 1（リリース blocker）** | mitmproxy addon の fail-closed 化 (C-2) / dashboard FLASK_DEBUG=1 撤去 (C-1) / CSRF + path traversal + container hardening (H-1〜H-4) を 1〜2 PR でまとめて対応 |
+| 🟡 **P1** | **包括レビュー Phase 2（当日作業の不整合）** | docs/CLAUDE.md/CI の小修正 (H1〜H4 旧 M1) を 1 PR で |
 | P1 | **#31 user smoke** | user 環境で 11 項目を確認、NG があれば fix を別 issue 化 |
+| 🟢 **P2** | **包括レビュー Phase 3（セキュリティ Hardening）** | M-1〜M-8 を次 sprint でまとめて |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様確定後 |
 
 ---
@@ -36,7 +39,12 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 ### セキュリティ
 
-- [ ] **ダッシュボード認証**: Basic 認証 or API キー（localhost 専用のため優先度低）
+> **⚠ 2026-04-18 包括レビューで Critical/High 多数検出**。詳細: [docs/dev/reviews/2026-04-18-comprehensive-review.md](docs/dev/reviews/2026-04-18-comprehensive-review.md)。
+> 「localhost 専用のため認証不要」前提は CSRF / DNS rebinding により破綻していることが判明。下記「ダッシュボード認証」の優先度を上げる。
+
+- [ ] **ダッシュボード CSRF 対策**（包括レビュー H-1）: Flask-WTF CSRFProtect or Origin / Sec-Fetch-Site 検証
+- [ ] **mitmproxy addon の fail-closed 化**（包括レビュー C-2 / Gemini 検出）: 全 event handler に top-level try/except + `flow.kill()`
+- [ ] **dashboard 認証機構**（旧「Basic 認証 or API キー」）: 起動時生成 token 等で無認証 + CSRF を解消
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列検知 (`[payload_rules.advanced] entropy_threshold = 4.5`)
 - [ ] **OpenAI `exec_command` 引数検査の高度化** (#3 / E-2): `exec_command(command="...")` の `command` フィールドを `[tool_use_rules].block_args` でいい感じに検知。仕様確定待ち
 

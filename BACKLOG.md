@@ -45,7 +45,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 - [ ] **ダッシュボード CSRF 対策**（包括レビュー H-1）: Flask-WTF CSRFProtect or Origin / Sec-Fetch-Site 検証
 - [ ] **mitmproxy addon の fail-closed 化**（包括レビュー C-2 / Gemini 検出）: 全 event handler に top-level try/except + `flow.kill()`
 - [ ] **dashboard 認証機構**（旧「Basic 認証 or API キー」）: 起動時生成 token 等で無認証 + CSRF を解消
-- [ ] **dashboard の HTML/CSS/JS 依存を外部 CDN から自前実装に切り替え**（包括レビュー M-1）: 現状 `pico.css` / `htmx.org` を unpkg / jsdelivr から SRI 無しで読込 → CDN 乗っ取り / タンパリングリスク。`bundle/dashboard/static/` 配下に同梱し self-host 化。サプライチェーン攻撃の攻撃面を縮小し、オフライン環境でも動作可能にする
+- [ ] **dashboard を外部依存ゼロの自前 HTML/CSS/vanilla JS に書き直す**（包括レビュー M-1）: 現状 `pico.css` / `htmx.org` を unpkg / jsdelivr から SRI 無しで読込 → CDN 乗っ取り / タンパリングリスク。dashboard は数画面規模なので**自前 CSS（数百行）+ vanilla JS（`fetch` + `form.addEventListener` で HTMX 置換、~50 行）に完全移行**する方が、外部ライブラリを self-host するより long-term simple。依存 0 にすることでサプライチェーン攻撃面消滅 + オフライン動作 + 監査対象縮小。規模見積: テンプレート書換 ~500 行、CSS ~300 行、JS ~50 行
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列検知 (`[payload_rules.advanced] entropy_threshold = 4.5`)
 - [ ] **OpenAI `exec_command` 引数検査の高度化** (#3 / E-2): `exec_command(command="...")` の `command` フィールドを `[tool_use_rules].block_args` でいい感じに検知。仕様確定待ち
 

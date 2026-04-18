@@ -498,7 +498,7 @@ dashboard が `Host` ヘッダ検証していない場合、DNS rebinding で外
 
 ### Phase 3: セキュリティ Hardening（次 PR でまとめて）
 
-11. **M-1** dashboard の HTML/CSS/JS 依存を **外部 CDN から自前実装に切り替え（user 指示で確定）** — `pico.css` / `htmx.org` を `bundle/dashboard/static/` に同梱し self-host 化。SRI 追加だけでなく完全自前化することでサプライチェーン攻撃の攻撃面を縮小、オフライン環境でも動作可能に
+11. **M-1** dashboard を **外部依存ゼロの自前 HTML/CSS/vanilla JS に書き直す（user 指示で確定）** — dashboard は数画面規模なので、`pico.css` / `htmx.org` を self-host（bundle）するより **自前 CSS + vanilla JS で完全書き換え** する方が long-term simple。依存 0 にすることでサプライチェーン攻撃面消滅 + オフライン動作 + 監査対象縮小。規模見積: テンプレート書換 ~500 行、CSS ~300 行、JS ~50 行（`hx-post` → `form.addEventListener('submit', async ev => { await fetch(...); })`、`hx-target` / `hx-swap` → `el.innerHTML = ...`）
 12. **M-2** URL からの secret strip + secret_patterns を URL にも適用
 13. **M-3** Docker image を `@sha256:` で pin、Renovate / Dependabot 導入
 14. **M-4** GitHub Actions の third-party action を SHA pin

@@ -433,7 +433,7 @@ E-1, E-2 (independent)
 | ~~6~~ | ~~D-3 / E-1 / A-8 / A-7 / A-9~~ | ✅ 全完了（A-7: dashboard write 再現せず → #16 close, A-9: smoke All PASS / E-1 は部分） |
 | —  | E-2（保留 / Q8） | ⏸ 仕様確定後に再開 |
 
-**進行中・未着手**: B-3 続編（@google/gemini-cli の CLI フラグ詳細確定）、B-2 続編（gh/glab）、E-1 続編（docs/* 英訳）、#27（cross-agent 統合イメージ）、E-2（仕様待ち）。
+**進行中・未着手**: **#28** (zoo init 中心の docs 整理), **E-2 (#3)** (仕様待ち)。それ以外は全完了。
 
 ---
 
@@ -453,6 +453,8 @@ E-1, E-2 (independent)
 | #24 | B-3 | ✅ Closed（Dockerfile + compose + Makefile/runner 統合 + 実機 --help 確認） |
 | #25 | E-1 | ✅ Closed（README.en.md + docs/* 全 4 ファイル英訳完備、双方向リンク）|
 | #26 | D-3 | ✅ Closed (0256014) |
+| #27 | unified image (cross-agent) | ✅ Closed (2842a68) |
+| #28 | Organize & cleanup docs | ⏳ 新規（zoo init 中心の設計に docs を再整理） |
 
 ---
 
@@ -489,12 +491,19 @@ E-1, E-2 (independent)
 - [x] E-1 README/docs 英語版（2026-04-18 / README.en.md + docs/{architecture,security,policy-reference,codex-integration}.en.md / 双方向リンク完備）
 - [保留] E-2 OpenAI `exec_command` 引数検知の高度化（Q8 / 仕様確定待ち、ROADMAP 追記のみ先行可）
 
+### Group F: Cross-agent (#27)
+- [x] F-1 unified image（2026-04-18 / Dockerfile.unified + compose service profile=unified + entrypoint で 3 *.md inject / 実機 which claude codex gemini OK）
+
+### Group G: Docs cleanup (#28、未着手)
+- [ ] G-1 zoo init 中心の設計に合わせ、現状 make 中心の記述を簡潔化（README / docs/architecture.md 等）
+
 ---
 
 ## Next Up（残タスクの再掲）
 
 | 優先度 | タスク | アクション |
 |---|---|---|
+| P2 | **#28 docs cleanup** | `zoo init` で workspace へ展開する設計をベースに、README / docs/architecture.md 等を簡潔化（既存 docs は make 中心の記述が残る可能性） |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様を確定後、ROADMAP に正式登録 → 実装 |
 
 ---

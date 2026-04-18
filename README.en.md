@@ -86,7 +86,7 @@ Live monitor requests, tool_uses, and blocks; nurture your whitelist; review and
 |---|---|---|---|
 | ![Requests](docs/images/requests.png) | ![Tool Uses](docs/images/tool-uses.png) | _(ADR 0001)_ | ![Whitelist](docs/images/whitelist.png) |
 
-**Inbox** ([ADR 0001](docs/dev/adr/0001-policy-inbox.md)): the agent files allow-list requests it deems necessary; humans approve or reject them in the dashboard, and accepted ones flow into `policy.runtime.toml`.
+**Inbox** ([User guide (JP)](docs/user/inbox.md) / [Design ADR 0001](docs/dev/adr/0001-policy-inbox.md)): the agent files allow-list requests it deems necessary; humans approve or reject them in the dashboard, and accepted ones flow into `policy.runtime.toml`.
 
 ## Documentation
 
@@ -95,6 +95,7 @@ Live monitor requests, tool_uses, and blocks; nurture your whitelist; review and
 | Document | Contents |
 |---|---|
 | [Install from package](docs/user/install-from-package.md) | `uv tool install` → `zoo init` → `zoo run` setup + `.zoo/` layout |
+| [Inbox guide (JP)](docs/user/inbox.md) | Approve agent-submitted allow-list requests in the dashboard |
 | [Security Model](docs/user/security.md) | Defense in depth, known constraints, operating principles (Japanese / EN) |
 | [Policy Reference](docs/user/policy-reference.md) | All `policy.toml` settings (Japanese / EN) |
 

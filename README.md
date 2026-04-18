@@ -86,7 +86,7 @@ GEMINI_API_KEY=xxx zoo task --agent gemini -p "テストを追加して"
 |---|---|---|---|
 | ![Requests](docs/images/requests.png) | ![Tool Uses](docs/images/tool-uses.png) | _(ADR 0001)_ | ![Whitelist](docs/images/whitelist.png) |
 
-**Inbox**（[ADR 0001](docs/dev/adr/0001-policy-inbox.md)）: エージェントが必要と判断した通信許可リクエストを human-in-the-loop で承認・反映する。
+**Inbox** ([使い方ガイド](docs/user/inbox.md) / [設計 ADR 0001](docs/dev/adr/0001-policy-inbox.md)): エージェントが必要と判断した通信許可リクエストを human-in-the-loop で承認・反映する。
 
 ## ドキュメント
 
@@ -95,6 +95,7 @@ GEMINI_API_KEY=xxx zoo task --agent gemini -p "テストを追加して"
 | ドキュメント | 内容 |
 |---|---|
 | [パッケージからのインストール](docs/user/install-from-package.md) | `uv tool install` → `zoo init` → `zoo run` のセットアップ手順 + `.zoo/` 配下構造 |
+| [Inbox の使い方](docs/user/inbox.md) | agent からの許可リクエストを dashboard で承認するワークフロー |
 | [セキュリティモデル](docs/user/security.md) | 多層防御、既知の制約、運用原則 |
 | [ポリシーリファレンス](docs/user/policy-reference.md) | `policy.toml` の全設定項目 |
 

@@ -420,37 +420,39 @@ E-1, E-2 (independent)
 
 ---
 
-## 推奨実行順（Wave）
+## 推奨実行順（Wave）— 進捗反映済み
 
-| Wave | タスク | 並列度 | 想定期間 |
-|---|---|---|---|
-| ~~0~~ | ~~Q1〜Q9 を user に確認~~ | — | ✅ 2026-04-18 完了 |
-| 1 | C-1（即修正）+ A-1（設計 ADR） | 並列 | 半日 |
-| 2 | A-2 / A-3 / A-4 / A-5 | 並列 | 1〜2 日 |
-| 3 | A-6（dashboard） + B-1（base 統合） | 並列 | 1 日 |
-| 4 | B-2 / D-1 / D-2 | 並列 | 半日 |
-| 5 | B-3 / B-4 / B-5 | 並列 | 1 日 |
-| 6 | A-7（経過観察） / D-3 / E-1 / A-8 / A-9 / B-6 | 並列 | 1 日 |
-| —  | E-2（保留 / Q8、ROADMAP 追記のみ先行可） | — | 仕様確定後に再開 |
+| Wave | タスク | 状態 |
+|---|---|---|
+| ~~0~~ | ~~Q1〜Q9 を user に確認~~ | ✅ 完了 (2026-04-18) |
+| ~~1~~ | ~~C-1 + A-1~~ | ✅ 完了 (78dfb65, 29e727f) |
+| ~~2~~ | ~~A-2 / A-3 / A-4 / A-5~~ | ✅ 完了 (42e38c4, 4a1c271) |
+| ~~3~~ | ~~A-6 + B-1~~ | ✅ 完了 (fa9ff89, dd12130) |
+| ~~4~~ | ~~B-2 / D-1 / D-2~~ | ✅ 完了 (02a6098) |
+| ~~5~~ | ~~B-4 / B-5~~ + B-3 | ✅ B-4/B-5 (d6045ff) / 🟡 B-3 部分 (c1bfe55) |
+| ~~6~~ | ~~D-3 / E-1 / A-8~~ + A-7 / A-9 / B-6 | ✅ D-3/A-8 (0256014, cc93c80) / 🟡 E-1 部分 (e097b5b) / ⏳ A-7・A-9 |
+| —  | E-2（保留 / Q8） | ⏸ 仕様確定後に再開 |
+
+**進行中・未着手**: A-7（#16 経過観察、A-1〜A-5 の inbox 移行後に再現確認）、A-9（Docker smoke 通過確認）、B-3 続編（@google/gemini-cli の CLI フラグ詳細確定）、E-1 続編（docs/* 英訳）、E-2（仕様待ち）。
 
 ---
 
 ## issue ↔ タスク 対応表
 
-| issue | 担当タスク | close 条件 |
+| issue | 担当タスク | 状態 |
 |---|---|---|
-| #3 | E-2 [保留] | ROADMAP に「OpenAI exec_command 引数検査の高度化」追記し open のまま将来対応 |
-| #13 | A-6 | dashboard で inbox 一覧が確認できる |
-| #16 | A-7 (+ A-3) | 根本原因特定または再現せずで close |
-| #17 | D-1, D-2 | extra cert が build-time / runtime 両方で機能 |
-| #18 | B-1 | Dockerfile.base からの二段ビルドが PASS |
-| #19 | B-2 | base に python3/gh/glab/jq 追加、smoke OK |
-| #20 | C-1 | `make candidates` が動作 |
-| #21 | B-4, B-5 | `make bash` で workspace 入り、AGENTS.md 注入 |
-| #23 | A-1〜A-9（全体） | inbox 移行完了、policy_candidate.toml 廃止 |
-| #24 | B-3 | `AGENT=gemini make run` が起動 |
-| #25 | E-1 | README.en.md 公開 |
-| #26 | D-3 | `eval "$(zoo proxy on)"` で host CLI が proxy 経由 |
+| #3 | E-2 [保留] | ⏸ 保留（仕様確定待ち、ROADMAP 移送予定） |
+| #13 | A-6 | ✅ Closed (fa9ff89) |
+| #16 | A-7 (+ A-3) | ⏳ A-1〜A-5 完了後の経過観察 |
+| #17 | D-1, D-2 | ✅ Closed (02a6098) |
+| #18 | B-1 | ✅ Closed (dd12130) |
+| #19 | B-2 | 🟡 部分完了 (python3/jq/less/ripgrep のみ。gh/glab は別 issue 化推奨) |
+| #20 | C-1 | ✅ Closed (78dfb65) |
+| #21 | B-4, B-5 | ✅ Closed (d6045ff) |
+| #23 | A-1〜A-9（親） | 🟡 A-1〜A-6/A-8 完了。A-7/A-9 残 |
+| #24 | B-3 | 🟡 部分完了（雛形のみ。CLI フラグ詳細は仕様確認後の続編）|
+| #25 | E-1 | 🟡 部分完了（README.en.md のみ。docs/* は別 issue 化推奨）|
+| #26 | D-3 | ✅ Closed (0256014) |
 
 ---
 
@@ -473,7 +475,7 @@ E-1, E-2 (independent)
 - [部分完了] B-3 gemini-cli 追加（2026-04-18 / Dockerfile.gemini + compose service 雛形 + policy.toml allow / Makefile・runner 統合と CLI フラグ詳細は @google/gemini-cli 仕様確認後の続編）
 - [x] B-4 bash モード（2026-04-18 / `make bash` + `zoo bash` で対話 shell）
 - [x] B-5 AGENTS.md inject（2026-04-18 / templates/HARNESS_RULES.md 統合 + entrypoint で慣習名 inject）
-- [ ] B-6 ドキュメント更新
+- [x] B-6 ドキュメント更新（2026-04-18 / A-8 で docs/architecture.md と README.md に B 系の反映を含めて対応済み）
 
 ### Group C: 単発バグ修正（P0）
 - [x] C-1 `make candidates` SyntaxError 解消（2026-04-18 / commit 78dfb65 / 14 tests）
@@ -489,8 +491,22 @@ E-1, E-2 (independent)
 
 ---
 
+## Next Up（残タスクの再掲）
+
+| 優先度 | タスク | アクション |
+|---|---|---|
+| P1 | **A-7** #16 経過観察 | ローカル Docker で `make build` → `make run` → dashboard 操作で `policy.runtime.toml` write 失敗が再現するか確認 |
+| P1 | **A-9** smoke | `make test` を Docker 環境で実行し全 PASS 確認、failed なら fix |
+| P1 | **B-3 続編** | `@google/gemini-cli` の interactive / dangerous / task フラグを実機検証して runner.py に GEMINI AgentConfig 追加、Makefile に AGENT=gemini 受入追加 |
+| P2 | **B-2 続編** | gh / glab を Dockerfile.base に追加（D-1 完了後可。GitHub apt repo の鍵設定が必要） |
+| P2 | **E-1 続編** | docs/architecture.en.md / docs/security.en.md / docs/policy-reference.en.md / docs/codex-integration.en.md |
+| ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様を確定後、ROADMAP に正式登録 → 実装 |
+
+---
+
 ## 備考
 
 - 本 BACKLOG は `docs/plans/` 系列とは独立した「issue grooming」専用ドキュメント。
 - 各タスク着手時は `docs/plans/<task-id>.md` を別途切る運用を推奨（Plan エージェント / レビューエージェント連携用）。
 - `CLAUDE.md` の開発ワークフロー（Plan → レビュー → TDD → サブエージェントレビュー → Gemini レビュー → docs → ナレッジ → スキル → commit-push）は各タスクで踏襲。
+- 完了タスクの commit ハッシュは進捗チェックリストおよび issue 対応表参照。

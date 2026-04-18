@@ -1,0 +1,102 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 同 ref で更新が来たら旧 run を cancel
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+      - name: Run unit tests
+        run: uv run python -m pytest tests/ -v
+
+  e2e-dashboard:
+    name: E2E P1 dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra e2e
+
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: .venv/playwright-browsers
+          key: playwright-${{ runner.os }}-${{ hashFiles('uv.lock') }}
+
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: make e2e-install
+
+      - name: Install Playwright system deps
+        run: uv run playwright install-deps chromium
+
+      - name: Run E2E P1 (dashboard)
+        run: make e2e
+
+  e2e-proxy:
+    name: E2E P2 proxy (post-merge)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Install dependencies
+        run: uv sync --extra dev --extra e2e
+
+      - name: Build base image
+        run: docker build -t agent-zoo-base:latest -f bundle/container/Dockerfile.base bundle/
+
+      - name: Build claude image
+        working-directory: bundle
+        env:
+          HOST_UID: "1001"
+        run: docker compose build claude
+
+      - name: Run E2E P2 (proxy)
+        env:
+          HOST_UID: "1001"
+        run: uv run pytest tests/e2e/test_proxy_block.py -v

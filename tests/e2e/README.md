@@ -59,11 +59,15 @@ pytest tests/e2e/ --video=on
 pytest tests/e2e/test_dashboard.py::test_inbox_accept_writes_to_runtime -v
 ```
 
-## CI
+## CI（`.github/workflows/ci.yml`）
 
-- **P1** (`ci.yml` の `e2e-dashboard` job): Docker 不要、毎 PR
-- **P2** (`ci.yml` の `e2e-proxy` job): GitHub Actions ubuntu-latest は Docker 標準、PR or nightly
-- **P3** (`agents-realtime.yml`): weekly cron + `[agents-realtime]` PR label opt-in
+| job | trigger | 内容 |
+|---|---|---|
+| `unit` | 毎 PR + main push | Python 3.11/3.12/3.13 matrix で unit 全件 |
+| `e2e-dashboard` (P1) | 毎 PR + main push | Docker 不要、Playwright Chromium を cache |
+| `e2e-proxy` (P2) | main push (merge 後) のみ | agent image build が重いため post-merge gate |
+
+P3 real agent は未実装（#34 / `agents-realtime.yml` 新設予定）。
 
 ## 将来の追加候補（Gemini レビュー指摘）
 

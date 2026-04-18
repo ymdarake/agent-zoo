@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Gemini CLI 対応（`AGENT=gemini` / `bundle/container/Dockerfile.gemini`）
 - **Unified イメージ**（`Dockerfile.unified`、cross-agent 呼び出し用、#27）
 - 共通 base イメージ `agent-zoo-base:latest` と base+agent の二段ビルド
-- GitHub Actions CI — pytest (Python 3.11/3.12) と CLI smoke を自動実行
+- GitHub Actions CI (`.github/workflows/ci.yml`) — `unit` (Python 3.11/3.12/3.13 matrix) + `e2e-dashboard` (P1) を毎 PR + main push で自動実行、`e2e-proxy` (P2) は main push (merge 後) のみ
+- PR テンプレート (`.github/pull_request_template.md`) — 動作確認 checklist
 - PyPI 公開用のメタデータ（classifiers, urls, license など）
 - Release workflow に TestPyPI デプロイ対応 — `workflow_dispatch` の `target` 入力で `none` / `testpypi` を選択可能。本番 PyPI へのリリースは `v*.*.*` タグ push 専用とし、手動実行からの本番公開経路は塞いでいる
 

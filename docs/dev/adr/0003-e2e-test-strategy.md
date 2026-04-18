@@ -84,9 +84,10 @@ playwright install chromium    # ~150MB
 
 ### D8. CI 戦略
 
-- **P1**: GitHub Actions の既存 `ci.yml` に `e2e-dashboard` job を追加 (Docker 不要、軽量、毎 PR)
-- **P2**: 同 `ci.yml` に `e2e-proxy` job を追加 (Docker サービス利用、毎 PR or nightly)
-- **P3**: `agents-realtime.yml` を新設、weekly cron + PR label `[agents-realtime]` で opt-in 実行
+- **unit**: `ci.yml` の `unit` job、Python 3.11/3.12/3.13 matrix、毎 PR + main push
+- **P1**: `ci.yml` の `e2e-dashboard` job、Docker 不要、毎 PR + main push（PR 画面の status check に出る）
+- **P2**: `ci.yml` の `e2e-proxy` job、**main push (merge) 時のみ** 実行（agent image build が重いため post-merge gate として運用）
+- **P3**: 将来 `agents-realtime.yml` を新設、weekly cron + PR label `[agents-realtime]` で opt-in 実行（#34）
 
 ## Consequences
 

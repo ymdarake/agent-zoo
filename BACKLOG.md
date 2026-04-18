@@ -476,7 +476,7 @@ E-1, E-2 (independent)
 - [ ] B-6 ドキュメント更新
 
 ### Group C: 単発バグ修正（P0）
-- [ ] C-1 `make candidates` SyntaxError 解消
+- [x] C-1 `make candidates` SyntaxError 解消（2026-04-18 / commit 78dfb65 / 14 tests）
 
 ### Group D: 運用補助（P1）
 - [ ] D-1 docker build 時 extra CA

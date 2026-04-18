@@ -30,7 +30,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 | 優先度 | Sprint | 内容 | 期間 |
 |---|---|---|---|
-| 🟢 **P2** | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 2 PR で | 2 日 |
+| 🟢 **P2** | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 3 PR で (PR D 実装中、PR E サプライチェーン、PR F = M-8 policy_lock 共通化) | 2 日 |
 | 🟢 **P2** | **Sprint 007** Dashboard 外部依存ゼロ化 | pico/htmx → 自前 HTML/CSS/JS (ADR 0004) を 4 PR で → **Beta publish 可** | 1〜2 週間 |
 | ⚪ **P3** | **Sprint 008** Low Polish | Low 指摘解消 + 1.0 release candidate | 1 日 |
 | P1 | **#31 user smoke** | user 環境で 11 項目確認、Sprint 005 alpha 後に実施 | user 依存 |

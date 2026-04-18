@@ -110,6 +110,8 @@ Inspects tool_use in the API response. On match, the response is replaced with 4
 - `block_tools`: block on exact tool-name match
 - `block_args`: block on word-boundary match against arguments
 
+> ⚠ **Important limitation**: `block_args` is inherently bypassable due to its string-pattern nature. Perfectly detecting dangerous patterns in LLM-generated commands is fundamentally difficult. **The ultimate defense is network isolation** (keeping the agent in a state where destructive operations can only be performed through the external API), and `block_args` should be positioned as a supplementary early-detection signal. A concrete discussion of which variants slip through is kept in `docs/dev/security-notes.md`.
+
 ### Composite Conditions
 
 ```toml

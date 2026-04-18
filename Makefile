@@ -1,8 +1,8 @@
 HOST_UID := $(shell id -u)
 AGENT ?= claude
 
-ifneq ($(filter $(AGENT),claude codex),$(AGENT))
-$(error AGENT must be one of: claude, codex)
+ifneq ($(filter $(AGENT),claude codex gemini),$(AGENT))
+$(error AGENT must be one of: claude, codex, gemini)
 endif
 
 ifeq ($(AGENT),claude)
@@ -12,13 +12,20 @@ AGENT_RUN_CMD := docker compose exec claude claude --append-system-prompt-file /
 AGENT_RUN_DANGEROUS_CMD := docker compose exec claude claude --dangerously-skip-permissions --append-system-prompt-file /harness/HARNESS_RULES.md
 AGENT_TASK_CMD := docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions --append-system-prompt-file /harness/HARNESS_RULES.md
 AGENT_ALLOWED_URL := https://api.anthropic.com/
-else
+else ifeq ($(AGENT),codex)
 AGENT_REQUIRED_ENV := OPENAI_API_KEY
 AGENT_RUN_HINT := 対話モード: 初回は OPENAI_API_KEY またはコンテナ内で codex login が必要です
 AGENT_RUN_CMD := docker compose exec codex /usr/local/bin/run-codex.sh interactive
 AGENT_RUN_DANGEROUS_CMD := docker compose exec codex /usr/local/bin/run-codex.sh interactive-dangerous
 AGENT_TASK_CMD := docker compose exec -e USER_PROMPT="$(PROMPT)" codex /usr/local/bin/run-codex.sh task
 AGENT_ALLOWED_URL := https://api.openai.com/
+else
+AGENT_REQUIRED_ENV := GEMINI_API_KEY
+AGENT_RUN_HINT := 対話モード: 初回は GEMINI_API_KEY 設定または OAuth フローが必要です
+AGENT_RUN_CMD := docker compose exec gemini gemini
+AGENT_RUN_DANGEROUS_CMD := docker compose exec gemini gemini --yolo
+AGENT_TASK_CMD := docker compose exec gemini gemini --yolo -p "$(PROMPT)"
+AGENT_ALLOWED_URL := https://generativelanguage.googleapis.com/
 endif
 
 # === 証明書管理 ===

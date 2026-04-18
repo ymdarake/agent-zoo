@@ -80,7 +80,26 @@ CODEX = AgentConfig(
     allowed_test_url="https://api.openai.com/",
 )
 
-AGENTS = {"claude": CLAUDE, "codex": CODEX}
+GEMINI = AgentConfig(
+    name="gemini",
+    required_env="GEMINI_API_KEY",
+    run_hint="対話モード: 初回は GEMINI_API_KEY 設定または OAuth フローが必要です",
+    run_cmd=[
+        "docker", "compose", "exec", "gemini",
+        "gemini",
+    ],
+    run_dangerous_cmd=[
+        "docker", "compose", "exec", "gemini",
+        "gemini", "--yolo",
+    ],
+    task_cmd_template=[
+        "docker", "compose", "exec", "gemini",
+        "gemini", "--yolo", "-p", "{prompt}",
+    ],
+    allowed_test_url="https://generativelanguage.googleapis.com/",
+)
+
+AGENTS = {"claude": CLAUDE, "codex": CODEX, "gemini": GEMINI}
 
 
 def resolve_agent(name: str) -> AgentConfig:

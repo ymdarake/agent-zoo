@@ -274,6 +274,21 @@ class TestInvalidAgent:
             api.run(agent="gpt4")
 
 
+class TestGeminiAgent:
+    """B-3 続編: gemini AgentConfig が登録されている。"""
+
+    def test_resolve_agent_gemini(self) -> None:
+        cfg = runner.resolve_agent("gemini")
+        assert cfg.name == "gemini"
+        assert cfg.required_env == "GEMINI_API_KEY"
+        # dangerous = --yolo
+        assert "--yolo" in cfg.run_dangerous_cmd
+        # task = --yolo + -p
+        assert "--yolo" in cfg.task_cmd_template
+        assert "-p" in cfg.task_cmd_template
+        assert "{prompt}" in " ".join(cfg.task_cmd_template)
+
+
 class TestRepoRootDiscovery:
     def test_walks_up_from_subdir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         (tmp_path / "docker-compose.yml").write_text("")

@@ -68,6 +68,7 @@ services:
         HOST_UID: ${HOST_UID:-1001}
     environment:
       <<: *agent-env
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
       AGENT_NAME: gemini  # B-5: entrypoint が GEMINI.md を /workspace に inject
     volumes:
@@ -77,6 +78,33 @@ services:
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
+      - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
+
+  # #27: cross-agent 呼び出し（claude → gemini 等）対応の統合イメージ
+  # 利用例: HOST_UID=$(id -u) docker compose --profile unified up -d unified
+  #         docker compose exec unified bash
+  unified:
+    <<: *agent-common
+    profiles: ["unified"]
+    build:
+      context: ./container
+      dockerfile: Dockerfile.unified
+      args:
+        HOST_UID: ${HOST_UID:-1001}
+    environment:
+      <<: *agent-env
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      AGENT_NAME: unified  # entrypoint が CLAUDE.md / AGENTS.md / GEMINI.md を全 inject
+    volumes:
+      - ./certs:/certs:ro
+      - ${WORKSPACE:-./workspace}:/workspace
+      - unified-auth:/home/agent  # 認証 1 volume に集約
+      - ./policy.toml:/harness/policy.toml:ro
+      - ./policy_candidate.toml:/harness/policy_candidate.toml
+      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   proxy:
@@ -147,3 +175,4 @@ volumes:
   claude-auth:  # OAuth認証+セッション永続化（docker compose down -v で削除）
   codex-auth:  # Codex CLI認証+設定永続化（docker compose down -v で削除）
   gemini-auth:  # Gemini CLI 認証+設定永続化（B-3）
+  unified-auth:  # cross-agent 統合用、3 CLI の認証を 1 volume に集約（#27）

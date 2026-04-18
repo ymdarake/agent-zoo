@@ -54,7 +54,7 @@ OPENAI_API_KEY=xxx zoo task --agent codex -p "テストを追加して"
 
 | 操作 | zoo | make |
 |---|---|---|
-| 対話モード | `zoo run [-a claude\|codex] [-w PATH]` | `make run` / `AGENT=codex make run` |
+| 対話モード | `zoo run [-a claude\|codex\|gemini] [-w PATH]` | `make run` / `AGENT=codex make run` / `AGENT=gemini make run` |
 | 箱庭モード（承認なし） | `zoo run --dangerous` | `make run-dangerous` |
 | 自律実行（非対話） | `zoo task -p "..." [-a ...] [-w ...]` | `make task PROMPT="…"` |
 | サービス起動のみ | `zoo up [--dashboard-only] [--strict]` | `make up-dashboard` / `make up-strict` |
@@ -92,6 +92,18 @@ OPENAI_API_KEY=xxx zoo task --agent codex -p "テストを追加して"
 | [ポリシーリファレンス](docs/policy-reference.md) | policy.toml全設定項目 |
 | [BACKLOG](BACKLOG.md) | issue grooming + タスク詳細プラン |
 | [ROADMAP](ROADMAP.md) | 未実装機能・将来計画 |
+
+## Unified イメージ（cross-agent、#27）
+
+claude から gemini を呼ぶような cross-agent 利用には `unified` profile（claude + codex + gemini を 1 コンテナに同梱）が利用可能。
+
+```bash
+HOST_UID=$(id -u) docker compose --profile unified up -d unified
+docker compose exec unified bash
+# コンテナ内で claude / codex / gemini を任意に起動可能
+```
+
+イメージサイズは大きめ（3 CLI + 依存）。Makefile / `zoo` CLI への正式統合は今後検討。詳細は [issue #27](https://github.com/ymdarake/agent-zoo/issues/27)。
 
 ## ライセンス
 

@@ -1,0 +1,27 @@
+# Unified agent image (claude + codex + gemini)
+# #27: cross-agent 呼び出し（claude → gemini 等）対応の統合イメージ。
+# 1 つのコンテナ内に 3 CLI 全部入れる。primary agent は entrypoint の
+# AGENT_NAME (=unified) で全 *.md（CLAUDE.md/AGENTS.md/GEMINI.md）を inject する。
+#
+# NOTE: `agent-zoo-base:latest` は **ローカルビルド前提** のタグ。
+#   `make build-base` を先に実行すること。
+#   イメージサイズは 3 CLI 同梱で大きい。サイズ最適化が必要なら別途検討。
+
+FROM agent-zoo-base:latest
+
+ARG HOST_UID=1001
+
+# 3 CLI を同梱
+RUN npm install -g \
+    @anthropic-ai/claude-code \
+    @openai/codex \
+    @google/gemini-cli
+
+COPY run-codex.sh /usr/local/bin/run-codex.sh
+RUN chmod +x /usr/local/bin/run-codex.sh
+
+# 統合用ユーザー名は `agent`（cross-agent の汎用名）
+RUN useradd -m -u ${HOST_UID} agent
+RUN mkdir -p /home/agent/.claude /home/agent/.codex /home/agent/.gemini \
+    && chown -R agent:agent /home/agent
+USER agent

@@ -496,7 +496,6 @@ E-1, E-2 (independent)
 | 優先度 | タスク | アクション |
 |---|---|---|
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様を確定後、ROADMAP に正式登録 → 実装 |
-| P2 | **#27 cross-agent 統合イメージ** | claude/codex/gemini を単一 `agent-zoo:unified` イメージに統合（claude→gemini 呼び出し等のため）。B-1 の二段構成と共存方針も要設計 |
 
 ---
 

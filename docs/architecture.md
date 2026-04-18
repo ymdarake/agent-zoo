@@ -46,6 +46,7 @@ Docker不要。macOS Seatbeltサンドボックスと併用。
 | `templates/HARNESS_RULES.md` | Agent 共通の harness 規約（CLAUDE.md / AGENTS.md / GEMINI.md として inject） | — |
 | `scripts/migrate_candidates_to_inbox.py` | 旧 `policy_candidate.toml` → inbox の冪等 migration | — |
 | `container/Dockerfile.base` | 共通 base イメージ（agent-zoo-base:latest）。各 agent はこれを `FROM` する | — |
+| `container/Dockerfile.unified` | claude + codex + gemini を同梱した統合イメージ（#27、cross-agent 呼び出し用） | — |
 
 ## Policy Inbox（ADR 0001）
 

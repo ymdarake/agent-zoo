@@ -26,7 +26,7 @@ Agents can read files and environment variables inside the container. Rather tha
 | `alerts` | Post-hoc detection of suspicious access patterns | Both |
 | CoreDNS strict | Block DNS leakage (optional) | Container |
 
-For host mode, templates are available (distributed copy: `<workspace>/.zoo/templates/`, source repo: `bundle/templates/`):
+For host mode, templates are available under `<workspace>/.zoo/templates/`:
 - Claude Code: `templates/claude-code/settings.json` → `.claude/settings.json`
 - Codex CLI: `templates/codex-cli/config.toml` → `.codex/config.toml`
 

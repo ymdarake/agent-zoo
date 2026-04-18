@@ -26,7 +26,7 @@
 | `alerts` | 不審なアクセスパターンを事後検知 | 両モード |
 | CoreDNS strict | DNS漏洩を遮断（オプション） | コンテナモード |
 
-ホストモードでは以下のテンプレートを利用できる（配布物は `<workspace>/.zoo/templates/`、source repo は `bundle/templates/`）:
+ホストモードでは以下のテンプレートを利用できる（`<workspace>/.zoo/templates/` 配下）:
 - Claude Code: `templates/claude-code/settings.json` → `.claude/settings.json`
 - Codex CLI: `templates/codex-cli/config.toml` → `.codex/config.toml`
 

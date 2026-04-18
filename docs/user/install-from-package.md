@@ -1,6 +1,6 @@
-# パッケージからのインストール
+# インストールとセットアップ
 
-`agent-zoo` は clone せずにパッケージとしてインストールして使えます。
+`agent-zoo` はパッケージとしてインストールして使います（clone 不要）。
 
 ## インストール
 
@@ -12,32 +12,11 @@ uv tool install git+https://github.com/ymdarake/agent-zoo  # 現状はこちら
 pip install agent-zoo
 ```
 
-### TestPyPI (プレリリース検証用)
+## セットアップ
 
-公式リリース前の動作確認は TestPyPI からインストールできます。
-依存関係は本番 PyPI から解決するために `--extra-index-url` を指定します。
-
-```bash
-# pip
-pip install --index-url https://test.pypi.org/simple/ \
-            --extra-index-url https://pypi.org/simple/ \
-            agent-zoo
-
-# uv tool
-uv tool install --index-url https://test.pypi.org/simple/ \
-                --extra-index-url https://pypi.org/simple/ \
-                agent-zoo
-```
-
-> TestPyPI は同一バージョンの再アップロードを禁じているため、
-> 検証時は `pyproject.toml` の `version` を `.devN` / `rcN` などで
-> インクリメントしてから workflow を再実行してください。
-
-## セットアップ（ADR 0002 新 layout）
-
-任意のディレクトリで `zoo init` を実行すると、パッケージに同梱された harness 一式が
-**`<workspace>/.zoo/` 配下** に展開されます。user の作業ディレクトリは workspace 直下、
-zoo の管理ファイルは `.zoo/` 配下に分離されるため、user の workspace が散らかりません。
+任意のディレクトリで `zoo init` を実行すると、harness 一式が
+**`<workspace>/.zoo/` 配下** に展開されます。作業ディレクトリは workspace 直下、
+zoo の管理ファイルは `.zoo/` 配下に分離されるため、作業ディレクトリが散らかりません。
 
 ```bash
 mkdir ~/my-zoo && cd ~/my-zoo
@@ -48,12 +27,12 @@ zoo run                   # 対話モードで claude を起動（初回は /log
 
 `--force` で既存ファイルを上書き、引数なしで `.` に展開されます。
 
-## ディレクトリ構成（ADR 0002）
+## ディレクトリ構成
 
 ```
-~/my-zoo/                    # user の workspace root
+~/my-zoo/                    # workspace root
 ├── .gitignore               # 生成: `.zoo/` 1 行で全 runtime artifact 除外
-├── .zoo/                    # zoo 管理ファイル（user は普段触らない）
+├── .zoo/                    # zoo 管理ファイル（普段触らない）
 │   ├── docker-compose.yml
 │   ├── docker-compose.strict.yml
 │   ├── policy.toml          # 編集して独自ポリシーに（既存は尊重）
@@ -66,12 +45,12 @@ zoo run                   # 対話モードで claude を起動（初回は /log
 │   ├── templates/           # エージェント用 HARNESS_RULES.md 等
 │   ├── certs/               # mitmproxy CA（zoo certs で生成）
 │   ├── data/                # SQLite ログ保存先（harness.db）
-│   └── inbox/               # ADR 0001: agent からの policy リクエスト
-└── src/                     # user 自身のコード（任意）
+│   └── inbox/               # agent からの policy 許可リクエスト
+└── src/                     # 自分のコード（任意）
 ```
 
 `zoo` CLI は CWD から `.zoo/docker-compose.yml` を walk-up で検出するため、
-workspace root（または配下のサブディレクトリ）からどこで `zoo` コマンドを
+workspace root でもその配下のサブディレクトリでも、どこで `zoo` コマンドを
 叩いても自動的に正しい `.zoo/` を解決します。
 
 ## Python API からも
@@ -80,20 +59,3 @@ workspace root（または配下のサブディレクトリ）からどこで `z
 import zoo
 zoo.init("~/my-zoo")   # 同じことをプログラムから
 ```
-
-## Maintainer 向け（agent-zoo source repo の dogfood）
-
-agent-zoo の source repo（git clone）では、配布資材は **`bundle/` 配下**にまとまっており、
-**source repo 直下では `zoo` CLI は動きません**（ADR 0002 D7、`.zoo/` が無いため）。
-
-開発時の動作確認は別ディレクトリで `zoo init` する:
-
-```bash
-pip install -e .
-mkdir /tmp/zoo-dogfood && cd /tmp/zoo-dogfood
-zoo init
-zoo build
-zoo run
-```
-
-詳細は [ADR 0002 D7](../dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離) を参照。

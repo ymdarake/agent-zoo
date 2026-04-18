@@ -1,7 +1,5 @@
 # Inbox（agent からの許可リクエスト）
 
-> 詳細な設計判断は [ADR 0001 Policy Inbox](../dev/adr/0001-policy-inbox.md) を参照。
-
 ## これは何
 
 agent が **許可されていないドメイン / パスにアクセスしようとした** とき、
@@ -88,5 +86,3 @@ A. `policy.toml` が **あなたが手で編集する base policy**、`policy.ru
 - ファイル名規約: `{ISO8601}-{shortid}-{contenthash}.toml`
 - atomic write（`O_CREAT|O_EXCL`）で同時書込時の衝突を防止
 - ライフサイクル: `pending → accepted | rejected | expired → cleanup`
-
-設計の why は [ADR 0001](../dev/adr/0001-policy-inbox.md) で詳しく説明されています。

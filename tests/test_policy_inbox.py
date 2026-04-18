@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 import tomli_w
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "addons"))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "bundle" / "addons"))
 from policy_inbox import (  # noqa: E402
     _atomic_create,
     _content_hash,

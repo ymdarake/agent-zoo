@@ -30,10 +30,10 @@ services:
       AGENT_NAME: claude  # B-5: entrypoint が CLAUDE.md を /workspace に inject
     volumes:
       - ./certs:/certs:ro
-      - ${WORKSPACE:-./workspace}:/workspace
+      - ../:/workspace  # ADR 0002: workspace = .zoo/ の親
       - claude-auth:/home/claude/.claude
       - ./policy.toml:/harness/policy.toml:ro
-      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
+      - ./inbox:/harness/inbox  # ADR 0001 (A-3) — .zoo/inbox
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   codex:
@@ -50,10 +50,10 @@ services:
       AGENT_NAME: codex  # B-5: entrypoint が AGENTS.md を /workspace に inject
     volumes:
       - ./certs:/certs:ro
-      - ${WORKSPACE:-./workspace}:/workspace
+      - ../:/workspace  # ADR 0002: workspace = .zoo/ の親
       - codex-auth:/home/codex/.codex
       - ./policy.toml:/harness/policy.toml:ro
-      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
+      - ./inbox:/harness/inbox  # ADR 0001 (A-3) — .zoo/inbox
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   gemini:
@@ -71,10 +71,10 @@ services:
       AGENT_NAME: gemini  # B-5: entrypoint が GEMINI.md を /workspace に inject
     volumes:
       - ./certs:/certs:ro
-      - ${WORKSPACE:-./workspace}:/workspace
+      - ../:/workspace  # ADR 0002: workspace = .zoo/ の親
       - gemini-auth:/home/gemini/.gemini
       - ./policy.toml:/harness/policy.toml:ro
-      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
+      - ./inbox:/harness/inbox  # ADR 0001 (A-3) — .zoo/inbox
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   # #27: cross-agent 呼び出し（claude → gemini 等）対応の統合イメージ
@@ -97,7 +97,7 @@ services:
       AGENT_NAME: unified  # entrypoint が CLAUDE.md / AGENTS.md / GEMINI.md を全 inject
     volumes:
       - ./certs:/certs:ro
-      - ${WORKSPACE:-./workspace}:/workspace
+      - ../:/workspace  # ADR 0002: workspace = .zoo/ の親
       - unified-auth:/home/agent  # 認証 1 volume に集約
       - ./policy.toml:/harness/policy.toml:ro
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001
@@ -145,7 +145,7 @@ services:
       - ./data:/data:ro
       - ./policy.toml:/config/policy.toml:ro
       - ./policy.runtime.toml:/config/policy.runtime.toml
-      - ${WORKSPACE:-./workspace}/.zoo/inbox:/inbox  # ADR 0001 (A-3, writeable)
+      - ./inbox:/inbox  # ADR 0001 (A-3) — .zoo/inbox writeable
       - ./addons:/app/addons:ro
     networks: [extnet]
 

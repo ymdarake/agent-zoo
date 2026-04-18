@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "dashboard"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bundle", "dashboard"))
 
 from app import app
 
@@ -155,7 +155,7 @@ class TestDashboardInbox(unittest.TestCase):
         os.environ["POLICY_PATH"] = self.policy_path
 
         sys.path.insert(
-            0, os.path.join(os.path.dirname(__file__), "..", "addons")
+            0, os.path.join(os.path.dirname(__file__), "..", "bundle", "addons")
         )
         from policy_inbox import add_request  # noqa: E402
 

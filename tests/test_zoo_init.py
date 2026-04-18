@@ -11,24 +11,30 @@ from zoo import api, runner
 
 @pytest.fixture
 def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Fake source repo with bundled assets in `.zoo/` (ADR 0002 new layout).
+    """Fake workspace + bundled assets source (ADR 0002 D7).
 
-    `api._asset_source()` は `runner.zoo_dir()` を返すため、`tmp_path/.zoo/` 配下に
-    source を simulate する。
+    - `tmp_path/.zoo/` を workspace_root 検出用に作成
+    - `tmp_path/_src/` を bundled source として用意し、`_asset_source()` を monkeypatch
     """
     zoo = tmp_path / ".zoo"
     zoo.mkdir()
-    (zoo / "docker-compose.yml").write_text("compose-source")
-    (zoo / "policy.toml").write_text("policy-source")
-    (zoo / "docker-compose.strict.yml").write_text("strict-source")
-    (zoo / "addons").mkdir()
-    (zoo / "addons" / "policy.py").write_text("# addon")
-    (zoo / "container").mkdir()
-    (zoo / "container" / "Dockerfile").write_text("FROM scratch")
+    (zoo / "docker-compose.yml").write_text("workspace marker")  # workspace 検出用
+
+    src = tmp_path / "_src"
+    src.mkdir()
+    (src / "docker-compose.yml").write_text("compose-source")
+    (src / "policy.toml").write_text("policy-source")
+    (src / "docker-compose.strict.yml").write_text("strict-source")
+    (src / "addons").mkdir()
+    (src / "addons" / "policy.py").write_text("# addon")
+    (src / "container").mkdir()
+    (src / "container" / "Dockerfile").write_text("FROM scratch")
+
+    monkeypatch.setattr(api, "_asset_source", lambda: src)
     monkeypatch.chdir(tmp_path)
     runner.workspace_root.cache_clear()
     runner.zoo_dir.cache_clear()
-    yield tmp_path
+    yield src  # tests use repo_root as the bundled source location
     runner.workspace_root.cache_clear()
     runner.zoo_dir.cache_clear()
 
@@ -60,8 +66,9 @@ class TestInit:
     def test_makefile_is_not_distributed(
         self, repo_root: Path, tmp_path: Path
     ) -> None:
-        """ADR 0002 D5: Makefile は配布物に含めない。"""
-        (repo_root / ".zoo" / "Makefile").write_text("makefile-source")
+        """ADR 0002 D5: Makefile は配布物に含めない（bundle/ から除外）。"""
+        # source 側に Makefile を置いても、_BUNDLED_FILES に含まれないので copy されない
+        (repo_root / "Makefile").write_text("makefile-source")
         target = tmp_path / "ws"
         api.init(target_dir=target)
         assert not (target / ".zoo" / "Makefile").exists()

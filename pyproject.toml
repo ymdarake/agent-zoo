@@ -60,30 +60,21 @@ build-backend = "hatchling.build"
 packages = ["src/zoo"]
 
 [tool.hatch.build.targets.wheel.force-include]
-"docker-compose.yml" = "zoo/_assets/docker-compose.yml"
-"docker-compose.strict.yml" = "zoo/_assets/docker-compose.strict.yml"
-"policy.toml" = "zoo/_assets/policy.toml"
-"Makefile" = "zoo/_assets/Makefile"
-"container" = "zoo/_assets/container"
-"addons" = "zoo/_assets/addons"
-"dashboard" = "zoo/_assets/dashboard"
-"templates" = "zoo/_assets/templates"
-"host" = "zoo/_assets/host"
-"dns" = "zoo/_assets/dns"
+# ADR 0002: source の bundle/ を _assets/.zoo/ として配布 (Makefile は除外)
+"bundle/docker-compose.yml" = "zoo/_assets/.zoo/docker-compose.yml"
+"bundle/docker-compose.strict.yml" = "zoo/_assets/.zoo/docker-compose.strict.yml"
+"bundle/policy.toml" = "zoo/_assets/.zoo/policy.toml"
+"bundle/container" = "zoo/_assets/.zoo/container"
+"bundle/addons" = "zoo/_assets/.zoo/addons"
+"bundle/dashboard" = "zoo/_assets/.zoo/dashboard"
+"bundle/templates" = "zoo/_assets/.zoo/templates"
+"bundle/host" = "zoo/_assets/.zoo/host"
+"bundle/dns" = "zoo/_assets/.zoo/dns"
 
 [tool.hatch.build.targets.sdist]
 include = [
     "src/zoo",
-    "docker-compose.yml",
-    "docker-compose.strict.yml",
-    "policy.toml",
-    "Makefile",
-    "container",
-    "addons",
-    "dashboard",
-    "templates",
-    "host",
-    "dns",
+    "bundle",
     "tests",
     "README.md",
     "CHANGELOG.md",
@@ -96,3 +87,4 @@ exclude-newer = "2026-03-01T00:00:00Z"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["bundle"]  # ADR 0002: addons / dashboard を top-level import 可能に

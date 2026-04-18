@@ -37,20 +37,29 @@ _BUNDLED_DIRS = [
 
 
 def _asset_source() -> Path:
-    """Locate bundled assets, preferring installed package data, else source repo `.zoo/`.
+    """Locate bundled assets (ADR 0002 D7).
 
-    新 layout (ADR 0002): source repo の bundled は `.zoo/` 配下にあり、
-    `runner.zoo_dir()` がそれを返す。
+    - Installed: `zoo/_assets/.zoo/` (= 配布物の `.zoo/` 構造)
+    - Source repo (開発時): `bundle/` (source repo root から検索)
     """
     try:
         import importlib.resources as resources
 
-        pkg_assets = resources.files("zoo").joinpath("_assets")
+        pkg_assets = resources.files("zoo").joinpath("_assets").joinpath(".zoo")
         if pkg_assets.is_dir():
             return Path(str(pkg_assets))
     except (ModuleNotFoundError, AttributeError, OSError):
         pass
-    return runner.zoo_dir()
+    # Source repo fallback: walk up from this file to find bundle/
+    here = Path(__file__).resolve()
+    for candidate in here.parents:
+        bundle = candidate / "bundle"
+        if bundle.is_dir() and (bundle / "docker-compose.yml").exists():
+            return bundle
+    raise SystemExit(
+        "Bundled assets not found. Either install the package "
+        "or run from agent-zoo source repo (which has a `bundle/` directory)."
+    )
 
 
 def _init_assets_dir() -> Path:

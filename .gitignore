@@ -5,20 +5,25 @@
 # Runtime policy (dashboard writes here, base policy.toml is preserved)
 *.runtime.toml
 
-# Data (runtime generated)
+# Data / certs / runtime artifacts (ADR 0002 では bundle/ 配下、互換のため root data/ もカバー)
 data/*.db
 data/*.db-wal
 data/*.db-shm
-workspace/
-
-# Certificates (runtime generated, may contain private keys)
+bundle/data/*.db
+bundle/data/*.db-wal
+bundle/data/*.db-shm
+bundle/certs/*
+!bundle/certs/.gitkeep
+!bundle/certs/extra
+bundle/certs/extra/*
+!bundle/certs/extra/.gitkeep
 certs/*
 !certs/.gitkeep
-!certs/extra
-certs/extra/*
-!certs/extra/.gitkeep
 
-# Python (addons/__pycache__がproxyコンテナに影響するため確実に除外)
+# zoo init で生成された user workspace の .zoo/ が誤って source repo に置かれた場合
+.zoo/
+
+# Python
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -30,4 +35,3 @@ __pycache__/
 
 # OS
 .DS_Store
-

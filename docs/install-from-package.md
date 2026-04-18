@@ -59,7 +59,6 @@ my-zoo/
 ├── docker-compose.strict.yml
 ├── policy.toml              # 編集して独自ポリシーに
 ├── policy.runtime.toml      # zoo 実行時の書き換え用（空でOK）
-├── policy_candidate.toml    # ホワイトリスト候補
 ├── Makefile                 # zoo の代わりに make も可
 ├── addons/                  # mitmproxy アドオン
 ├── container/               # Agent 用 Dockerfile

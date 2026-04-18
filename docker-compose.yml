@@ -33,7 +33,6 @@ services:
       - ${WORKSPACE:-./workspace}:/workspace
       - claude-auth:/home/claude/.claude
       - ./policy.toml:/harness/policy.toml:ro
-      - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
@@ -54,7 +53,6 @@ services:
       - ${WORKSPACE:-./workspace}:/workspace
       - codex-auth:/home/codex/.codex
       - ./policy.toml:/harness/policy.toml:ro
-      - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
@@ -76,7 +74,6 @@ services:
       - ${WORKSPACE:-./workspace}:/workspace
       - gemini-auth:/home/gemini/.gemini
       - ./policy.toml:/harness/policy.toml:ro
-      - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
@@ -103,7 +100,6 @@ services:
       - ${WORKSPACE:-./workspace}:/workspace
       - unified-auth:/home/agent  # 認証 1 volume に集約
       - ./policy.toml:/harness/policy.toml:ro
-      - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 

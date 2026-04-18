@@ -66,7 +66,7 @@ If you don't use `uv tool install`, `uv run zoo ...` works too. The Makefile is 
 | Bash inside container | `zoo bash [-a ...]` | `make bash` |
 | Wrap host CLI through proxy | `zoo proxy <agent> [args...]` | — |
 | Clear logs | `zoo logs clear` | `make clear-logs` |
-| Log analysis | `zoo logs analyze` / `summarize` / `alerts` / `candidates` | `make analyze` / `summarize` / `alerts` / `candidates` |
+| Log analysis | `zoo logs analyze` / `summarize` / `alerts` | `make analyze` / `summarize` / `alerts` |
 | Tests | `zoo test unit` / `zoo test smoke` | `make unit` / `make test` |
 
 Run `zoo --help` / `zoo <cmd> --help` for details.

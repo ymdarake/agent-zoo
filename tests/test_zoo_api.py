@@ -28,7 +28,7 @@ class TestPublicExports:
     def test_api_functions_exposed_at_package_root(self) -> None:
         for name in (
             "run", "task", "up", "down", "reload_policy", "build", "certs",
-            "host_start", "host_stop", "logs_clear", "logs_candidates",
+            "host_start", "host_stop", "logs_clear",
             "logs_analyze", "logs_summarize", "logs_alerts",
             "test_unit", "test_smoke",
             "bash",  # B-4
@@ -130,23 +130,6 @@ class TestLogsClear:
         assert not (data_dir / "harness.db").exists()
         assert not (data_dir / "harness.db-wal").exists()
         assert not (data_dir / "harness.db-shm").exists()
-
-
-class TestLogsCandidates:
-    def test_empty_when_file_missing(self, repo_root: Path) -> None:
-        assert api.logs_candidates() == []
-
-    def test_parses_toml(self, repo_root: Path) -> None:
-        (repo_root / "policy_candidate.toml").write_text(
-            '[[candidates]]\n'
-            'type = "domain"\n'
-            'value = "example.com"\n'
-            'reason = "frequently allowed"\n'
-        )
-        result = api.logs_candidates()
-        assert result == [
-            {"type": "domain", "value": "example.com", "reason": "frequently allowed"}
-        ]
 
 
 class TestComposeUpInbox:

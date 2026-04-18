@@ -54,7 +54,7 @@ build: certs build-base
 # === コンテナモード ===
 .PHONY: run
 run: certs
-	@touch policy.runtime.toml policy_candidate.toml
+	@touch policy.runtime.toml
 	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	@echo "$(AGENT_RUN_HINT) (AGENT=$(AGENT), WORKSPACE=$(or $(WORKSPACE),./workspace))"
@@ -62,7 +62,7 @@ run: certs
 
 .PHONY: run-dangerous
 run-dangerous: certs
-	@touch policy.runtime.toml policy_candidate.toml
+	@touch policy.runtime.toml
 	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	@echo "箱庭モード: 承認なし自律実行（ネットワーク隔離で保護）"
@@ -93,7 +93,7 @@ up: certs
 
 .PHONY: bash
 bash: certs
-	@touch policy.runtime.toml policy_candidate.toml
+	@touch policy.runtime.toml
 	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	docker compose exec $(AGENT) bash
@@ -205,11 +205,6 @@ summarize:
 	  "SELECT tool_name, input, input_size, ts FROM tool_uses ORDER BY ts DESC LIMIT 100" \
 	| claude -p "このtool_use履歴からホストモード用settings.jsonの最小権限設定を提案して"
 
-.PHONY: candidates
-candidates:
-	@echo "=== Policy Candidates ==="
-	@python3 scripts/show_candidates.py
-	@echo ""
 
 .PHONY: alerts
 alerts:

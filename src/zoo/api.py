@@ -1,7 +1,7 @@
 """Public Python API for Agent Zoo.
 
 Import as:
-    from zoo import run, task, up, down, logs_candidates, ...
+    from zoo import run, task, up, down, ...
 
 All functions are plain Python — no typer/rich dependency — so you can use them
 from notebooks, other scripts, or custom tooling.
@@ -33,7 +33,6 @@ _BUNDLED_DIRS = [
     "templates",
     "host",
     "dns",
-    "scripts",
 ]
 
 
@@ -86,8 +85,7 @@ def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
 
     for d in ("data", "workspace", "certs"):
         (target / d).mkdir(exist_ok=True)
-    for f in ("policy_candidate.toml", "policy.runtime.toml"):
-        (target / f).touch(exist_ok=True)
+    (target / "policy.runtime.toml").touch(exist_ok=True)
 
     return target
 
@@ -248,17 +246,6 @@ def logs_clear() -> bool:
     for name in ("harness.db", "harness.db-wal", "harness.db-shm"):
         (runner.repo_root() / "data" / name).unlink(missing_ok=True)
     return True
-
-
-def logs_candidates() -> list[dict[str, Any]]:
-    """Parsed whitelist candidates from ``policy_candidate.toml``."""
-    import tomllib
-
-    candidate_file = runner.repo_root() / "policy_candidate.toml"
-    if not candidate_file.exists():
-        return []
-    data = tomllib.loads(candidate_file.read_text())
-    return list(data.get("candidates", []))
 
 
 def logs_analyze() -> int:

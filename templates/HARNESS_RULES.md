@@ -48,9 +48,6 @@ status = "pending"
 リクエストを書いた後、その作業はスキップして他のタスクを続けてください。
 人間が dashboard で承認すれば次回以降は許可されます。
 
-> **互換性メモ**: 旧 `/harness/policy_candidate.toml` への追記も当面受け付けますが、
-> 新規リクエストは inbox 形式を推奨します。
-
 ## tool_use 制約
 
 `/harness/policy.toml` の `[tool_use_rules]` も確認してください。

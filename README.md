@@ -64,7 +64,7 @@ OPENAI_API_KEY=xxx zoo task --agent codex -p "テストを追加して"
 | CA 証明書生成 | `zoo certs` | `make certs` |
 | ホストモード | `zoo host start` / `zoo host stop` | `make host` / `make host-stop` |
 | ログクリア | `zoo logs clear` | `make clear-logs` |
-| ログ分析 | `zoo logs analyze` / `summarize` / `alerts` / `candidates` | `make analyze` / `summarize` / `alerts` / `candidates` |
+| ログ分析 | `zoo logs analyze` / `summarize` / `alerts` | `make analyze` / `summarize` / `alerts` |
 | テスト | `zoo test unit` / `zoo test smoke` | `make unit` / `make test` |
 
 `zoo --help` / `zoo <cmd> --help` で詳細を確認できます。

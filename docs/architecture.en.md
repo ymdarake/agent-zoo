@@ -44,7 +44,6 @@ No Docker required. Combine with macOS Seatbelt sandbox.
 | `policy.runtime.toml` | Runtime policy (dashboard writes, gitignored) | — |
 | `${WORKSPACE}/.zoo/inbox/*.toml` | Allow-list requests submitted by the agent (ADR 0001, bind mount) | — |
 | `templates/HARNESS_RULES.md` | Common harness rules for all agents (injected as CLAUDE.md / AGENTS.md / GEMINI.md) | — |
-| `scripts/migrate_candidates_to_inbox.py` | Idempotent migration from legacy `policy_candidate.toml` to inbox | — |
 | `container/Dockerfile.base` | Common base image (`agent-zoo-base:latest`). Each agent `FROM`s this | — |
 
 ## Policy Inbox (ADR 0001)

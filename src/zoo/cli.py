@@ -183,15 +183,6 @@ def logs_alerts() -> None:
         raise SystemExit(str(e))
 
 
-@logs_app.command("candidates")
-def logs_candidates() -> None:
-    """policy_candidate.toml に溜まったホワイトリスト候補を一覧表示。"""
-    candidates = api.logs_candidates()
-    typer.echo(f"{len(candidates)} candidate(s)")
-    for c in candidates:
-        typer.echo(f"  [{c.get('type','?')}] {c.get('value','?')} - {c.get('reason','')}")
-
-
 # === テスト ===
 
 test_app = typer.Typer(help="テスト実行", no_args_is_help=True)

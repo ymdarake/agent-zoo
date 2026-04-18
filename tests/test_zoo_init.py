@@ -42,7 +42,6 @@ class TestInit:
         assert (target / "data").is_dir()
         assert (target / "workspace").is_dir()
         assert (target / "certs").is_dir()
-        assert (target / "policy_candidate.toml").exists()
         assert (target / "policy.runtime.toml").exists()
 
     def test_preserves_existing_without_force(self, repo_root: Path, tmp_path: Path) -> None:
@@ -88,12 +87,3 @@ class TestInit:
         api.init(target_dir=target)
         assert not (target / "dashboard").exists()  # not in fake repo
 
-    def test_copies_scripts_directory(
-        self, repo_root: Path, tmp_path: Path
-    ) -> None:
-        """scripts/ も同梱されるため `make candidates` が install 後も動く。"""
-        (repo_root / "scripts").mkdir()
-        (repo_root / "scripts" / "show_candidates.py").write_text("# script")
-        target = tmp_path / "ws"
-        api.init(target_dir=target)
-        assert (target / "scripts" / "show_candidates.py").read_text() == "# script"

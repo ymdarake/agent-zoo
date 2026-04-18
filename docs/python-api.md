@@ -33,9 +33,6 @@ zoo.down()
 if zoo.logs_clear():
     print("logs cleared")
 
-candidates = zoo.logs_candidates()
-for c in candidates:
-    print(f"{c['type']}: {c['value']}")
 ```
 
 ## API 一覧
@@ -51,7 +48,6 @@ for c in candidates:
 | `zoo.certs()` | `None` | 存在すれば何もしない |
 | `zoo.host_start()` / `zoo.host_stop()` | `int` | |
 | `zoo.logs_clear()` | `bool` | 削除した場合 True |
-| `zoo.logs_candidates()` | `list[dict]` | policy_candidate.toml をパース |
 | `zoo.logs_analyze()` / `summarize()` / `alerts()` | `int` | ホスト側 `claude` CLI 必須 |
 | `zoo.test_unit()` / `zoo.test_smoke(*, agent)` | `int` | |
 

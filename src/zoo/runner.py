@@ -179,8 +179,7 @@ def ensure_certs() -> None:
 
 
 def touch_runtime_files() -> None:
-    for name in ("policy.runtime.toml", "policy_candidate.toml"):
-        (repo_root() / name).touch(exist_ok=True)
+    (repo_root() / "policy.runtime.toml").touch(exist_ok=True)
 
 
 def _ensure_inbox_dir(workspace: str | None) -> None:

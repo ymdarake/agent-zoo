@@ -11,51 +11,25 @@ from pathlib import Path
 
 @lru_cache(maxsize=1)
 def workspace_root() -> Path:
-    """Workspace root を CWD から walk-up で検出（ADR 0002 D4 / D7）。
+    """Workspace root を CWD から walk-up で検出（ADR 0002 D4）。
 
-    1. **新 layout**: `.zoo/docker-compose.yml` 検出 → その親
-    2. **旧 layout** (agent-zoo source repo): `docker-compose.yml + policy.toml`
-       が root 直下にある dir
+    `.zoo/docker-compose.yml` を見つけたらその親を返す。
     """
     current = Path.cwd().resolve()
-    # 新 layout 優先
     for candidate in [current, *current.parents]:
         if (candidate / ".zoo" / "docker-compose.yml").exists():
             return candidate
-    # Fallback: legacy
-    for candidate in [current, *current.parents]:
-        if (candidate / "docker-compose.yml").exists() and (
-            candidate / "policy.toml"
-        ).exists():
-            return candidate
     raise SystemExit(
         "agent-zoo の workspace root が見つかりません。"
-        " `.zoo/docker-compose.yml` または `docker-compose.yml + policy.toml`"
-        " のあるディレクトリで実行してください。"
+        " `.zoo/docker-compose.yml` のあるディレクトリで実行してください。"
+        " `zoo init <dir>` で workspace を生成できます。"
     )
 
 
 @lru_cache(maxsize=1)
 def zoo_dir() -> Path:
-    """zoo の管理ファイルがあるディレクトリ（ADR 0002 D4）。
-
-    - 新 layout: `workspace_root() / ".zoo"`
-    - 旧 layout: `workspace_root()` (= source repo root)
-    """
-    root = workspace_root()
-    if (root / ".zoo" / "docker-compose.yml").exists():
-        return root / ".zoo"
-    return root
-
-
-@lru_cache(maxsize=1)
-def repo_root() -> Path:
-    """Backward-compat: `workspace_root()` のエイリアス。
-
-    ADR 0002 で `workspace_root()` / `zoo_dir()` への分離を行ったため、
-    新規コードでは workspace_root() / zoo_dir() を直接使うこと。
-    """
-    return workspace_root()
+    """zoo の管理ファイル (.zoo/) ディレクトリ（ADR 0002 D4）。"""
+    return workspace_root() / ".zoo"
 
 
 def cert_path() -> Path:
@@ -219,12 +193,8 @@ def touch_runtime_files() -> None:
 
 
 def _ensure_inbox_dir(workspace: str | None) -> None:
-    """ADR 0001 A-3 + ADR 0002 D3: workspace 内 `.zoo/inbox/` を作成。
-
-    docker-compose の bind mount 元 path が事前に存在することを保証する。
-    workspace 引数が無ければ workspace_root() を user の workspace とみなす。
-    """
-    base = Path(workspace) if workspace else (workspace_root() / "workspace")
+    """ADR 0001 A-3 + ADR 0002: workspace 内 `.zoo/inbox/` を作成。"""
+    base = Path(workspace) if workspace else workspace_root()
     (base / ".zoo" / "inbox").mkdir(parents=True, exist_ok=True)
 
 

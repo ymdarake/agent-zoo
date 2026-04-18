@@ -12,20 +12,20 @@ from zoo import api, runner
 
 @pytest.fixture
 def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """Pretend tmp_path is the agent-zoo repo root."""
-    (tmp_path / "docker-compose.yml").write_text("")
-    (tmp_path / "policy.toml").write_text("")
-    (tmp_path / "data").mkdir()
-    (tmp_path / "certs").mkdir()
-    (tmp_path / "certs" / "mitmproxy-ca-cert.pem").write_text("fake-cert")
+    """Pretend tmp_path is the workspace root (`.zoo/` 配下に bundled、ADR 0002）."""
+    zoo = tmp_path / ".zoo"
+    zoo.mkdir()
+    (zoo / "docker-compose.yml").write_text("")
+    (zoo / "policy.toml").write_text("")
+    (zoo / "data").mkdir()
+    (zoo / "certs").mkdir()
+    (zoo / "certs" / "mitmproxy-ca-cert.pem").write_text("fake-cert")
     monkeypatch.chdir(tmp_path)
     runner.workspace_root.cache_clear()
     runner.zoo_dir.cache_clear()
-    runner.repo_root.cache_clear()
     yield tmp_path
     runner.workspace_root.cache_clear()
     runner.zoo_dir.cache_clear()
-    runner.repo_root.cache_clear()
 
 
 class TestPublicExports:
@@ -59,7 +59,7 @@ class TestProxy:
             return 0
 
         # cert を用意（NODE_EXTRA_CA_CERTS の env 注入で使う）
-        (repo_root / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
+        (repo_root / ".zoo" / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
         monkeypatch.setattr(runner, "run_interactive", fake_interactive)
         import subprocess as sp_mod
         monkeypatch.setattr(sp_mod, "call", fake_subcall)
@@ -75,9 +75,9 @@ class TestProxy:
     def test_proxy_skips_setup_when_mitmproxy_running(
         self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        (repo_root / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
+        (repo_root / ".zoo" / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
         # PID ファイルを置いて「起動済み」と擬装
-        (repo_root / "data" / ".mitmproxy.pid").write_text("99999")
+        (repo_root / ".zoo" / "data" / ".mitmproxy.pid").write_text("99999")
 
         host_calls: list[list[str]] = []
         sub_calls: list[list[str]] = []
@@ -125,7 +125,7 @@ class TestLogsClear:
         assert api.logs_clear() is False
 
     def test_removes_db_and_returns_true(self, repo_root: Path) -> None:
-        data_dir = repo_root / "data"
+        data_dir = repo_root / ".zoo" / "data"
         (data_dir / "harness.db").write_text("x")
         (data_dir / "harness.db-wal").write_text("x")
         (data_dir / "harness.db-shm").write_text("x")
@@ -153,7 +153,8 @@ class TestComposeUpInbox:
     ) -> None:
         monkeypatch.setattr(runner, "run", lambda *a, **k: None)
         runner.compose_up(["claude"])
-        assert (repo_root / "workspace" / ".zoo" / "inbox").is_dir()
+        # workspace 引数なし → workspace_root()/.zoo/inbox に作る
+        assert (repo_root / ".zoo" / "inbox").is_dir()
 
 
 class TestBuildBase:
@@ -163,7 +164,7 @@ class TestBuildBase:
         self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         # 必要な Dockerfile.base が存在することを fixture に追加
-        container = repo_root / "container"
+        container = repo_root / ".zoo" / "container"
         container.mkdir(exist_ok=True)
         (container / "Dockerfile.base").write_text("FROM node:20-slim\n")
         calls: list[list[str]] = []
@@ -180,10 +181,9 @@ class TestBuildBase:
         self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """api.build は base → compose build の順で呼ぶ。"""
-        container = repo_root / "container"
+        container = repo_root / ".zoo" / "container"
         container.mkdir(exist_ok=True)
         (container / "Dockerfile.base").write_text("FROM node:20-slim\n")
-        (repo_root / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
         calls: list[list[str]] = []
         monkeypatch.setattr(runner, "run", lambda cmd, **kw: calls.append(cmd))
 
@@ -279,107 +279,53 @@ class TestGeminiAgent:
 class TestWorkspaceRoot:
     """ADR 0002 D4 / D7: workspace_root() / zoo_dir() の fallback 検出。"""
 
-    def test_detects_legacy_layout(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """Legacy: docker-compose.yml + policy.toml が root 直下（agent-zoo source repo）。"""
-        (tmp_path / "docker-compose.yml").write_text("")
-        (tmp_path / "policy.toml").write_text("")
-        monkeypatch.chdir(tmp_path)
-        runner.workspace_root.cache_clear()
-        runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-
-        assert runner.workspace_root() == tmp_path
-        assert runner.zoo_dir() == tmp_path  # legacy: zoo_dir = workspace_root
-
-        runner.workspace_root.cache_clear()
-        runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-
     def test_detects_new_layout(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """New layout: .zoo/docker-compose.yml が存在（zoo init された workspace）。"""
+        """ADR 0002: `.zoo/docker-compose.yml` 検出 → その親が workspace_root。"""
         zoo = tmp_path / ".zoo"
         zoo.mkdir()
         (zoo / "docker-compose.yml").write_text("")
         monkeypatch.chdir(tmp_path)
         runner.workspace_root.cache_clear()
         runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
 
         assert runner.workspace_root() == tmp_path
         assert runner.zoo_dir() == zoo
 
         runner.workspace_root.cache_clear()
         runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
 
-    def test_new_layout_takes_priority(
+    def test_walks_up_from_subdir(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """両 layout が同時にある場合、new layout が優先される。"""
-        (tmp_path / "docker-compose.yml").write_text("")
-        (tmp_path / "policy.toml").write_text("")
+        """サブディレクトリから walk-up で親の `.zoo/` を検出する。"""
         zoo = tmp_path / ".zoo"
         zoo.mkdir()
         (zoo / "docker-compose.yml").write_text("")
-        monkeypatch.chdir(tmp_path)
-        runner.workspace_root.cache_clear()
-        runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-
-        assert runner.zoo_dir() == zoo
-
-        runner.workspace_root.cache_clear()
-        runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-
-    def test_repo_root_is_workspace_root_alias(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        """repo_root() は workspace_root() の backward-compat エイリアス。"""
-        (tmp_path / "docker-compose.yml").write_text("")
-        (tmp_path / "policy.toml").write_text("")
-        monkeypatch.chdir(tmp_path)
-        runner.workspace_root.cache_clear()
-        runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-
-        assert runner.repo_root() == runner.workspace_root()
-
-        runner.workspace_root.cache_clear()
-        runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-
-
-class TestRepoRootDiscovery:
-    def test_walks_up_from_subdir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-        (tmp_path / "docker-compose.yml").write_text("")
-        (tmp_path / "policy.toml").write_text("")
-        sub = tmp_path / "sub" / "dir"
+        sub = tmp_path / "src" / "deep"
         sub.mkdir(parents=True)
         monkeypatch.chdir(sub)
         runner.workspace_root.cache_clear()
         runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
-        try:
-            assert runner.repo_root() == tmp_path
-        finally:
-            runner.workspace_root.cache_clear()
-            runner.zoo_dir.cache_clear()
-            runner.repo_root.cache_clear()
 
-    def test_errors_outside_repo(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        assert runner.workspace_root() == tmp_path
+        assert runner.zoo_dir() == zoo
+
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+
+    def test_errors_outside_zoo_workspace(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """`.zoo/` がない場合は SystemExit。"""
         monkeypatch.chdir(tmp_path)
         runner.workspace_root.cache_clear()
         runner.zoo_dir.cache_clear()
-        runner.repo_root.cache_clear()
         try:
             with pytest.raises(SystemExit):
-                runner.repo_root()
+                runner.workspace_root()
         finally:
             runner.workspace_root.cache_clear()
             runner.zoo_dir.cache_clear()
-            runner.repo_root.cache_clear()
+

@@ -37,7 +37,11 @@ _BUNDLED_DIRS = [
 
 
 def _asset_source() -> Path:
-    """Locate bundled assets, preferring installed package data, else repo root."""
+    """Locate bundled assets, preferring installed package data, else source repo `.zoo/`.
+
+    新 layout (ADR 0002): source repo の bundled は `.zoo/` 配下にあり、
+    `runner.zoo_dir()` がそれを返す。
+    """
     try:
         import importlib.resources as resources
 
@@ -46,7 +50,24 @@ def _asset_source() -> Path:
             return Path(str(pkg_assets))
     except (ModuleNotFoundError, AttributeError, OSError):
         pass
-    return runner.repo_root()
+    return runner.zoo_dir()
+
+
+def _init_assets_dir() -> Path:
+    """Init 専用 assets (gitignore テンプレ等) のディレクトリ。
+
+    `src/zoo/_init_assets/` に置かれた package data を返す。
+    """
+    try:
+        import importlib.resources as resources
+
+        pkg = resources.files("zoo").joinpath("_init_assets")
+        if pkg.is_dir():
+            return Path(str(pkg))
+    except (ModuleNotFoundError, AttributeError, OSError):
+        pass
+    # Fallback: source repo の src/zoo/_init_assets/
+    return Path(__file__).resolve().parent / "_init_assets"
 
 
 def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
@@ -89,17 +110,10 @@ def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
 
-    # workspace root .gitignore（既存 skip）
-    ws_gi_src = source / "templates" / "workspace-gitignore"
+    ws_gi_src = _init_assets_dir() / "workspace.gitignore"
     ws_gi_dst = target / ".gitignore"
     if ws_gi_src.exists() and not ws_gi_dst.exists():
         shutil.copy2(ws_gi_src, ws_gi_dst)
-
-    # .zoo/.gitignore（force で更新可、初回は配置）
-    zoo_gi_src = source / "templates" / "zoo-gitignore"
-    zoo_gi_dst = zoo_target / ".gitignore"
-    if zoo_gi_src.exists() and (force or not zoo_gi_dst.exists()):
-        shutil.copy2(zoo_gi_src, zoo_gi_dst)
 
     # Runtime dirs/files（.zoo/ 配下）
     for d in ("data", "certs", "inbox"):
@@ -185,14 +199,14 @@ def down() -> None:
         "-f", "docker-compose.yml", "-f", "docker-compose.strict.yml",
         "down",
     ]
-    result = subprocess.run(strict_cmd, env=env, cwd=runner.repo_root())
+    result = subprocess.run(strict_cmd, env=env, cwd=runner.workspace_root())
     if result.returncode != 0:
         runner.run(["docker", "compose", "down"], env=env, check=False)
 
 
 def reload_policy() -> None:
     """Reload policy.toml by restarting proxy + dashboard (clears addon cache)."""
-    cache = runner.repo_root() / "addons" / "__pycache__"
+    cache = runner.workspace_root() / "addons" / "__pycache__"
     if cache.exists():
         shutil.rmtree(cache)
     runner.run(
@@ -232,7 +246,7 @@ def proxy(*, agent: str, agent_args: list[str] | None = None) -> int:
     HTTPS_PROXY / HTTP_PROXY / NODE_EXTRA_CA_CERTS / SSL_CERT_FILE / GIT_SSL_CAINFO
     を注入してサブプロセスを実行する。
     """
-    pid_file = runner.repo_root() / "data" / ".mitmproxy.pid"
+    pid_file = runner.zoo_dir() / "data" / ".mitmproxy.pid"
     if not pid_file.exists():
         runner.run_interactive(["./host/setup.sh"])
 
@@ -259,11 +273,12 @@ def host_stop() -> int:
 
 def logs_clear() -> bool:
     """Delete harness.db (and WAL/SHM). Returns True if anything was removed."""
-    db = runner.repo_root() / "data" / "harness.db"
+    data = runner.zoo_dir() / "data"
+    db = data / "harness.db"
     if not db.exists():
         return False
     for name in ("harness.db", "harness.db-wal", "harness.db-shm"):
-        (runner.repo_root() / "data" / name).unlink(missing_ok=True)
+        (data / name).unlink(missing_ok=True)
     return True
 
 
@@ -274,7 +289,7 @@ def logs_analyze() -> int:
         "FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') "
         "GROUP BY host ORDER BY n DESC"
     )
-    policy = (runner.repo_root() / "policy.toml").read_text()
+    policy = (runner.workspace_root() / "policy.toml").read_text()
     context = f"=== ブロックログ ===\n\n=== 現在のpolicy.toml ===\n{policy}"
     return _pipe_to_claude(
         query,
@@ -316,7 +331,7 @@ def test_smoke(*, agent: str = "claude") -> int:
     return subprocess.call(
         ["make", "test", f"AGENT={agent}"],
         env=env,
-        cwd=runner.repo_root(),
+        cwd=runner.workspace_root(),
     )
 
 
@@ -328,7 +343,7 @@ def _as_str(value: str | Path | None) -> str | None:
 
 def _pipe_to_claude(sqlite_query: str, prompt: str, *, extra_context: str = "") -> int:
     """Run ``sqlite3 ... | claude -p PROMPT``. Returns the claude exit code."""
-    db_path = runner.repo_root() / "data" / "harness.db"
+    db_path = runner.workspace_root() / "data" / "harness.db"
     if not db_path.exists():
         raise FileNotFoundError(
             "data/harness.db が見つかりません。先にエージェントを実行してください。"

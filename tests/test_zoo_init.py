@@ -11,33 +11,26 @@ from zoo import api, runner
 
 @pytest.fixture
 def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    """A minimal fake source repo containing bundled assets at root level.
+    """Fake source repo with bundled assets in `.zoo/` (ADR 0002 new layout).
 
-    agent-zoo source repo = legacy layout（D7）。`api._asset_source()` は
-    `runner.repo_root()` を返すため、ここで作った tmp_path 直下が source 相当となる。
+    `api._asset_source()` は `runner.zoo_dir()` を返すため、`tmp_path/.zoo/` 配下に
+    source を simulate する。
     """
-    (tmp_path / "docker-compose.yml").write_text("compose-source")
-    (tmp_path / "policy.toml").write_text("policy-source")
-    (tmp_path / "docker-compose.strict.yml").write_text("strict-source")
-    (tmp_path / "addons").mkdir()
-    (tmp_path / "addons" / "policy.py").write_text("# addon")
-    (tmp_path / "container").mkdir()
-    (tmp_path / "container" / "Dockerfile").write_text("FROM scratch")
-    (tmp_path / "templates").mkdir()
-    (tmp_path / "templates" / "workspace-gitignore").write_text(
-        "# workspace ignore\n.zoo/\n"
-    )
-    (tmp_path / "templates" / "zoo-gitignore").write_text(
-        "# zoo internal ignore\ndata/\ncerts/\npolicy.runtime.toml\n"
-    )
+    zoo = tmp_path / ".zoo"
+    zoo.mkdir()
+    (zoo / "docker-compose.yml").write_text("compose-source")
+    (zoo / "policy.toml").write_text("policy-source")
+    (zoo / "docker-compose.strict.yml").write_text("strict-source")
+    (zoo / "addons").mkdir()
+    (zoo / "addons" / "policy.py").write_text("# addon")
+    (zoo / "container").mkdir()
+    (zoo / "container" / "Dockerfile").write_text("FROM scratch")
     monkeypatch.chdir(tmp_path)
     runner.workspace_root.cache_clear()
     runner.zoo_dir.cache_clear()
-    runner.repo_root.cache_clear()
     yield tmp_path
     runner.workspace_root.cache_clear()
     runner.zoo_dir.cache_clear()
-    runner.repo_root.cache_clear()
 
 
 class TestInit:
@@ -61,17 +54,14 @@ class TestInit:
         assert (target / ".zoo" / "certs").is_dir()
         assert (target / ".zoo" / "inbox").is_dir()
         assert (target / ".zoo" / "policy.runtime.toml").exists()
-        # gitignore × 2
         assert (target / ".gitignore").exists()
         assert ".zoo/" in (target / ".gitignore").read_text()
-        assert (target / ".zoo" / ".gitignore").exists()
-        assert "data/" in (target / ".zoo" / ".gitignore").read_text()
 
     def test_makefile_is_not_distributed(
         self, repo_root: Path, tmp_path: Path
     ) -> None:
         """ADR 0002 D5: Makefile は配布物に含めない。"""
-        (repo_root / "Makefile").write_text("makefile-source")
+        (repo_root / ".zoo" / "Makefile").write_text("makefile-source")
         target = tmp_path / "ws"
         api.init(target_dir=target)
         assert not (target / ".zoo" / "Makefile").exists()

@@ -17,6 +17,11 @@ from mitmproxy import ctx, http
 
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
+from _fail_closed import (
+    fail_closed_block,
+    fail_closed_lifecycle,
+    fail_closed_ws_message,
+)
 from policy import PolicyEngine
 from sse_parser import (
     OpenAIResponsesStreamParser,
@@ -192,6 +197,7 @@ class PolicyEnforcer:
                 should_block_response = True
         return should_block_response
 
+    @fail_closed_block
     def request(self, flow: http.HTTPFlow):
         self.engine.maybe_reload()
 
@@ -240,6 +246,7 @@ class PolicyEnforcer:
     # mitmproxy 10.xではstream callableが使えないため、SSEレスポンスをバッファし
     # response()でtool_useを抽出する。ストリーミング透過はROADMAPの将来対応。
 
+    @fail_closed_block
     def response(self, flow: http.HTTPFlow):
         """レスポンスからtool_useを抽出する。SSE/JSON両対応。"""
         if not flow.response or not flow.response.content:
@@ -270,6 +277,7 @@ class PolicyEnforcer:
                 {"Content-Type": "text/plain"},
             )
 
+    @fail_closed_ws_message
     def websocket_message(self, flow: http.HTTPFlow):
         if not flow.websocket:
             return
@@ -297,9 +305,11 @@ class PolicyEnforcer:
             # finalized invocation details over the WebSocket stream.
             message.drop()
 
+    @fail_closed_lifecycle
     def websocket_end(self, flow: http.HTTPFlow):
         self._ws_parsers.pop(flow.id, None)
 
+    @fail_closed_lifecycle
     def done(self):
         """mitmproxyアドオンのライフサイクル終了時にDB接続をクローズする。"""
         self._ws_parsers.clear()

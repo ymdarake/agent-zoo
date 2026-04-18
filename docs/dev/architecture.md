@@ -119,6 +119,21 @@ policy.toml (base) + policy.runtime.toml (runtime)
   dismissed: base + runtime を結合
 ```
 
+## Fail-closed 設計（ADR 0005）
+
+mitmproxy addon で未捕捉例外が発生した場合、デフォルトでは**トラフィックをそのまま通過させる（fail-open）**。これはセキュリティハーネスとして致命的なため、`bundle/addons/_fail_closed.py` のデコレータで全 event hook を **fail-closed**（例外時は必ず block）にラップしている:
+
+| hook | デコレータ | 例外時の挙動 |
+|---|---|---|
+| `request` | `@fail_closed_block` | `flow.response` を 500 で置換 → upstream に出さず block |
+| `response` | `@fail_closed_block` | 同上 → client にエラー返却 |
+| `websocket_message` | `@fail_closed_ws_message` | 直前の message を `drop()` → agent に届かず |
+| `websocket_end` / `done` | `@fail_closed_lifecycle` | ログのみ（cleanup 以外副作用なし）|
+
+ログは `ctx.log.error` に `addon <Class>.<method> raised <ExcType>: <msg> — fail-closed triggered` の形式で出力。`ctx` が使えない状況（import 直後等）は stderr フォールバック。
+
+詳細は [ADR 0005 Fail-closed Addons](adr/0005-fail-closed-addons.md) を参照。
+
 ## SSEパーサー設計
 
 ```

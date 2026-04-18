@@ -430,10 +430,10 @@ E-1, E-2 (independent)
 | ~~3~~ | ~~A-6 + B-1~~ | ✅ 完了 (fa9ff89, dd12130) |
 | ~~4~~ | ~~B-2 / D-1 / D-2~~ | ✅ 完了 (02a6098) |
 | ~~5~~ | ~~B-4 / B-5~~ + B-3 | ✅ B-4/B-5 (d6045ff) / 🟡 B-3 部分 (c1bfe55) |
-| ~~6~~ | ~~D-3 / E-1 / A-8~~ + A-7 / A-9 / B-6 | ✅ D-3/A-8 (0256014, cc93c80) / 🟡 E-1 部分 (e097b5b) / ⏳ A-7・A-9 |
+| ~~6~~ | ~~D-3 / E-1 / A-8 / A-7 / A-9~~ | ✅ 全完了（A-7: dashboard write 再現せず → #16 close, A-9: smoke All PASS / E-1 は部分） |
 | —  | E-2（保留 / Q8） | ⏸ 仕様確定後に再開 |
 
-**進行中・未着手**: A-7（#16 経過観察、A-1〜A-5 の inbox 移行後に再現確認）、A-9（Docker smoke 通過確認）、B-3 続編（@google/gemini-cli の CLI フラグ詳細確定）、E-1 続編（docs/* 英訳）、E-2（仕様待ち）。
+**進行中・未着手**: B-3 続編（@google/gemini-cli の CLI フラグ詳細確定）、B-2 続編（gh/glab）、E-1 続編（docs/* 英訳）、#27（cross-agent 統合イメージ）、E-2（仕様待ち）。
 
 ---
 
@@ -443,13 +443,13 @@ E-1, E-2 (independent)
 |---|---|---|
 | #3 | E-2 [保留] | ⏸ 保留（仕様確定待ち、ROADMAP 移送予定） |
 | #13 | A-6 | ✅ Closed (fa9ff89) |
-| #16 | A-7 (+ A-3) | ⏳ A-1〜A-5 完了後の経過観察 |
+| #16 | A-7 (+ A-3) | ✅ Closed（dashboard write 再現せず） |
 | #17 | D-1, D-2 | ✅ Closed (02a6098) |
 | #18 | B-1 | ✅ Closed (dd12130) |
 | #19 | B-2 | 🟡 部分完了 (python3/jq/less/ripgrep のみ。gh/glab は別 issue 化推奨) |
 | #20 | C-1 | ✅ Closed (78dfb65) |
 | #21 | B-4, B-5 | ✅ Closed (d6045ff) |
-| #23 | A-1〜A-9（親） | 🟡 A-1〜A-6/A-8 完了。A-7/A-9 残 |
+| #23 | A-1〜A-9（親） | ✅ Closed（A-1〜A-9 全完了） |
 | #24 | B-3 | 🟡 部分完了（雛形のみ。CLI フラグ詳細は仕様確認後の続編）|
 | #25 | E-1 | 🟡 部分完了（README.en.md のみ。docs/* は別 issue 化推奨）|
 | #26 | D-3 | ✅ Closed (0256014) |
@@ -465,9 +465,9 @@ E-1, E-2 (independent)
 - [x] A-4 harness テンプレ更新（2026-04-18 / CLAUDE/CODEX.harness.md を inbox 形式に書換）
 - [x] A-5 マイグレーションスクリプト（2026-04-18 / scripts/migrate_candidates_to_inbox.py / 10 tests / 冪等）
 - [x] A-6 dashboard Inbox タブ（2026-04-18 / 9 tests / accept 自動 runtime 反映 + bulk 操作）
-- [ ] A-7 #16 根本検証
+- [x] A-7 #16 根本検証（2026-04-18 / Docker 環境で dashboard write 試行 → 成功、再現せず → #16 close）
 - [x] A-8 ドキュメント更新（2026-04-18 / docs/architecture.md に Policy Inbox 章 + README に Inbox/ADR リンク）
-- [ ] A-9 テスト整備 + smoke
+- [x] A-9 テスト整備 + smoke（2026-04-18 / `make test` All PASS: Allowed/Blocked 403/Isolated/SQLite Logs ALLOWED 468 BLOCKED 43）
 
 ### Group B: ベースイメージ統合（P1）
 - [x] B-1 Dockerfile.base 切出し（2026-04-18 / 二段ビルド agent-zoo-base + agent別）
@@ -481,8 +481,8 @@ E-1, E-2 (independent)
 - [x] C-1 `make candidates` SyntaxError 解消（2026-04-18 / commit 78dfb65 / 14 tests）
 
 ### Group D: 運用補助（P1）
-- [x] D-1 docker build 時 extra CA（2026-04-18 / certs/extra/*.crt 規約 + Dockerfile.base で update-ca-certificates）
-- [x] D-2 mitmproxy runtime extra CA（2026-04-18 / certs/extra/bundle.pem があれば --set ssl_verify_upstream_trusted_ca）
+- [x] D-1 docker build 時 extra CA（2026-04-18 / certs/extra/*.crt 規約 + Dockerfile.base で update-ca-certificates / 自己署名 CA で動作確認: /etc/ssl/certs/test-ca.pem symlink 作成確認済）
+- [x] D-2 mitmproxy runtime extra CA（2026-04-18 / certs/extra/bundle.pem があれば --set ssl_verify_upstream_trusted_ca / 動作確認: docker top で mitmdump args に反映済）
 - [x] D-3 one-liner proxy command（2026-04-18 / `zoo proxy <agent>` ラッパー、TestProxy 2 ケース）
 
 ### Group E: ドキュメント（P2）
@@ -495,8 +495,6 @@ E-1, E-2 (independent)
 
 | 優先度 | タスク | アクション |
 |---|---|---|
-| P1 | **A-7** #16 経過観察 | ローカル Docker で `make build` → `make run` → dashboard 操作で `policy.runtime.toml` write 失敗が再現するか確認 |
-| P1 | **A-9** smoke | `make test` を Docker 環境で実行し全 PASS 確認、failed なら fix |
 | P1 | **B-3 続編** | `@google/gemini-cli` の interactive / dangerous / task フラグを実機検証して runner.py に GEMINI AgentConfig 追加、Makefile に AGENT=gemini 受入追加 |
 | P2 | **B-2 続編** | gh / glab を Dockerfile.base に追加（D-1 完了後可。GitHub apt repo の鍵設定が必要） |
 | P2 | **E-1 続編** | docs/architecture.en.md / docs/security.en.md / docs/policy-reference.en.md / docs/codex-integration.en.md |

@@ -25,13 +25,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # B-2 (cont.): GitHub CLI (gh) を公式 apt repo から install (#19)
-# glab は別途追加予定（GitLab API 経由の release fetch が必要）
 RUN mkdir -p -m 755 /etc/apt/keyrings \
     && wget -nv -O- https://cli.github.com/packages/githubcli-archive-keyring.gpg | gpg --dearmor -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list \
     && apt-get update && apt-get install -y --no-install-recommends gh \
     && rm -rf /var/lib/apt/lists/*
+
+# B-2 (cont.): GitLab CLI (glab) を release ページから .deb 直 install
+# 更新時は GLAB_VERSION を書き換え、make build-base
+ARG GLAB_VERSION=1.92.1
+RUN ARCH=$(dpkg --print-architecture) \
+    && curl -sSL "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/glab_${GLAB_VERSION}_linux_${ARCH}.deb" -o /tmp/glab.deb \
+    && dpkg -i /tmp/glab.deb \
+    && rm /tmp/glab.deb
 
 COPY container/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh

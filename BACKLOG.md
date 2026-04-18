@@ -446,7 +446,7 @@ E-1, E-2 (independent)
 | #16 | A-7 (+ A-3) | ✅ Closed（dashboard write 再現せず） |
 | #17 | D-1, D-2 | ✅ Closed (02a6098) |
 | #18 | B-1 | ✅ Closed (dd12130) |
-| #19 | B-2 | 🟡 ほぼ完了（python3/jq/less/ripgrep + gh 追加。glab のみ別タスク残） |
+| #19 | B-2 | ✅ Closed（python3/jq/less/ripgrep + gh 2.90.0 + glab 1.92.1） |
 | #20 | C-1 | ✅ Closed (78dfb65) |
 | #21 | B-4, B-5 | ✅ Closed (d6045ff) |
 | #23 | A-1〜A-9（親） | ✅ Closed（A-1〜A-9 全完了） |
@@ -471,7 +471,7 @@ E-1, E-2 (independent)
 
 ### Group B: ベースイメージ統合（P1）
 - [x] B-1 Dockerfile.base 切出し（2026-04-18 / 二段ビルド agent-zoo-base + agent別）
-- [x] B-2 base にツール群追加（2026-04-18 / python3/jq/less/ripgrep + gh CLI 2.90.0 追加。glab は別タスク化）
+- [x] B-2 base にツール群追加（2026-04-18 / python3/jq/less/ripgrep + gh 2.90.0 + glab 1.92.1 / 全て実機動作確認済）
 - [x] B-3 gemini-cli 追加（2026-04-18 / Dockerfile.gemini + compose service + policy.toml allow + Makefile/runner.py に AGENT=gemini 統合 / `--yolo` for dangerous, `-p` for task / 実機 `gemini --help` で確認済）
 - [x] B-4 bash モード（2026-04-18 / `make bash` + `zoo bash` で対話 shell）
 - [x] B-5 AGENTS.md inject（2026-04-18 / templates/HARNESS_RULES.md 統合 + entrypoint で慣習名 inject）
@@ -495,7 +495,6 @@ E-1, E-2 (independent)
 
 | 優先度 | タスク | アクション |
 |---|---|---|
-| P2 | **B-2 続編 (glab)** | glab を Dockerfile.base に追加（GitLab API から release fetch、deb 直 install） |
 | P2 | **E-1 続編** | docs/architecture.en.md / docs/security.en.md / docs/policy-reference.en.md / docs/codex-integration.en.md |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様を確定後、ROADMAP に正式登録 → 実装 |
 | P2 | **#27 cross-agent 統合イメージ** | claude/codex/gemini を単一 `agent-zoo:unified` イメージに統合（claude→gemini 呼び出し等のため）。B-1 の二段構成と共存方針も要設計 |

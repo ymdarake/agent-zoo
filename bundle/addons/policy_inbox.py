@@ -177,6 +177,15 @@ def list_requests(
         return []
     out: list[dict[str, Any]] = []
     for p in sorted(inbox.glob("*.toml")):
+        # 包括レビュー H-4: agent は mount 経由で任意名 .toml を直接書ける。
+        # stem に特殊文字 (quote / 制御文字等) を含むと dashboard HTML 属性
+        # injection / XSS の温床になりうるため ここで strict filter する。
+        if not _RECORD_ID_RE.match(p.stem):
+            warnings.warn(
+                f"policy_inbox: skip malformed record_id {p.name!r}",
+                stacklevel=2,
+            )
+            continue
         try:
             with p.open("rb") as f:
                 data = tomllib.load(f)

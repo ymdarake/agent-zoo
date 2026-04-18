@@ -24,12 +24,16 @@
     <tr>
         <td><input type="checkbox" class="inbox-cb" value="{{ r._id }}"></td>
         <td style="white-space:nowrap">
+            {# H-4: hx-vals は |tojson|forceescape で JSON-safe な literal にし
+               record_id 内の特殊文字による属性 injection / XSS を防ぐ。 #}
             <form style="display:inline;margin:0" hx-post="/api/inbox/accept" hx-target="#tab-inbox" hx-swap="innerHTML"
-                hx-confirm="このリクエストを許可しますか？" hx-ext="json-enc" hx-vals='{"record_id": "{{ r._id }}"}'>
+                hx-confirm="このリクエストを許可しますか？" hx-ext="json-enc"
+                hx-vals="{{ {'record_id': r._id}|tojson|forceescape }}">
                 <button type="submit" class="btn-sm">許可</button>
             </form>
             <form style="display:inline;margin:0" hx-post="/api/inbox/reject" hx-target="#tab-inbox" hx-swap="innerHTML"
-                hx-ext="json-enc" hx-vals='{"record_id": "{{ r._id }}"}'>
+                hx-ext="json-enc"
+                hx-vals="{{ {'record_id': r._id}|tojson|forceescape }}">
                 <button type="submit" class="btn-sm secondary">却下</button>
             </form>
         </td>

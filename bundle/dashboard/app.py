@@ -6,7 +6,7 @@ import sqlite3
 import sys
 from datetime import UTC, datetime, timedelta
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
 from flask_wtf.csrf import CSRFProtect
 
 # Import policy editing utilities
@@ -55,6 +55,52 @@ app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
 # TESTING=True では Flask-WTF が自動で CSRF を無効化するため既存 test に影響なし。
 csrf = CSRFProtect(app)
+
+
+# 包括レビュー G3-B2 (DNS rebinding 対策): Host ヘッダを whitelist に限定。
+# 悪意サイトが自ドメインの A レコードを 127.0.0.1 に設定することで同一 origin
+# policy を回避して dashboard を直接叩く攻撃 (DNS rebinding) を防ぐ。
+_ALLOWED_HOSTS = frozenset(
+    filter(None, os.environ.get("DASHBOARD_ALLOWED_HOSTS", "127.0.0.1,localhost").split(","))
+)
+
+
+@app.before_request
+def _enforce_strict_host() -> None:
+    """Host ヘッダが whitelist 外なら 400。
+
+    テスト (TESTING=True) では Flask test client が `localhost` を付与するため透過。
+    """
+    if app.config.get("TESTING"):
+        return None
+    host = request.host.split(":", 1)[0]
+    if host not in _ALLOWED_HOSTS:
+        abort(400, description=f"Invalid Host header: {host}")
+
+
+@app.after_request
+def _add_security_headers(response):
+    """包括レビュー H-4 / G-2: 最低限の Content-Security-Policy を全レスポンスに付与。
+
+    Sprint 007 で pico.css / htmx.org を自前実装化したら CDN host を削除し `'self'` のみに。
+    """
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'none'; "
+        "object-src 'none'",
+    )
+    # 関連 hardening (本 PR のスコープ内で追加コストがほぼ 0)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
+
 
 POLICY_PATH = os.environ.get("POLICY_PATH", "/app/policy.toml")
 

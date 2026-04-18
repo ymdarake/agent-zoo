@@ -1,5 +1,7 @@
 # Codex CLI 統合ガイド
 
+> 日本語 | [English](codex-integration.en.md)
+
 Agent ZooにCodex CLI対応を追加するための作業ガイド。
 
 ## 概要

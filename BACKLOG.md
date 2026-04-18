@@ -451,7 +451,7 @@ E-1, E-2 (independent)
 | #21 | B-4, B-5 | ✅ Closed (d6045ff) |
 | #23 | A-1〜A-9（親） | ✅ Closed（A-1〜A-9 全完了） |
 | #24 | B-3 | ✅ Closed（Dockerfile + compose + Makefile/runner 統合 + 実機 --help 確認） |
-| #25 | E-1 | 🟡 部分完了（README.en.md のみ。docs/* は別 issue 化推奨）|
+| #25 | E-1 | ✅ Closed（README.en.md + docs/* 全 4 ファイル英訳完備、双方向リンク）|
 | #26 | D-3 | ✅ Closed (0256014) |
 
 ---
@@ -486,7 +486,7 @@ E-1, E-2 (independent)
 - [x] D-3 one-liner proxy command（2026-04-18 / `zoo proxy <agent>` ラッパー、TestProxy 2 ケース）
 
 ### Group E: ドキュメント（P2）
-- [部分完了] E-1 README/docs 英語版（2026-04-18 / README.en.md 作成 + README.md に言語切替リンク。docs/* の英訳は別 issue 化推奨）
+- [x] E-1 README/docs 英語版（2026-04-18 / README.en.md + docs/{architecture,security,policy-reference,codex-integration}.en.md / 双方向リンク完備）
 - [保留] E-2 OpenAI `exec_command` 引数検知の高度化（Q8 / 仕様確定待ち、ROADMAP 追記のみ先行可）
 
 ---
@@ -495,7 +495,6 @@ E-1, E-2 (independent)
 
 | 優先度 | タスク | アクション |
 |---|---|---|
-| P2 | **E-1 続編** | docs/architecture.en.md / docs/security.en.md / docs/policy-reference.en.md / docs/codex-integration.en.md |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様を確定後、ROADMAP に正式登録 → 実装 |
 | P2 | **#27 cross-agent 統合イメージ** | claude/codex/gemini を単一 `agent-zoo:unified` イメージに統合（claude→gemini 呼び出し等のため）。B-1 の二段構成と共存方針も要設計 |
 

@@ -146,10 +146,20 @@ def touch_runtime_files() -> None:
         (repo_root() / name).touch(exist_ok=True)
 
 
+def _ensure_inbox_dir(workspace: str | None) -> None:
+    """ADR 0001 A-3: workspace 内の `.zoo/inbox/` を作成する。
+
+    docker-compose の bind mount 元 path が事前に存在することを保証する。
+    """
+    base = Path(workspace) if workspace else (repo_root() / "workspace")
+    (base / ".zoo" / "inbox").mkdir(parents=True, exist_ok=True)
+
+
 def compose_up(services: list[str], *, workspace: str | None = None,
                strict: bool = False) -> None:
     ensure_certs()
     touch_runtime_files()
+    _ensure_inbox_dir(workspace)
     env = compose_env(workspace)
     if strict:
         cmd = [

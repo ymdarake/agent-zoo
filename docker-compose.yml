@@ -33,6 +33,7 @@ services:
       - claude-auth:/home/claude/.claude
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
+      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
       - ./templates/CLAUDE.harness.md:/harness/CLAUDE.harness.md:ro
 
   codex:
@@ -52,6 +53,7 @@ services:
       - codex-auth:/home/codex/.codex
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
+      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
       - ./templates/CODEX.harness.md:/harness/CODEX.harness.md:ro
 
   proxy:
@@ -90,6 +92,7 @@ services:
       - ./data:/data:ro
       - ./policy.toml:/config/policy.toml:ro
       - ./policy.runtime.toml:/config/policy.runtime.toml
+      - ${WORKSPACE:-./workspace}/.zoo/inbox:/inbox  # ADR 0001 (A-3, writeable)
       - ./addons:/app/addons:ro
     networks: [extnet]
 

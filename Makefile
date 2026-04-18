@@ -43,6 +43,7 @@ build: certs
 .PHONY: run
 run: certs
 	@touch policy.runtime.toml policy_candidate.toml
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	@echo "$(AGENT_RUN_HINT) (AGENT=$(AGENT), WORKSPACE=$(or $(WORKSPACE),./workspace))"
 	$(AGENT_RUN_CMD)
@@ -50,6 +51,7 @@ run: certs
 .PHONY: run-dangerous
 run-dangerous: certs
 	@touch policy.runtime.toml policy_candidate.toml
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	@echo "箱庭モード: 承認なし自律実行（ネットワーク隔離で保護）"
 	$(AGENT_RUN_DANGEROUS_CMD)
@@ -68,15 +70,18 @@ endif
 ifndef PROMPT
 	$(error PROMPT is required. Usage: $(AGENT_REQUIRED_ENV)=xxx AGENT=$(AGENT) make task PROMPT="...")
 endif
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 	$(AGENT_TASK_CMD)
 
 .PHONY: up
 up: certs
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
 
 .PHONY: up-dashboard
 up-dashboard: certs
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d proxy dashboard
 
 .PHONY: reload
@@ -87,6 +92,7 @@ reload:
 
 .PHONY: up-strict
 up-strict: certs
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose --profile strict -f docker-compose.yml -f docker-compose.strict.yml up -d $(AGENT) dashboard
 
 .PHONY: down
@@ -120,7 +126,7 @@ unit:
 .PHONY: test
 test: certs
 	@echo "=== Smoke Test ==="
-	@mkdir -p data workspace
+	@mkdir -p data workspace workspace/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d proxy
 	@echo "Waiting for proxy to be healthy..."
 	@docker compose exec proxy python3 -c "import socket; s = socket.create_connection(('localhost', 8080), timeout=10); s.close()" 2>/dev/null \

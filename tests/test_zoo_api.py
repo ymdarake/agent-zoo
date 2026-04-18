@@ -69,6 +69,26 @@ class TestLogsCandidates:
         ]
 
 
+class TestComposeUpInbox:
+    """ADR 0001 A-3: compose_up は workspace 内 .zoo/inbox/ を確実に作成する。"""
+
+    def test_creates_inbox_dir_under_explicit_workspace(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        ws = repo_root / "ws"
+        ws.mkdir()
+        monkeypatch.setattr(runner, "run", lambda *a, **k: None)
+        runner.compose_up(["claude"], workspace=str(ws))
+        assert (ws / ".zoo" / "inbox").is_dir()
+
+    def test_creates_inbox_dir_for_default_workspace(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr(runner, "run", lambda *a, **k: None)
+        runner.compose_up(["claude"])
+        assert (repo_root / "workspace" / ".zoo" / "inbox").is_dir()
+
+
 class TestRun:
     def test_invokes_compose_up_and_interactive(
         self, repo_root: Path, monkeypatch: pytest.MonkeyPatch

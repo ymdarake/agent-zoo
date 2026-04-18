@@ -1,6 +1,6 @@
 # Agent Zoo ハーネス内での動作指示
 
-このプロジェクトはAgent Zooセキュリティハーネス内で実行されています。
+このプロジェクトはAgent Zoo セキュリティハーネス内で実行されています。
 
 ## ネットワーク制約
 
@@ -11,25 +11,38 @@
 
 ## 制約を超える作業が必要な場合
 
-`/harness/policy_candidate.toml` に以下の形式で追記してください:
+`/harness/inbox/` ディレクトリに新規 TOML ファイルを作成して **Policy Inbox Request** を出してください（ADR 0001）。
 
+ファイル名: 同名衝突を避けるため `<日時>-<任意ユニーク文字列>.toml` の形式を推奨（例: `2026-04-18T10-23-45-myreq.toml`）。
+
+例（domain 許可をリクエスト）:
 ```toml
-[[candidates]]
+schema_version = 1
+created_at = "2026-04-18T10:23:45Z"
+agent = "claude"
 type = "domain"
-value = "example.com"
-reason = "npm installに必要"
+value = "registry.npmjs.org"
+reason = "npm install で依存解決のため"
+status = "pending"
 ```
 
-パス単位の場合:
+例（path 許可をリクエスト）:
 ```toml
-[[candidates]]
+schema_version = 1
+created_at = "2026-04-18T10:23:45Z"
+agent = "claude"
 type = "path"
 domain = "registry.npmjs.org"
 value = "/some-package/*"
 reason = "依存パッケージのインストール"
+status = "pending"
 ```
 
 リクエストを書いた後、その作業はスキップして他のタスクを続けてください。
+人間が dashboard で承認すれば次回以降は許可されます。
+
+> **互換性メモ**: 旧来の `/harness/policy_candidate.toml` への追記も当面受け付けますが、
+> 新規リクエストは inbox 形式を推奨します。
 
 ## tool_use制約
 

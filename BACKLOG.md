@@ -459,9 +459,9 @@ E-1, E-2 (independent)
 ### Group A: Policy Inbox（P0）
 - [x] A-1 設計確定 & ADR 起票（2026-04-18 / [docs/adr/0001-policy-inbox.md](docs/adr/0001-policy-inbox.md)）
 - [x] A-2 `addons/policy_inbox.py` 実装 + テスト（2026-04-18 / 27 tests / atomic O_EXCL + content hash dedup）
-- [ ] A-3 docker-compose.yml volume 変更
-- [ ] A-4 harness テンプレ更新
-- [ ] A-5 マイグレーションスクリプト
+- [x] A-3 docker-compose.yml volume 変更（2026-04-18 / inbox bind mount 追加 + runner/Makefile 自動 mkdir）
+- [x] A-4 harness テンプレ更新（2026-04-18 / CLAUDE/CODEX.harness.md を inbox 形式に書換）
+- [x] A-5 マイグレーションスクリプト（2026-04-18 / scripts/migrate_candidates_to_inbox.py / 10 tests / 冪等）
 - [ ] A-6 dashboard Inbox タブ
 - [ ] A-7 #16 根本検証
 - [ ] A-8 ドキュメント更新

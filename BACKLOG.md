@@ -14,12 +14,12 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | # | タイトル | 状態 |
 |---|---|---|
 | [#3](https://github.com/ymdarake/agent-zoo/issues/3) | OpenAI形式の tool_call ポリシー例 | ⏸ 仕様確定待ち（ROADMAP 参照） |
-| [#28](https://github.com/ymdarake/agent-zoo/issues/28) | Organize & cleanup docs | ✅ Sprint 002 で完了（user/dev 分離 + 新 layout 反映 + codex-integration 削除）|
-| [#29](https://github.com/ymdarake/agent-zoo/issues/29) | .zoo/ 集約構造への workspace layout refactor | 🟡 実装完了（[Sprint 002 アーカイブ](docs/dev/sprints/002-dot-zoo-workspace-layout.md)）。残: #31 smoke, #28 docs |
+| [#29](https://github.com/ymdarake/agent-zoo/issues/29) | .zoo/ 集約構造への workspace layout refactor | 🟡 実装完了（[Sprint 002 アーカイブ](docs/dev/sprints/002-dot-zoo-workspace-layout.md)）+ bundle/Makefile 撤去で zoo CLI 一本化済。残: #31 user smoke のみ |
 | [#31](https://github.com/ymdarake/agent-zoo/issues/31) | user 実機動作確認 (11 項目 smoke) | ⏳ user 環境で実施 |
 | [#32](https://github.com/ymdarake/agent-zoo/issues/32) | README dashboard スクショ追加・更新（Inbox タブ含む） | ⏳ user 環境で実施 |
-| [#33](https://github.com/ymdarake/agent-zoo/issues/33) | E2E P1 dashboard / P2 proxy 実装 | 🟡 P1+P2 実装完了（ADR 0003 / Gemini レビュー反映済）、user 実機で `pytest tests/e2e/` 確認待ち |
+| [#33](https://github.com/ymdarake/agent-zoo/issues/33) | E2E P1 dashboard / P2 proxy 実装 | 🟡 [Sprint 003 アーカイブ](docs/dev/sprints/003-e2e-foundation-and-zoo-cli-unification.md) で完了。残: user 実機 `make e2e-all` 確認 |
 | [#34](https://github.com/ymdarake/agent-zoo/issues/34) | E2E P3 real agent (token + opt-in CI) | ⏳ #33 完了後の次フェーズ |
+| [#35](https://github.com/ymdarake/agent-zoo/issues/35) | inbox ファイル作成を決定的に実行できるよう agent 用スクリプト提供 | 🆕 新規。agent が HARNESS_RULES で TOML 手書きする現状を `zoo inbox submit` 等のヘルパに置き換える想定。要 grooming |
 
 ---
 
@@ -68,6 +68,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 |---|---|---|---|
 | 001 | 2026-04-18 | Policy Inbox & Base Image Foundation | [001-policy-inbox-and-base-image.md](docs/dev/sprints/001-policy-inbox-and-base-image.md) |
 | 002 | 2026-04-18 | `.zoo/` Workspace Layout Refactor (#29) | [002-dot-zoo-workspace-layout.md](docs/dev/sprints/002-dot-zoo-workspace-layout.md) |
+| 003 | 2026-04-18 | E2E Test Foundation + zoo CLI 一本化 (#33) | [003-e2e-foundation-and-zoo-cli-unification.md](docs/dev/sprints/003-e2e-foundation-and-zoo-cli-unification.md) |
 
 過去の Resolved Decisions（Q1〜Q9 / 案 A 採用 / 命名分離 等）は各 sprint アーカイブを参照。
 

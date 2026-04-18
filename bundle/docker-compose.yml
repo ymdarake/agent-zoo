@@ -105,15 +105,30 @@ services:
 
   proxy:
     image: mitmproxy/mitmproxy:10
+    # 包括レビュー H-3: 最小権限 hardening。
+    # - user: 1000 で image の mitmproxy user に合わせる (default entrypoint が
+    #   usermod/chown を要求するため、それを avoid するため entrypoint も override)
+    # - cap_drop: [ALL]: mitmdump は high port (8080) のみ bind、cap 不要
+    # - no-new-privileges: setuid 昇格を封じる
+    # - entrypoint: [""] で docker-entrypoint.sh (usermod 要 CHOWN) を bypass、
+    #   そのまま UID 1000 で mitmdump を exec
+    user: "1000:1000"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: [""]
     environment:
       - PYTHONDONTWRITEBYTECODE=1
     # D-2: certs/extra/bundle.pem があれば上流 TLS 検証に使う（無ければ標準 CA）
-    command: >
-      sh -c "if [ -f /certs/extra/bundle.pem ]; then
-        mitmdump --set confdir=/certs --set ssl_verify_upstream_trusted_ca=/certs/extra/bundle.pem -s /scripts/policy_enforcer.py;
-      else
-        mitmdump --set confdir=/certs -s /scripts/policy_enforcer.py;
-      fi"
+    command:
+      - sh
+      - -c
+      - |
+        if [ -f /certs/extra/bundle.pem ]; then
+          exec mitmdump --set confdir=/certs --set ssl_verify_upstream_trusted_ca=/certs/extra/bundle.pem -s /scripts/policy_enforcer.py
+        else
+          exec mitmdump --set confdir=/certs -s /scripts/policy_enforcer.py
+        fi
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import socket; s = socket.create_connection(('localhost', 8080), timeout=2); s.close()\""]
       interval: 5s
@@ -133,6 +148,13 @@ services:
 
   dashboard:
     build: ./dashboard
+    # 包括レビュー H-3: gunicorn を host の UID で run。bind mount (./dashboard,
+    # ./inbox, ./policy.runtime.toml) は host user 権限で read/write されるため
+    # UID 合わせが必要。gunicorn は 8080 (high port) で bind するため cap 不要。
+    user: "${HOST_UID:-1001}:${HOST_UID:-1001}"
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
     ports: ["127.0.0.1:8080:8080"]
     environment:
       - DB_PATH=/data/harness.db
@@ -153,6 +175,13 @@ services:
   dns:
     image: coredns/coredns:1.11.4
     profiles: ["strict"]
+    # 包括レビュー H-3: CoreDNS image は default で UID 65532 (nonroot)。
+    # port 53 < 1024 に bind するため NET_BIND_SERVICE のみ cap_add で復活。
+    cap_drop: [ALL]
+    cap_add:
+      - NET_BIND_SERVICE
+    security_opt:
+      - no-new-privileges:true
     command: -conf /etc/coredns/Corefile
     networks:
       intnet:

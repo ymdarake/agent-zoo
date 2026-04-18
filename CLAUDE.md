@@ -95,7 +95,7 @@ make test           # unit + e2e
 - **認証**: 対話 = コンテナ内 `/login` / 自律 = `CLAUDE_CODE_OAUTH_TOKEN` env（`claude setup-token` で取得）
 - **SSE 解析**: ドメイン制御/レート制限は `request()` フックで完結。tool_use 検出は SSE チャンクのステートマシン解析
 - **ポリシー書き換え**: atomic write（tmpfile + rename、Docker bind mount ではフォールバック）
-- **ダッシュボード**: `127.0.0.1` バインド、`bundle/data` は読み取り専用マウント
+- **ダッシュボード**: `127.0.0.1` バインド、`<workspace>/.zoo/data/harness.db` を読み取り専用マウント
 - **Inbox** (ADR 0001): agent → `<workspace>/.zoo/inbox/*.toml` → dashboard accept → `policy.runtime.toml` 自動反映
 - **Workspace Layout** (ADR 0002): **source = `bundle/`** / **配布 = `.zoo/`** で命名分離
 

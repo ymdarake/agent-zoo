@@ -51,13 +51,13 @@ def proxy_up():
     env = {**os.environ, "HOST_UID": str(os.getuid())}
     # CI / 初回起動で bind-mount 対象ファイルが無いと Docker が dir 化してしまうため事前 touch
     (BUNDLE / "policy.runtime.toml").touch(exist_ok=True)
-    subprocess.run(
-        ["docker", "compose", "up", "-d", "proxy"],
-        cwd=BUNDLE,
-        env=env,
-        check=True,
-    )
     try:
+        subprocess.run(
+            ["docker", "compose", "up", "-d", "proxy"],
+            cwd=BUNDLE,
+            env=env,
+            check=True,
+        )
         # healthcheck を待つ（最大 30 秒）。タイムアウト時は pytest.fail で原因特定しやすく
         for _ in range(30):
             result = subprocess.run(
@@ -82,6 +82,7 @@ def proxy_up():
             )
         yield
     finally:
+        # up -d 自体が失敗した場合も、中途半端な container 残留を防ぐため down は必ず試行
         subprocess.run(
             ["docker", "compose", "down"],
             cwd=BUNDLE,

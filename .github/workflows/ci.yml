@@ -1,5 +1,8 @@
 name: CI
 
+# paths-ignore は root 直下の .md を whitelist 列挙（'**.md' 禁止：
+# bundle/templates/HARNESS_RULES.md など code-adjacent な .md は CI 対象に含める）。
+# 新規 root .md (SECURITY.md / CONTRIBUTING.md 等) を追加した際は必要に応じて追記。
 on:
   pull_request:
     paths-ignore:
@@ -49,6 +52,8 @@ jobs:
         with:
           path: ~/.cache/uv
           key: uv-${{ runner.os }}-py-${{ matrix.python-version }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-py-${{ matrix.python-version }}-
 
       - name: Install dependencies
         run: uv sync --extra dev --python ${{ matrix.python-version }}
@@ -64,11 +69,17 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
 
       - name: Set up Python 3.13
         run: uv python install 3.13
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-e2e-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-e2e-
 
       - name: Install dependencies
         run: uv sync --extra dev --extra e2e
@@ -99,11 +110,17 @@ jobs:
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
 
       - name: Set up Python 3.13
         run: uv python install 3.13
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ runner.os }}-e2e-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            uv-${{ runner.os }}-e2e-
 
       - name: Install dependencies
         run: uv sync --extra dev --extra e2e

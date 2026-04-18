@@ -17,6 +17,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | [#28](https://github.com/ymdarake/agent-zoo/issues/28) | Organize & cleanup docs | ✅ Sprint 002 で完了（user/dev 分離 + 新 layout 反映 + codex-integration 削除）|
 | [#29](https://github.com/ymdarake/agent-zoo/issues/29) | .zoo/ 集約構造への workspace layout refactor | 🟡 実装完了（[Sprint 002 アーカイブ](docs/dev/sprints/002-dot-zoo-workspace-layout.md)）。残: #31 smoke, #28 docs |
 | [#31](https://github.com/ymdarake/agent-zoo/issues/31) | user 実機動作確認 (11 項目 smoke) | ⏳ user 環境で実施 |
+| [#32](https://github.com/ymdarake/agent-zoo/issues/32) | README dashboard スクショ追加・更新（Inbox タブ含む） | ⏳ user 環境で実施 |
 
 ---
 

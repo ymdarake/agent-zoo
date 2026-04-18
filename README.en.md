@@ -6,6 +6,8 @@
 
 > [日本語](README.md) | English
 
+[![CI](https://github.com/ymdarake/agent-zoo/actions/workflows/ci.yml/badge.svg)](https://github.com/ymdarake/agent-zoo/actions/workflows/ci.yml)
+
 A security harness for running AI coding agents autonomously and safely.
 
 mitmproxy payload inspection + TOML policy control. Agent-agnostic.

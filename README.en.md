@@ -12,7 +12,7 @@ mitmproxy payload inspection + TOML policy control. Agent-agnostic.
 
 ## Modes
 
-- **Standalone** — Proxy-only (`make host`). Works with any agent on the host.
+- **Standalone** — Proxy-only (`zoo host start`). Works with any agent on the host.
 - **Docker Compose isolation** — Agents are isolated on an `internal: true` network. *"They can read, but they can't send."*
   - Supported: Claude Code, Codex CLI, Gemini CLI (single + unified images, see #27)
 

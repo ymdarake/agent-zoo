@@ -501,6 +501,7 @@ E-1, E-2 (independent)
 | P2 | **B-2 続編** | gh / glab を Dockerfile.base に追加（D-1 完了後可。GitHub apt repo の鍵設定が必要） |
 | P2 | **E-1 続編** | docs/architecture.en.md / docs/security.en.md / docs/policy-reference.en.md / docs/codex-integration.en.md |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様を確定後、ROADMAP に正式登録 → 実装 |
+| P2 | **#27 cross-agent 統合イメージ** | claude/codex/gemini を単一 `agent-zoo:unified` イメージに統合（claude→gemini 呼び出し等のため）。B-1 の二段構成と共存方針も要設計 |
 
 ---
 

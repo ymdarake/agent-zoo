@@ -19,8 +19,12 @@ def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (tmp_path / "certs").mkdir()
     (tmp_path / "certs" / "mitmproxy-ca-cert.pem").write_text("fake-cert")
     monkeypatch.chdir(tmp_path)
+    runner.workspace_root.cache_clear()
+    runner.zoo_dir.cache_clear()
     runner.repo_root.cache_clear()
     yield tmp_path
+    runner.workspace_root.cache_clear()
+    runner.zoo_dir.cache_clear()
     runner.repo_root.cache_clear()
 
 
@@ -272,6 +276,84 @@ class TestGeminiAgent:
         assert "{prompt}" in " ".join(cfg.task_cmd_template)
 
 
+class TestWorkspaceRoot:
+    """ADR 0002 D4 / D7: workspace_root() / zoo_dir() の fallback 検出。"""
+
+    def test_detects_legacy_layout(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Legacy: docker-compose.yml + policy.toml が root 直下（agent-zoo source repo）。"""
+        (tmp_path / "docker-compose.yml").write_text("")
+        (tmp_path / "policy.toml").write_text("")
+        monkeypatch.chdir(tmp_path)
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+        assert runner.workspace_root() == tmp_path
+        assert runner.zoo_dir() == tmp_path  # legacy: zoo_dir = workspace_root
+
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+    def test_detects_new_layout(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """New layout: .zoo/docker-compose.yml が存在（zoo init された workspace）。"""
+        zoo = tmp_path / ".zoo"
+        zoo.mkdir()
+        (zoo / "docker-compose.yml").write_text("")
+        monkeypatch.chdir(tmp_path)
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+        assert runner.workspace_root() == tmp_path
+        assert runner.zoo_dir() == zoo
+
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+    def test_new_layout_takes_priority(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """両 layout が同時にある場合、new layout が優先される。"""
+        (tmp_path / "docker-compose.yml").write_text("")
+        (tmp_path / "policy.toml").write_text("")
+        zoo = tmp_path / ".zoo"
+        zoo.mkdir()
+        (zoo / "docker-compose.yml").write_text("")
+        monkeypatch.chdir(tmp_path)
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+        assert runner.zoo_dir() == zoo
+
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+    def test_repo_root_is_workspace_root_alias(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """repo_root() は workspace_root() の backward-compat エイリアス。"""
+        (tmp_path / "docker-compose.yml").write_text("")
+        (tmp_path / "policy.toml").write_text("")
+        monkeypatch.chdir(tmp_path)
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+        assert runner.repo_root() == runner.workspace_root()
+
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
+        runner.repo_root.cache_clear()
+
+
 class TestRepoRootDiscovery:
     def test_walks_up_from_subdir(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         (tmp_path / "docker-compose.yml").write_text("")
@@ -279,17 +361,25 @@ class TestRepoRootDiscovery:
         sub = tmp_path / "sub" / "dir"
         sub.mkdir(parents=True)
         monkeypatch.chdir(sub)
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
         runner.repo_root.cache_clear()
         try:
             assert runner.repo_root() == tmp_path
         finally:
+            runner.workspace_root.cache_clear()
+            runner.zoo_dir.cache_clear()
             runner.repo_root.cache_clear()
 
     def test_errors_outside_repo(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.chdir(tmp_path)
+        runner.workspace_root.cache_clear()
+        runner.zoo_dir.cache_clear()
         runner.repo_root.cache_clear()
         try:
             with pytest.raises(SystemExit):
                 runner.repo_root()
         finally:
+            runner.workspace_root.cache_clear()
+            runner.zoo_dir.cache_clear()
             runner.repo_root.cache_clear()

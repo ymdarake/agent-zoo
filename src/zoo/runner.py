@@ -10,20 +10,56 @@ from pathlib import Path
 
 
 @lru_cache(maxsize=1)
-def repo_root() -> Path:
-    """Walk up from CWD to find the agent-zoo repo root (docker-compose.yml + policy.toml)."""
+def workspace_root() -> Path:
+    """Workspace root を CWD から walk-up で検出（ADR 0002 D4 / D7）。
+
+    1. **新 layout**: `.zoo/docker-compose.yml` 検出 → その親
+    2. **旧 layout** (agent-zoo source repo): `docker-compose.yml + policy.toml`
+       が root 直下にある dir
+    """
     current = Path.cwd().resolve()
+    # 新 layout 優先
     for candidate in [current, *current.parents]:
-        if (candidate / "docker-compose.yml").exists() and (candidate / "policy.toml").exists():
+        if (candidate / ".zoo" / "docker-compose.yml").exists():
+            return candidate
+    # Fallback: legacy
+    for candidate in [current, *current.parents]:
+        if (candidate / "docker-compose.yml").exists() and (
+            candidate / "policy.toml"
+        ).exists():
             return candidate
     raise SystemExit(
-        "agent-zoo のリポジトリルートが見つかりません。"
-        "docker-compose.yml と policy.toml のあるディレクトリで実行してください。"
+        "agent-zoo の workspace root が見つかりません。"
+        " `.zoo/docker-compose.yml` または `docker-compose.yml + policy.toml`"
+        " のあるディレクトリで実行してください。"
     )
 
 
+@lru_cache(maxsize=1)
+def zoo_dir() -> Path:
+    """zoo の管理ファイルがあるディレクトリ（ADR 0002 D4）。
+
+    - 新 layout: `workspace_root() / ".zoo"`
+    - 旧 layout: `workspace_root()` (= source repo root)
+    """
+    root = workspace_root()
+    if (root / ".zoo" / "docker-compose.yml").exists():
+        return root / ".zoo"
+    return root
+
+
+@lru_cache(maxsize=1)
+def repo_root() -> Path:
+    """Backward-compat: `workspace_root()` のエイリアス。
+
+    ADR 0002 で `workspace_root()` / `zoo_dir()` への分離を行ったため、
+    新規コードでは workspace_root() / zoo_dir() を直接使うこと。
+    """
+    return workspace_root()
+
+
 def cert_path() -> Path:
-    return repo_root() / "certs" / "mitmproxy-ca-cert.pem"
+    return zoo_dir() / "certs" / "mitmproxy-ca-cert.pem"
 
 
 @dataclass(frozen=True)
@@ -145,17 +181,17 @@ def build_base() -> None:
     """共通 base イメージ `agent-zoo-base:latest` をビルドする（B-1）。
 
     `container/Dockerfile.base` を使う。各 agent イメージはこれを `FROM` する。
-    build context は repo root（D-1: certs/extra/ も取り込むため）。
+    build context は zoo_dir（D-1: certs/extra/ も取り込むため）。
     """
-    root = repo_root()
-    base_dockerfile = root / "container" / "Dockerfile.base"
+    zoo = zoo_dir()
+    base_dockerfile = zoo / "container" / "Dockerfile.base"
     if not base_dockerfile.exists():
         return
     run([
         "docker", "build",
         "-t", "agent-zoo-base:latest",
         "-f", str(base_dockerfile),
-        str(root),
+        str(zoo),
     ], env=compose_env())
 
 
@@ -165,7 +201,7 @@ def ensure_certs() -> None:
     if cert.exists():
         return
     print("Generating mitmproxy CA certificate...", file=sys.stderr)
-    certs_dir = repo_root() / "certs"
+    certs_dir = zoo_dir() / "certs"
     certs_dir.mkdir(exist_ok=True)
     run([
         "docker", "run", "--rm",
@@ -179,15 +215,16 @@ def ensure_certs() -> None:
 
 
 def touch_runtime_files() -> None:
-    (repo_root() / "policy.runtime.toml").touch(exist_ok=True)
+    (zoo_dir() / "policy.runtime.toml").touch(exist_ok=True)
 
 
 def _ensure_inbox_dir(workspace: str | None) -> None:
-    """ADR 0001 A-3: workspace 内の `.zoo/inbox/` を作成する。
+    """ADR 0001 A-3 + ADR 0002 D3: workspace 内 `.zoo/inbox/` を作成。
 
     docker-compose の bind mount 元 path が事前に存在することを保証する。
+    workspace 引数が無ければ workspace_root() を user の workspace とみなす。
     """
-    base = Path(workspace) if workspace else (repo_root() / "workspace")
+    base = Path(workspace) if workspace else (workspace_root() / "workspace")
     (base / ".zoo" / "inbox").mkdir(parents=True, exist_ok=True)
 
 

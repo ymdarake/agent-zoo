@@ -21,8 +21,12 @@ def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     (tmp_path / "container").mkdir()
     (tmp_path / "container" / "Dockerfile").write_text("FROM scratch")
     monkeypatch.chdir(tmp_path)
+    runner.workspace_root.cache_clear()
+    runner.zoo_dir.cache_clear()
     runner.repo_root.cache_clear()
     yield tmp_path
+    runner.workspace_root.cache_clear()
+    runner.zoo_dir.cache_clear()
     runner.repo_root.cache_clear()
 
 

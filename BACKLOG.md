@@ -30,7 +30,6 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 | 優先度 | Sprint | 内容 | 期間 |
 |---|---|---|---|
-| 🟡 **P1** | **Sprint 004** Docs/CI Cleanup | 当日作業の不整合 (H1〜H4 + M1〜M8) を 1 PR で | 半日 |
 | 🔴 **P0** | **Sprint 005** Critical Security | リリース blocker (C-1, C-2, H-1〜H-4) を 3 PR で → **Alpha publish 可** | 2〜3 日 |
 | 🟢 **P2** | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 2 PR で | 2 日 |
 | 🟢 **P2** | **Sprint 007** Dashboard 外部依存ゼロ化 | pico/htmx → 自前 HTML/CSS/JS (ADR 0004) を 4 PR で → **Beta publish 可** | 1〜2 週間 |
@@ -83,6 +82,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | 001 | 2026-04-18 | Policy Inbox & Base Image Foundation | [001-policy-inbox-and-base-image.md](docs/dev/sprints/001-policy-inbox-and-base-image.md) |
 | 002 | 2026-04-18 | `.zoo/` Workspace Layout Refactor (#29) | [002-dot-zoo-workspace-layout.md](docs/dev/sprints/002-dot-zoo-workspace-layout.md) |
 | 003 | 2026-04-18 | E2E Test Foundation + zoo CLI 一本化 (#33) | [003-e2e-foundation-and-zoo-cli-unification.md](docs/dev/sprints/003-e2e-foundation-and-zoo-cli-unification.md) |
+| 004 | 2026-04-19 | Docs / CI Cleanup (包括レビュー Phase 2) | [004-docs-ci-cleanup.md](docs/dev/sprints/004-docs-ci-cleanup.md) |
 
 過去の Resolved Decisions（Q1〜Q9 / 案 A 採用 / 命名分離 等）は各 sprint アーカイブを参照。
 

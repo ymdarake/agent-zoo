@@ -1,10 +1,12 @@
-# agent-zoo dev Makefile (repo root, dev 用)
+# agent-zoo dev Makefile (repo root, dev / maintainer only)
 #
-# 目的: 開発時の env 設定漏れを防ぎ、ローカル環境を汚さない。
+# 責務: **`.github/workflows/ci.yml` と同じコマンドをローカルで再現するエイリアス**。
 #
-# - PLAYWRIGHT_BROWSERS_PATH を `.venv/playwright-browsers/` に強制 export し、
-#   system / user の `~/Library/Caches/ms-playwright/` を汚染しない仕組みにする。
-# - 配布用 Docker compose 操作は `zoo` CLI (`zoo build` / `zoo run` / `zoo reload` 等) に一本化。
+# - ローカル <-> CI の実行差異を最小化（dev 確認の信頼性を担保）
+# - `PLAYWRIGHT_BROWSERS_PATH` を `.venv/playwright-browsers/` に強制 export し、
+#   system / user の `~/Library/Caches/ms-playwright/` を汚染しない
+# - 配布物には含めない（`.zoo/` 配下にコピーされない。user は `zoo` CLI のみを使う）
+# - 配布用 Docker compose 操作は `zoo` CLI (`zoo build` / `zoo run` / `zoo reload` 等) に一本化済
 
 PLAYWRIGHT_BROWSERS_PATH := $(CURDIR)/.venv/playwright-browsers
 export PLAYWRIGHT_BROWSERS_PATH

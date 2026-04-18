@@ -13,8 +13,10 @@ skip: Docker daemon が無い、または bundle/ が無い環境では自動 sk
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 import pytest
@@ -46,31 +48,48 @@ pytestmark = pytest.mark.skipif(
 @pytest.fixture(scope="module")
 def proxy_up():
     """proxy + claude service を起動 → teardown で down。"""
-    env = {"HOST_UID": str(__import__("os").getuid())}
-    subprocess.run(
-        ["docker", "compose", "up", "-d", "proxy"],
-        cwd=BUNDLE,
-        env={**__import__("os").environ, **env},
-        check=True,
-    )
-    # healthcheck を待つ（最大 30 秒）
-    import time
-    for _ in range(30):
-        result = subprocess.run(
-            ["docker", "compose", "ps", "--format", "{{.Health}}", "proxy"],
+    env = {**os.environ, "HOST_UID": str(os.getuid())}
+    # CI / 初回起動で bind-mount 対象ファイルが無いと Docker が dir 化してしまうため事前 touch
+    (BUNDLE / "policy.runtime.toml").touch(exist_ok=True)
+    try:
+        subprocess.run(
+            ["docker", "compose", "up", "-d", "proxy"],
             cwd=BUNDLE,
-            capture_output=True,
-            text=True,
+            env=env,
+            check=True,
         )
-        if "healthy" in result.stdout:
-            break
-        time.sleep(1)
-    yield
-    subprocess.run(
-        ["docker", "compose", "down"],
-        cwd=BUNDLE,
-        env={**__import__("os").environ, **env},
-    )
+        # healthcheck を待つ（最大 30 秒）。タイムアウト時は pytest.fail で原因特定しやすく
+        for _ in range(30):
+            result = subprocess.run(
+                ["docker", "compose", "ps", "--format", "{{.Health}}", "proxy"],
+                cwd=BUNDLE,
+                capture_output=True,
+                text=True,
+            )
+            if "healthy" in result.stdout:
+                break
+            time.sleep(1)
+        else:
+            logs = subprocess.run(
+                ["docker", "compose", "logs", "--tail=50", "proxy"],
+                cwd=BUNDLE,
+                capture_output=True,
+                text=True,
+            )
+            pytest.fail(
+                "proxy did not become healthy in 30s\n"
+                f"--- docker compose logs proxy (last 50) ---\n{logs.stdout}\n{logs.stderr}"
+            )
+        yield
+    finally:
+        # up -d 自体が失敗した場合も、中途半端な container 残留を防ぐため down は必ず試行
+        subprocess.run(
+            ["docker", "compose", "down"],
+            cwd=BUNDLE,
+            env=env,
+        )
+        # 事前 touch した空ファイルをローカル環境から除去（.gitignore 済だが dev の作業 dir を汚さない）
+        (BUNDLE / "policy.runtime.toml").unlink(missing_ok=True)
 
 
 def _curl_via_proxy(url: str) -> int:

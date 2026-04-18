@@ -23,12 +23,11 @@ agent-zoo/
 ├── bundle/                   # 配布資材（zoo init で <workspace>/.zoo/ にコピーされる元）
 │   ├── docker-compose.yml
 │   ├── policy.toml
-│   ├── Makefile              # maintainer 専用（user 配布物には含めない、ADR 0002 D5）
 │   ├── addons/               # mitmproxy addons (policy / policy_enforcer / sse_parser / policy_inbox 等)
 │   ├── container/            # Dockerfile.{base,codex,gemini,unified}
 │   ├── dashboard/            # Flask + HTMX ダッシュボード
 │   ├── templates/            # HARNESS_RULES.md（agent への指示テンプレ）
-│   └── host/, dns/, certs/, data/
+│   └── host/, dns/, certs/
 ├── tests/                    # pytest（repo root、bundle/ を pythonpath で参照）
 ├── docs/user/                # 利用者向け（install / security / policy-reference）
 ├── docs/dev/                 # 開発者向け（architecture / python-api / adr/ / sprints/）
@@ -96,7 +95,7 @@ make test           # unit + e2e
 - **認証**: 対話 = コンテナ内 `/login` / 自律 = `CLAUDE_CODE_OAUTH_TOKEN` env（`claude setup-token` で取得）
 - **SSE 解析**: ドメイン制御/レート制限は `request()` フックで完結。tool_use 検出は SSE チャンクのステートマシン解析
 - **ポリシー書き換え**: atomic write（tmpfile + rename、Docker bind mount ではフォールバック）
-- **ダッシュボード**: `127.0.0.1` バインド、`bundle/data` は読み取り専用マウント
+- **ダッシュボード**: `127.0.0.1` バインド、`<workspace>/.zoo/data/harness.db` を読み取り専用マウント
 - **Inbox** (ADR 0001): agent → `<workspace>/.zoo/inbox/*.toml` → dashboard accept → `policy.runtime.toml` 自動反映
 - **Workspace Layout** (ADR 0002): **source = `bundle/`** / **配布 = `.zoo/`** で命名分離
 

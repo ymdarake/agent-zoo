@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Workspace layout を `.zoo/` 集約に移行** — `zoo init` は `<workspace>/.zoo/` 配下に展開（ADR 0002）
 - docs を **`docs/user/`（利用者向け）と `docs/dev/`（開発者向け）に分離**
 - Docker compose 操作を **`zoo` CLI に一本化** — Makefile は source repo / 配布物ともに含めない
+- CI `paths-ignore` を root .md whitelist 方式に変更（`**.md` glob だと `bundle/templates/HARNESS_RULES.md` の変更が CI を通らなかった）
+- CI `unit` / `e2e-*` jobs の uv cache を `actions/cache@v4` 明示 key（Python matrix 毎に独立）+ `restore-keys` で partial restore 対応
+- CI `workflow_dispatch: {}` 追加で任意 branch から手動実行可能に
+- `tests/e2e/test_proxy_block.py::proxy_up` fixture を try/finally で保護し、`up -d` 失敗時も `docker compose down` が走るよう修正、healthcheck timeout 時は `docker compose logs` 添えで `pytest.fail`
 - `pyproject.toml` を hatchling ビルドに切り替え、assets を `bundle/` から `zoo/_assets/.zoo/` へ map
 - Release workflow に `concurrency` グループを追加し、同一 ref での重複実行を直列化
 

@@ -49,7 +49,7 @@ if zoo.logs_clear():
 | `zoo.host_start()` / `zoo.host_stop()` | `int` | |
 | `zoo.logs_clear()` | `bool` | 削除した場合 True |
 | `zoo.logs_analyze()` / `summarize()` / `alerts()` | `int` | ホスト側 `claude` CLI 必須 |
-| `zoo.test_unit()` / `zoo.test_smoke(*, agent)` | `int` | |
+| `zoo.test_unit()` | `int` | |
 
 ## 設計メモ
 

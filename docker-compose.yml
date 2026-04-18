@@ -58,6 +58,27 @@ services:
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
+  gemini:
+    <<: *agent-common
+    profiles: ["gemini"]
+    build:
+      context: ./container
+      dockerfile: Dockerfile.gemini
+      args:
+        HOST_UID: ${HOST_UID:-1001}
+    environment:
+      <<: *agent-env
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      AGENT_NAME: gemini  # B-5: entrypoint が GEMINI.md を /workspace に inject
+    volumes:
+      - ./certs:/certs:ro
+      - ${WORKSPACE:-./workspace}:/workspace
+      - gemini-auth:/home/gemini/.gemini
+      - ./policy.toml:/harness/policy.toml:ro
+      - ./policy_candidate.toml:/harness/policy_candidate.toml
+      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
+      - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
+
   proxy:
     image: mitmproxy/mitmproxy:10
     environment:
@@ -125,3 +146,4 @@ networks:
 volumes:
   claude-auth:  # OAuth認証+セッション永続化（docker compose down -v で削除）
   codex-auth:  # Codex CLI認証+設定永続化（docker compose down -v で削除）
+  gemini-auth:  # Gemini CLI 認証+設定永続化（B-3）

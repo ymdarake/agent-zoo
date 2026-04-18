@@ -1,0 +1,16 @@
+# Gemini CLI agent image
+# B-3: 共通 base （agent-zoo-base:latest）に Gemini CLI を載せる。
+#
+# 注意: Makefile / runner への AGENT=gemini 統合と zoo run でのフラグ詳細
+# （対話モード / 自律モード / task mode）は、@google/gemini-cli の最新仕様を
+# 確認してから fill-in する必要がある（BACKLOG B-3 続編）。
+
+FROM agent-zoo-base:latest
+
+ARG HOST_UID=1001
+
+RUN npm install -g @google/gemini-cli
+
+RUN useradd -m -u ${HOST_UID} gemini
+RUN mkdir -p /home/gemini/.gemini && chown -R gemini:gemini /home/gemini/.gemini
+USER gemini

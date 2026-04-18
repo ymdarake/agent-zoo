@@ -33,6 +33,10 @@ list = [
     "auth0.openai.com",
     "*.auth.openai.com",
     "*.chatgpt.com",
+    # Gemini CLI（B-3）
+    "generativelanguage.googleapis.com",
+    "oauth2.googleapis.com",
+    "accounts.google.com",
 ]
 
 [domains.deny]

@@ -470,7 +470,7 @@ E-1, E-2 (independent)
 ### Group B: ベースイメージ統合（P1）
 - [x] B-1 Dockerfile.base 切出し（2026-04-18 / 二段ビルド agent-zoo-base + agent別）
 - [x] B-2 base にツール群追加（2026-04-18 / python3/jq/less/ripgrep。gh/glab は別 issue 化推奨）
-- [ ] B-3 gemini-cli 追加
+- [部分完了] B-3 gemini-cli 追加（2026-04-18 / Dockerfile.gemini + compose service 雛形 + policy.toml allow / Makefile・runner 統合と CLI フラグ詳細は @google/gemini-cli 仕様確認後の続編）
 - [x] B-4 bash モード（2026-04-18 / `make bash` + `zoo bash` で対話 shell）
 - [x] B-5 AGENTS.md inject（2026-04-18 / templates/HARNESS_RULES.md 統合 + entrypoint で慣習名 inject）
 - [ ] B-6 ドキュメント更新

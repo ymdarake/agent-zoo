@@ -1,11 +1,13 @@
 """Agent Harness Dashboard - Flask + HTMX application."""
 
 import os
+import secrets
 import sqlite3
 import sys
 from datetime import UTC, datetime, timedelta
 
 from flask import Flask, jsonify, render_template, request
+from flask_wtf.csrf import CSRFProtect
 
 # Import policy editing utilities
 # In Docker: addons mounted at /app/addons via docker-compose
@@ -39,6 +41,17 @@ from policy_inbox import (
 )
 
 app = Flask(__name__)
+
+# CSRF 対策 (包括レビュー H-1): 全 POST / PUT / PATCH / DELETE で token 検証。
+# dashboard は localhost bind だが、ブラウザ経由 CSRF / DNS rebinding で任意 origin
+# からの POST が成立しうるため防御が必須。
+# SECRET_KEY は env 優先（再起動で token を失効させたくない本番想定）。
+# 未設定時はプロセスごとの random 値で fallback（単一 worker の dev 想定）。
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+# HTMX からの token 送出を header ベースで許容（body だけでなく X-CSRFToken を読む）
+app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
+# TESTING=True では Flask-WTF が自動で CSRF を無効化するため既存 test に影響なし。
+csrf = CSRFProtect(app)
 
 POLICY_PATH = os.environ.get("POLICY_PATH", "/app/policy.toml")
 

@@ -1,3 +1,4 @@
 flask==3.1.*
+flask-wtf>=1.2
 gunicorn==23.*
 tomli_w>=1.0

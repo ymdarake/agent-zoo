@@ -15,6 +15,9 @@ class TestDashboardAPI(unittest.TestCase):
     def setUp(self):
         self.db_fd, self.db_path = tempfile.mkstemp(suffix=".db")
         app.config["TESTING"] = True
+        # flask-wtf 1.2.x は TESTING=True では自動無効化しないため明示指定。
+        # CSRF 自体の試験は test_dashboard_csrf.py で WTF_CSRF_ENABLED=True にして行う。
+        app.config["WTF_CSRF_ENABLED"] = False
         os.environ["DB_PATH"] = self.db_path
 
         # テスト用DBを初期化
@@ -161,6 +164,7 @@ class TestDashboardInbox(unittest.TestCase):
 
         self._add = add_request
         app.config["TESTING"] = True
+        app.config["WTF_CSRF_ENABLED"] = False
         self.client = app.test_client()
 
     def tearDown(self):

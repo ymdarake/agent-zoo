@@ -40,6 +40,7 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "flask>=3.1",
+    "flask-wtf>=1.2",  # dashboard CSRF 対策 (Sprint 005 PR B / 包括レビュー H-1)
     "tomli_w>=1.0",
 ]
 e2e = [

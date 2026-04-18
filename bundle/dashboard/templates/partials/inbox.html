@@ -57,9 +57,15 @@ function bulkInbox(url, confirmMsg) {
     var ids = Array.from(document.querySelectorAll('.inbox-cb:checked')).map(cb => cb.value);
     if (ids.length === 0) { alert('選択してください'); return; }
     if (!confirm(confirmMsg)) return;
+    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    var csrfToken = csrfMeta ? csrfMeta.content : '';
     fetch(url, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json', 'HX-Request': 'true'},
+        headers: {
+            'Content-Type': 'application/json',
+            'HX-Request': 'true',
+            'X-CSRFToken': csrfToken
+        },
         body: JSON.stringify({record_ids: ids})
     }).then(r => r.text()).then(html => {
         document.getElementById('tab-inbox').innerHTML = html;

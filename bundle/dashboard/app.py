@@ -413,7 +413,13 @@ def partial_whitelist():
 
 import re
 
-_DOMAIN_RE = re.compile(r"^(\*\.)?[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$")
+# 包括レビュー M-5 (Sprint 006 PR D): RFC 1035 準拠の strict regex に置換。
+# ラベルごとに leading/trailing hyphen 禁止、1〜63 文字、`*.` wildcard は
+# 最後に 2 ラベル以上を強制。`localhost` / `*.com` / `a..com` / `a-.com` / `-a.com`
+# / `*.*.example.com` / `example.com.` を全部 reject する。
+# 許可 / 拒否の full matrix は tests/test_dashboard_domain_validation.py 参照。
+_LABEL_RE = r"(?!-)[A-Za-z0-9-]{1,63}(?<!-)"
+_DOMAIN_RE = re.compile(rf"^(\*\.)?({_LABEL_RE}\.)+{_LABEL_RE}$")
 
 
 def _validate_domain(domain: str) -> str | None:

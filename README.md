@@ -90,7 +90,8 @@ OPENAI_API_KEY=xxx zoo task --agent codex -p "テストを追加して"
 | [Codex統合ガイド](docs/codex-integration.md) | Codex CLI対応の構成と実装メモ |
 | [セキュリティモデル](docs/security.md) | 多層防御、既知の制約、運用原則 |
 | [ポリシーリファレンス](docs/policy-reference.md) | policy.toml全設定項目 |
-| [BACKLOG](BACKLOG.md) | issue grooming + タスク詳細プラン |
+| [BACKLOG](BACKLOG.md) | active な未完了タスク + Resolved Decisions |
+| [Sprint 履歴](docs/sprints/) | 完了タスクのアーカイブ（sprint 単位） |
 | [ROADMAP](ROADMAP.md) | 未実装機能・将来計画 |
 
 ## Unified イメージ（cross-agent、#27）

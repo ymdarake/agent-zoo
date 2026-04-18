@@ -83,6 +83,17 @@ ec151d7 :wrench: ci.yml: paths-ignore 明示化 + workflow_dispatch + Python 別
 
 ---
 
+## 今後の注意点（将来作業者へ）
+
+- **`paths-ignore` と branch protection rule の相互作用**:
+  `ci.yml` は `push` to main trigger にも `paths-ignore` を設定しているため、docs-only の merge では main commit に CI status が付かない。将来 branch protection で「required status checks」を設定する場合、`paths-ignore` と衝突する可能性があるため、そのタイミングで `push` 側の `paths-ignore` を見直すか、dummy always-green job を追加する等の対応が必要。（Gemini review 指摘）
+- **root 直下に新規 `.md` を追加する時**:
+  `SECURITY.md` / `CONTRIBUTING.md` 等を追加した場合、`ci.yml` の `paths-ignore` に追記しない限り CI が走る。これは safe default (CI 優先)。意図的に skip したければ明示追加。
+- **`pyproject.toml::norecursedirs` への依存**:
+  `make unit` が e2e を除外するのは `norecursedirs = ["tests/e2e"]` 設定に依存。この設定を外すと Docker 依存の P2 test が `make unit` で走って skip される挙動になる。`make unit` / `make e2e` の責務分離を維持するには本設定を保持。
+
+---
+
 ## 参照
 
 - [2026-04-18 包括レビュー](../reviews/2026-04-18-comprehensive-review.md) Phase 2

@@ -88,6 +88,8 @@ def proxy_up():
             cwd=BUNDLE,
             env=env,
         )
+        # 事前 touch した空ファイルをローカル環境から除去（.gitignore 済だが dev の作業 dir を汚さない）
+        (BUNDLE / "policy.runtime.toml").unlink(missing_ok=True)
 
 
 def _curl_via_proxy(url: str) -> int:

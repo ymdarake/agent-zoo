@@ -25,10 +25,12 @@ Accepted (2026-04-18)
 
 ### D2. ファイル名規約
 
-- 形式: `{ISO8601-with-dashes}-{shortid}.toml`
-- 例: `2026-04-18T10-23-45-7c8e3f2a.toml`
-- shortid: `secrets.token_hex(4)`（8 文字 hex）で衝突回避
-- ISO8601 のコロン `:` は `-` に置換（macOS/Windows 互換性）
+- 形式: `{ISO8601-with-dashes}-{shortid}-{contenthash}.toml`
+- 例: `2026-04-18T10-23-45-7c8e-3a1b2c4d5e6f.toml`
+- ISO8601: 秒精度、コロン `:` は `-` に置換（macOS/Windows 互換性）
+- shortid: `secrets.token_hex(2)`（4 文字 hex） — 同秒・同 content race の回避
+- contenthash: `sha256(type|value|domain)[:12]` — dedup の glob match に使用
+- 末尾の `-{contenthash}.toml` パターンで `inbox.glob("*-{hash}.toml")` でき、O(n) スキャン不要
 
 ### D3. マウント方式
 
@@ -51,10 +53,11 @@ Accepted (2026-04-18)
 
 ### D6. Deduplication（規定）
 
-- 同一内容（`type` + `value` + `domain` の組）の `pending` ファイルが既に存在する場合、新規作成は **no-op**
-- `add_request` は重複時に `None` を返す（ファイル名 None）
+- 同一内容（`type` + `value` + `domain` の組）の `pending` ファイルが既に存在する場合、新規作成は **no-op**（`None` 返却）
+- 重複判定キー: `_content_hash(record) = sha256("type|value|domain")[:12]`
+- マルチスレッド race 対策: ファイル名末尾に contenthash を含め、`O_CREAT|O_EXCL` で排他作成。同秒・同 content の同時 add は片方のみ成功
 - 既存ファイルの `referenced_blocks` 追記は初版では skip（実装簡略化）
-- 同一内容の `accepted` / `rejected` がある場合は新規 `pending` を許容（過去判断と現在の必要性を分離）
+- 同一内容の `accepted` / `rejected` / `expired` がある場合は新規 `pending` を許容（過去判断と現在の必要性を分離）
 
 ### D7. ライフサイクル
 
@@ -170,6 +173,8 @@ status_reason = ""                        # rejected 等の理由（任意）
 - Q3 の `policy.runtime.toml` read-only 問題は A-7 で経過観察（A-1〜A-5 で構造的解消する想定）
 - 将来 `tool_use_unblock` 種別（特定 tool_use の許可リクエスト）に拡張予定
 - `referenced_blocks` の実効性向上のため `policy.toml` の `[[*.rules]]` に `id` 振る案（将来 ROADMAP）
+- **mark_status と cleanup_expired の並行実行** は read-modify-write race の余地あり。現状 serialize 運用前提（dashboard 操作 / cron）で妥協。完全 atomic が必要なら fcntl ロック導入を検討
+- **list_requests のスケーラビリティ**: 全 TOML を都度 parse。数千件で遅くなったら `cleanup_expired` 頻度を上げるか、ファイル名 prefix に status を含める方針への切替を検討
 
 ## References
 

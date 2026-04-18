@@ -1,6 +1,6 @@
 """Policy inbox storage layer (pure logic, no mitmproxy/Flask deps).
 
-ADR 0001 (docs/adr/0001-policy-inbox.md) D9 を実装する。
+ADR 0001 (docs/dev/adr/0001-policy-inbox.md) D9 を実装する。
 
 inbox = ディレクトリに 1 リクエスト 1 TOML ファイル。
 公開関数:

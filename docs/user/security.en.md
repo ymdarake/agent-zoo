@@ -26,7 +26,7 @@ Agents can read files and environment variables inside the container. Rather tha
 | `alerts` | Post-hoc detection of suspicious access patterns | Both |
 | CoreDNS strict | Block DNS leakage (optional) | Container |
 
-For host mode, templates are available:
+For host mode, templates are available (distributed copy: `<workspace>/.zoo/templates/`, source repo: `bundle/templates/`):
 - Claude Code: `templates/claude-code/settings.json` → `.claude/settings.json`
 - Codex CLI: `templates/codex-cli/config.toml` → `.codex/config.toml`
 
@@ -39,10 +39,10 @@ Start fully blocked and gradually allow only the necessary traffic via log analy
    ↓
 2. Agent / bot runs, block logs accumulate
    ↓
-3. `make analyze` → AI suggests policy.toml improvements
-   Dashboard → one-click allow/dismiss for block candidates
+3. `zoo logs analyze` → AI suggests policy.toml improvements
+   Dashboard → Inbox / one-click allow/dismiss for block candidates
    ↓
-4. Update policy.toml → reflect via `make reload`
+4. Update policy.toml → reflect via `zoo reload`
    ↓
 5. Repeat
 ```
@@ -67,4 +67,4 @@ If you allow communication to `api.anthropic.com` or `api.openai.com`, the conve
 
 ### DNS Leakage
 
-HTTP/HTTPS traffic goes through mitmproxy so DNS queries don't occur per request, but non-HTTP commands like `ping` / `dig` can still resolve via Docker's built-in DNS. Use `make up-strict` to enable CoreDNS, which NXDOMAINs non-allowed domains.
+HTTP/HTTPS traffic goes through mitmproxy so DNS queries don't occur per request, but non-HTTP commands like `ping` / `dig` can still resolve via Docker's built-in DNS. Use `zoo up --strict` to enable CoreDNS, which NXDOMAINs non-allowed domains.

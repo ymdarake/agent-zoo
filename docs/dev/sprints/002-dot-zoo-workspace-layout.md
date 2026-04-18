@@ -4,9 +4,9 @@
 |---|---|
 | 期間 | 2026-04-18（1 day） |
 | テーマ | ADR 0002 `.zoo/` Workspace Layout の実装 + candidate 経路の完全削除 |
-| 親 issue | #29 |
-| 完了タスク | D1〜D8 全完了 + Self-Review 2 段階反映 |
-| 残課題 | #31（user 実機 smoke）/ #28（docs 刷新） |
+| 親 issue | #29（+ #28 docs cleanup を統合）|
+| 完了タスク | D1〜D8 全完了 + Self-Review 2 段階反映 + #28 docs 刷新 |
+| 残課題 | #31（user 実機 smoke） |
 
 ---
 
@@ -145,10 +145,27 @@ a455668 :sparkles: #29 Phase 0+1: workspace_root/zoo_dir 分離 + .gitignore テ
 
 ---
 
+## #28 docs cleanup（Sprint 002 内で追加実施）
+
+ユーザー指示で Sprint 002 のスコープに含めて完了:
+
+- **user / dev 分離**: `docs/user/` (利用者向け) と `docs/dev/` (開発者向け) にディレクトリ切り分け
+  - `docs/user/`: install-from-package.md, security.md / .en.md, policy-reference.md / .en.md
+  - `docs/dev/`: architecture.md / .en.md, python-api.md, adr/, sprints/
+- **削除**: `docs/codex-integration.md / .en.md`（maintainer 用、役目終了）
+- **新 layout 反映**: 全 docs を `bundle/` source + `.zoo/` 配布の新 layout 用に書換
+  - install-from-package.md: workspace 構造図を `.zoo/` 配下 + maintainer dogfood 1 セクション
+  - architecture.md / .en.md: コンポーネント表のパスを `.zoo/...` 統一 + Workspace Layout (ADR 0002) セクション + Image Variants 追加（Dockerfile.gemini / unified）
+  - python-api.md: `workspace_root()` / `zoo_dir()` / `_asset_source()` 二段解決の説明追加
+  - policy-reference.md / .en.md: `make reload` → `zoo reload`
+  - security.md / .en.md: `make reload` / `make up-strict` → `zoo reload` / `zoo up --strict`、template path に `.zoo/` 注記
+- **README**: Quickstart を `zoo init → build → run` 順 / 対応 agent に gemini 追加（en は抜けていた）/ make 列を maintainer 注記に降格 / Documents 表を 3 区分（user / dev / プロジェクト管理）
+- **dogfood 残骸削除**: root の `policy.runtime.toml` 削除
+- **Self-Review (Plan 段階)**: Claude subagent + Gemini 並行で Plan レビュー、Critical/Should-fix を反映してから実装
+
 ## 次 sprint へ繰り越し
 
 | # | タスク | 状態 |
 |---|---|---|
-| #28 | docs cleanup（zoo init 中心の設計に基づき README / docs/* を全面刷新） | ⏳ Sprint 003 候補 |
 | #31 | user 実機 smoke チェックリスト（11 項目）| ⏳ user 環境で実施 |
 | #3  | OpenAI exec_command 引数検知（E-2） | ⏸ 仕様確定待ち |

@@ -26,7 +26,7 @@
 | `alerts` | 不審なアクセスパターンを事後検知 | 両モード |
 | CoreDNS strict | DNS漏洩を遮断（オプション） | コンテナモード |
 
-ホストモードでは以下のテンプレートを利用できる:
+ホストモードでは以下のテンプレートを利用できる（配布物は `<workspace>/.zoo/templates/`、source repo は `bundle/templates/`）:
 - Claude Code: `templates/claude-code/settings.json` → `.claude/settings.json`
 - Codex CLI: `templates/codex-cli/config.toml` → `.codex/config.toml`
 
@@ -39,10 +39,10 @@
    ↓
 2. エージェント/botが動き、ブロックログが溜まる
    ↓
-3. make analyze → AIがpolicy.toml改善を提案
-   ダッシュボード → ブロック候補をワンクリック許可/無視
+3. `zoo logs analyze` → AIがpolicy.toml改善を提案
+   ダッシュボード → Inbox / ブロック候補をワンクリック許可/無視
    ↓
-4. policy.toml更新 → make reload で反映
+4. policy.toml更新 → `zoo reload` で反映
    ↓
 5. 繰り返し
 ```
@@ -67,4 +67,4 @@
 
 ### DNS漏洩
 
-HTTP/HTTPS通信はmitmproxy経由のためDNSクエリ自体が発生しないが、`ping`や`dig`等の非HTTPコマンドはDocker内蔵DNS経由で名前解決できる。`make up-strict`でCoreDNSを有効化し、許可ドメイン以外をNXDOMAINで遮断可能。
+HTTP/HTTPS通信はmitmproxy経由のためDNSクエリ自体が発生しないが、`ping`や`dig`等の非HTTPコマンドはDocker内蔵DNS経由で名前解決できる。`zoo up --strict`でCoreDNSを有効化し、許可ドメイン以外をNXDOMAINで遮断可能。

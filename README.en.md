@@ -14,7 +14,7 @@ mitmproxy payload inspection + TOML policy control. Agent-agnostic.
 
 - **Standalone** — Proxy-only (`make host`). Works with any agent on the host.
 - **Docker Compose isolation** — Agents are isolated on an `internal: true` network. *"They can read, but they can't send."*
-  - Supported: Claude Code, Codex CLI
+  - Supported: Claude Code, Codex CLI, Gemini CLI (single + unified images, see #27)
 
 ## Features
 
@@ -26,54 +26,59 @@ mitmproxy payload inspection + TOML policy control. Agent-agnostic.
 ## Quickstart
 
 ```bash
-# Install from PyPI (after publish)
+# 1. Install (after PyPI publish)
 uv tool install agent-zoo
-# Or from a clone
-git clone https://github.com/ymdarake/agent-zoo.git
-cd agent-zoo
-uv tool install .
+# or via git
+uv tool install git+https://github.com/ymdarake/agent-zoo
 
-# Claude Code: interactive (first run requires /login inside the container)
-zoo run --workspace /path/to/my-project
+# 2. Initialize a workspace anywhere
+mkdir my-zoo && cd my-zoo
+zoo init                      # creates ./.zoo/ harness + ./.gitignore
 
-# Codex CLI: interactive (first run requires `codex login`)
-zoo run --agent codex --workspace /path/to/my-project
+# 3. Build images
+zoo build                     # base + claude (default). --agent codex/gemini etc.
 
-# Autonomous mode
+# 4. Run
+zoo run                       # Claude Code interactive (first time: /login)
+zoo run --agent codex         # Codex CLI (first time: codex login)
+zoo run --agent gemini        # Gemini CLI (first time: OAuth or GEMINI_API_KEY)
+
+# Autonomous (token required)
 CLAUDE_CODE_OAUTH_TOKEN=xxx zoo task -p "add tests"
 OPENAI_API_KEY=xxx zoo task --agent codex -p "add tests"
+GEMINI_API_KEY=xxx zoo task --agent gemini -p "add tests"
 
 # Dashboard: http://localhost:8080
 ```
 
-If you don't use `uv tool install`, `uv run zoo ...` works too. The Makefile is still available (`make run`, etc.).
+See [docs/user/install-from-package.md](docs/user/install-from-package.md) for details.
 
 ## Commands
 
-`zoo` (recommended) and `make` (legacy-compatible) do the same thing.
+The `zoo` CLI covers all features. `zoo --help` / `zoo <cmd> --help` for details.
 
-| Operation | zoo | make |
-|---|---|---|
-| Interactive | `zoo run [-a claude\|codex] [-w PATH]` | `make run` / `AGENT=codex make run` |
-| Sandbox (no approvals) | `zoo run --dangerous` | `make run-dangerous` |
-| Autonomous (non-interactive) | `zoo task -p "..." [-a ...] [-w ...]` | `make task PROMPT="…"` |
-| Bring services up only | `zoo up [--dashboard-only] [--strict]` | `make up-dashboard` / `make up-strict` |
-| Stop | `zoo down` | `make down` |
-| Reload policy | `zoo reload` | `make reload` |
-| Build images | `zoo build [-a ...]` | `make build` |
-| Generate CA cert | `zoo certs` | `make certs` |
-| Host mode | `zoo host start` / `zoo host stop` | `make host` / `make host-stop` |
-| Bash inside container | `zoo bash [-a ...]` | `make bash` |
-| Wrap host CLI through proxy | `zoo proxy <agent> [args...]` | — |
-| Clear logs | `zoo logs clear` | `make clear-logs` |
-| Log analysis | `zoo logs analyze` / `summarize` / `alerts` | `make analyze` / `summarize` / `alerts` |
-| Tests | `zoo test unit` / `zoo test smoke` | `make unit` / `make test` |
+| Operation | Command |
+|---|---|
+| Interactive | `zoo run [-a claude\|codex\|gemini]` |
+| Sandbox (no approvals) | `zoo run --dangerous` |
+| Autonomous (non-interactive) | `zoo task -p "..." [-a ...]` |
+| Bash inside container | `zoo bash [-a ...]` |
+| Wrap host CLI through proxy | `zoo proxy <agent> [args...]` |
+| Bring services up only | `zoo up [--dashboard-only] [--strict]` |
+| Stop | `zoo down` |
+| Reload policy | `zoo reload` |
+| Build images | `zoo build [-a ...]` |
+| Generate CA cert | `zoo certs` |
+| Host mode | `zoo host start` / `zoo host stop` |
+| Clear logs | `zoo logs clear` |
+| Log analysis | `zoo logs analyze` / `summarize` / `alerts` |
+| Tests | `zoo test unit` |
 
-Run `zoo --help` / `zoo <cmd> --help` for details.
+> **Maintainer-only**: in the agent-zoo source repo (clone), `bundle/Makefile` is available via `cd bundle && make build` etc. See [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離).
 
 ## Dashboard
 
-Run `make up-dashboard` and open http://localhost:8080.
+Run `zoo up --dashboard-only` and open http://localhost:8080.
 
 Live monitor requests, tool_uses, and blocks; nurture your whitelist; review and approve agent-submitted Inbox requests.
 
@@ -81,19 +86,33 @@ Live monitor requests, tool_uses, and blocks; nurture your whitelist; review and
 |---|---|---|---|
 | ![Requests](docs/images/requests.png) | ![Tool Uses](docs/images/tool-uses.png) | _(ADR 0001)_ | ![Whitelist](docs/images/whitelist.png) |
 
-**Inbox** ([ADR 0001](docs/adr/0001-policy-inbox.md)): the agent files allow-list requests it deems necessary; humans approve or reject them in the dashboard, and accepted ones flow into `policy.runtime.toml`.
+**Inbox** ([ADR 0001](docs/dev/adr/0001-policy-inbox.md)): the agent files allow-list requests it deems necessary; humans approve or reject them in the dashboard, and accepted ones flow into `policy.runtime.toml`.
 
 ## Documentation
 
+### For users ([docs/user/](docs/user/))
+
 | Document | Contents |
 |---|---|
-| [Architecture](docs/architecture.md) | Components, data flow, internal design (Japanese) |
-| [ADR 0001 Policy Inbox](docs/adr/0001-policy-inbox.md) | Design rationale: file format, atomic writes, dedup, lifecycle |
-| [Codex Integration Guide](docs/codex-integration.md) | Codex CLI integration notes (Japanese) |
-| [Security Model](docs/security.md) | Defense in depth, known constraints, operating principles (Japanese) |
-| [Policy Reference](docs/policy-reference.md) | All `policy.toml` settings (Japanese) |
-| [BACKLOG](BACKLOG.md) | Active tasks + ROADMAP + Resolved Decisions (the old ROADMAP.md / TODO.md were consolidated here) |
-| [Sprint history](docs/sprints/) | Completed-task archive per sprint |
+| [Install from package](docs/user/install-from-package.md) | `uv tool install` → `zoo init` → `zoo run` setup + `.zoo/` layout |
+| [Security Model](docs/user/security.md) | Defense in depth, known constraints, operating principles (Japanese / EN) |
+| [Policy Reference](docs/user/policy-reference.md) | All `policy.toml` settings (Japanese / EN) |
+
+### For developers ([docs/dev/](docs/dev/))
+
+| Document | Contents |
+|---|---|
+| [Architecture](docs/dev/architecture.md) | Components, data flow, internal design (Japanese / EN) |
+| [Python API](docs/dev/python-api.md) | `zoo` library API for automation / notebook usage |
+| [ADR 0001 Policy Inbox](docs/dev/adr/0001-policy-inbox.md) | Design rationale: file format, atomic writes, dedup, lifecycle |
+| [ADR 0002 Workspace Layout](docs/dev/adr/0002-dot-zoo-workspace-layout.md) | source = `bundle/` / distribution = `.zoo/` naming separation |
+| [Sprint history](docs/dev/sprints/) | Completed-task archive per sprint |
+
+### Project management
+
+| | Contents |
+|---|---|
+| [BACKLOG](BACKLOG.md) | Active tasks + ROADMAP + sprint history links |
 
 ## License
 

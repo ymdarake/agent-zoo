@@ -2,7 +2,7 @@
 
 > 日本語 | [English](policy-reference.en.md)
 
-`policy.toml`の全設定項目。ホストモードではファイル保存で即反映。コンテナモードでは`make reload`が必要。
+`policy.toml`の全設定項目。ホストモードではファイル保存で即反映。コンテナモードでは`zoo reload`（または `cd bundle && make reload`）が必要。
 
 ダッシュボードからの操作は`policy.runtime.toml`に書き込まれ、base設定のコメントは保持される。
 

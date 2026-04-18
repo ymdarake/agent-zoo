@@ -1,11 +1,11 @@
 # BACKLOG
 
 active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
-完了タスクは sprint 単位で `docs/sprints/` にアーカイブ、設計判断は ADR (`docs/adr/`) に記録。
+完了タスクは sprint 単位で `docs/dev/sprints/` にアーカイブ、設計判断は ADR (`docs/dev/adr/`) に記録。
 
 - 元 issue: https://github.com/ymdarake/agent-zoo/issues
-- Sprint 履歴: [docs/sprints/](docs/sprints/)
-- ADR: [docs/adr/](docs/adr/)
+- Sprint 履歴: [docs/dev/sprints/](docs/dev/sprints/)
+- ADR: [docs/dev/adr/](docs/dev/adr/)
 
 ---
 
@@ -14,8 +14,8 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | # | タイトル | 状態 |
 |---|---|---|
 | [#3](https://github.com/ymdarake/agent-zoo/issues/3) | OpenAI形式の tool_call ポリシー例 | ⏸ 仕様確定待ち（ROADMAP 参照） |
-| [#28](https://github.com/ymdarake/agent-zoo/issues/28) | Organize & cleanup docs | ⏳ #29 完了後に新 layout で全面刷新 |
-| [#29](https://github.com/ymdarake/agent-zoo/issues/29) | .zoo/ 集約構造への workspace layout refactor | 🟡 実装完了（[Sprint 002 アーカイブ](docs/sprints/002-dot-zoo-workspace-layout.md)）。残: #31 smoke, #28 docs |
+| [#28](https://github.com/ymdarake/agent-zoo/issues/28) | Organize & cleanup docs | ✅ Sprint 002 で完了（user/dev 分離 + 新 layout 反映 + codex-integration 削除）|
+| [#29](https://github.com/ymdarake/agent-zoo/issues/29) | .zoo/ 集約構造への workspace layout refactor | 🟡 実装完了（[Sprint 002 アーカイブ](docs/dev/sprints/002-dot-zoo-workspace-layout.md)）。残: #31 smoke, #28 docs |
 | [#31](https://github.com/ymdarake/agent-zoo/issues/31) | user 実機動作確認 (11 項目 smoke) | ⏳ user 環境で実施 |
 
 ---
@@ -25,7 +25,6 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | 優先度 | タスク | アクション |
 |---|---|---|
 | P1 | **#31 user smoke** | user 環境で 11 項目を確認、NG があれば fix を別 issue 化 |
-| P1 | **#28 docs 刷新** | 新 layout（bundle/ source + .zoo/ 配布）で README / docs/* 全面刷新 |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様確定後 |
 
 ---
@@ -65,8 +64,8 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 | Sprint | 期間 | テーマ | アーカイブ |
 |---|---|---|---|
-| 001 | 2026-04-18 | Policy Inbox & Base Image Foundation | [001-policy-inbox-and-base-image.md](docs/sprints/001-policy-inbox-and-base-image.md) |
-| 002 | 2026-04-18 | `.zoo/` Workspace Layout Refactor (#29) | [002-dot-zoo-workspace-layout.md](docs/sprints/002-dot-zoo-workspace-layout.md) |
+| 001 | 2026-04-18 | Policy Inbox & Base Image Foundation | [001-policy-inbox-and-base-image.md](docs/dev/sprints/001-policy-inbox-and-base-image.md) |
+| 002 | 2026-04-18 | `.zoo/` Workspace Layout Refactor (#29) | [002-dot-zoo-workspace-layout.md](docs/dev/sprints/002-dot-zoo-workspace-layout.md) |
 
 過去の Resolved Decisions（Q1〜Q9 / 案 A 採用 / 命名分離 等）は各 sprint アーカイブを参照。
 
@@ -75,6 +74,6 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 ## 備考
 
 - 本 BACKLOG は **active な未完了タスク + 将来計画** のみを管理。
-- 完了タスクの詳細は `docs/sprints/<NNN>-<theme>.md` にアーカイブ、設計判断は `docs/adr/NNNN-<theme>.md` に記録。
+- 完了タスクの詳細は `docs/dev/sprints/<NNN>-<theme>.md` にアーカイブ、設計判断は `docs/dev/adr/NNNN-<theme>.md` に記録。
 - 各タスク着手時は `docs/plans/<task-id>.md` を別途切る運用を推奨（Plan エージェント / レビューエージェント連携用）。
 - `CLAUDE.md` の開発ワークフロー（Plan → レビュー → TDD → サブエージェントレビュー → Gemini レビュー → docs → ナレッジ → スキル → commit-push）は各タスクで踏襲。

@@ -55,7 +55,23 @@ if zoo.logs_clear():
 
 - `zoo.api` に純粋な関数 API を置き、`zoo.cli` は typer ラッパー
 - typer / rich 依存は CLI 層のみ。API 層は stdlib + `tomllib`
-- `zoo` パッケージは `.zoo/docker-compose.yml` のあるディレクトリ（= workspace root）
-  を CWD から親方向に探索（`zoo.runner.workspace_root()`）。`zoo init` 済の
-  workspace 内（または親方向に `.zoo/` がある場所）で呼び出してください
 - 長時間実行されるコマンド（`run`, `task`）は subprocess を TTY に attach します
+
+### Path 解決（ADR 0002）
+
+| 関数 | 戻り値 |
+|---|---|
+| `zoo.runner.workspace_root()` | `.zoo/docker-compose.yml` のあるディレクトリ（= user workspace root）。CWD から親方向に walk-up |
+| `zoo.runner.zoo_dir()` | `workspace_root() / ".zoo"`（zoo 管理ファイルのあるディレクトリ） |
+
+`zoo init` 済の workspace 内（または配下のサブディレクトリ）で API を呼び出してください。
+agent-zoo の source repo 直下では `.zoo/` が無いため SystemExit します（D7）。
+
+### Bundled assets の二段解決
+
+`zoo.api._asset_source()` は以下の順で配布資材を探します:
+
+1. **Installed**: `importlib.resources.files("zoo").joinpath("_assets").joinpath(".zoo")` — wheel に同梱された `_assets/.zoo/` 配下
+2. **Source repo**: `zoo` パッケージから walk-up で `bundle/` ディレクトリを検索（maintainer の開発時）
+
+`zoo.init(target)` はこの source から `target/.zoo/` 配下にコピーします。

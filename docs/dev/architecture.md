@@ -30,22 +30,42 @@ Claude Code → srt (customProxy) → mitmproxy (localhost:8080) → internet
 
 Docker不要。macOS Seatbeltサンドボックスと併用。
 
+## Workspace Layout（ADR 0002）
+
+source repo (clone) と 配布物 (zoo init された user workspace) で命名分離している:
+
+| | source repo (`bundle/`) | 配布物 (`<workspace>/.zoo/`) |
+|---|---|---|
+| 意味 | 配布資材の置き場（maintainer が編集）| user workspace 内の harness 一式 |
+| `docker-compose.yml` 等 | `bundle/docker-compose.yml` | `.zoo/docker-compose.yml` |
+| `Makefile` | `bundle/Makefile`（maintainer 用） | **配布しない**（zoo CLI 経由） |
+| 検出ロジック | — | `runner.workspace_root()` が `.zoo/docker-compose.yml` を walk-up |
+
+詳細は [ADR 0002 .zoo/ Workspace Layout](adr/0002-dot-zoo-workspace-layout.md) を参照。
+以下のコンポーネント表のパスは **配布物視点**（`.zoo/...`）で記述する。
+
 ## コンポーネント
 
-| ファイル | 役割 | 依存 |
+| パス（配布物） | 役割 | 依存 |
 |---|---|---|
-| `addons/policy.py` | ポリシーエンジン（ドメイン/パス制御、レート制限、ペイロード検査、アラート、tool_useブロック判定） | なし |
-| `addons/sse_parser.py` | SSE / JSON / OpenAI Responsesイベントからtool_useを抽出。`BaseSSEParser` + `AnthropicSSEParser` / `OpenAISSEParser` / `OpenAIResponsesStreamParser` / `AutoDetectSSEParser` を実装 | なし |
-| `addons/policy_enforcer.py` | mitmproxyアドオン。HTTP response と WebSocket message を検査し、tool_use抽出とブロックを行う | mitmproxy |
-| `addons/policy_edit.py` | ポリシー編集・ホワイトリスト育成（atomic write、ファイルロック） | tomli_w |
-| `addons/policy_inbox.py` | Policy Inbox の storage layer（pure logic、ADR 0001） | tomli_w |
-| `dashboard/app.py` | Flask + HTMX ダッシュボード（Inbox タブ含む） | Flask |
-| `policy.toml` | ベースポリシー（人間が編集、コメント付き、git管理） | — |
-| `policy.runtime.toml` | ランタイムポリシー（ダッシュボードが書き込み、gitignore） | — |
-| `${WORKSPACE}/.zoo/inbox/*.toml` | エージェントが提出する許可リクエスト（ADR 0001、bind mount） | — |
-| `templates/HARNESS_RULES.md` | Agent 共通の harness 規約（CLAUDE.md / AGENTS.md / GEMINI.md として inject） | — |
-| `container/Dockerfile.base` | 共通 base イメージ（agent-zoo-base:latest）。各 agent はこれを `FROM` する | — |
-| `container/Dockerfile.unified` | claude + codex + gemini を同梱した統合イメージ（#27、cross-agent 呼び出し用） | — |
+| `.zoo/addons/policy.py` | ポリシーエンジン（ドメイン/パス制御、レート制限、ペイロード検査、アラート、tool_useブロック判定） | なし |
+| `.zoo/addons/sse_parser.py` | SSE / JSON / OpenAI Responsesイベントからtool_useを抽出。`BaseSSEParser` + `AnthropicSSEParser` / `OpenAISSEParser` / `OpenAIResponsesStreamParser` / `AutoDetectSSEParser` を実装 | なし |
+| `.zoo/addons/policy_enforcer.py` | mitmproxyアドオン。HTTP response と WebSocket message を検査し、tool_use抽出とブロックを行う | mitmproxy |
+| `.zoo/addons/policy_edit.py` | ポリシー編集・ホワイトリスト育成（atomic write、ファイルロック） | tomli_w |
+| `.zoo/addons/policy_inbox.py` | Policy Inbox の storage layer（pure logic、ADR 0001） | tomli_w |
+| `.zoo/dashboard/app.py` | Flask + HTMX ダッシュボード（Inbox タブ含む） | Flask |
+| `.zoo/policy.toml` | ベースポリシー（人間が編集、コメント付き、git管理） | — |
+| `.zoo/policy.runtime.toml` | ランタイムポリシー（ダッシュボードが書き込み、gitignore） | — |
+| `.zoo/inbox/*.toml` | エージェントが提出する許可リクエスト（ADR 0001） | — |
+| `.zoo/templates/HARNESS_RULES.md` | Agent 共通の harness 規約（CLAUDE.md / AGENTS.md / GEMINI.md として inject） | — |
+| `.zoo/container/Dockerfile.base` | 共通 base イメージ（agent-zoo-base:latest）。各 agent はこれを `FROM` する | — |
+| `.zoo/container/Dockerfile{,.codex,.gemini}` | 各 agent 単体イメージ（claude / codex / gemini） | — |
+| `.zoo/container/Dockerfile.unified` | claude + codex + gemini を同梱した統合イメージ（#27、cross-agent 呼び出し用） | — |
+
+### Image Variants
+
+- **単体イメージ**（`Dockerfile`, `Dockerfile.codex`, `Dockerfile.gemini`）: 1 agent 専用、最小サイズ。通常はこちら
+- **統合イメージ**（`Dockerfile.unified`）: claude → gemini を呼ぶ等の cross-agent 呼び出し用。`docker compose --profile unified up -d unified` → `docker compose exec unified bash` でコンテナ内に入って任意 CLI を起動
 
 ## Policy Inbox（ADR 0001）
 

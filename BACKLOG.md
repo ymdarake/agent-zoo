@@ -25,13 +25,18 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 ## Next Up
 
-| 優先度 | タスク | アクション |
-|---|---|---|
-| 🔴 **P0** | **[2026-04-18 包括レビュー](docs/dev/reviews/2026-04-18-comprehensive-review.md) Phase 1（リリース blocker）** | mitmproxy addon の fail-closed 化 (C-2) / dashboard FLASK_DEBUG=1 撤去 (C-1) / CSRF + path traversal + container hardening (H-1〜H-4) を 1〜2 PR でまとめて対応 |
-| 🟡 **P1** | **包括レビュー Phase 2（当日作業の不整合）** | docs/CLAUDE.md/CI の小修正 (H1〜H4 旧 M1) を 1 PR で |
-| P1 | **#31 user smoke** | user 環境で 11 項目を確認、NG があれば fix を別 issue 化 |
-| 🟢 **P2** | **包括レビュー Phase 3（セキュリティ Hardening）** | M-1〜M-8 を次 sprint でまとめて |
-| ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様確定後 |
+> 📋 **全体計画書**: [docs/plans/2026-04-18-consolidated-work-breakdown.md](docs/plans/2026-04-18-consolidated-work-breakdown.md)
+> Sprint 004〜008 に作業をブレークダウン、依存関係と PR 単位を詳述。以下はその要約。
+
+| 優先度 | Sprint | 内容 | 期間 |
+|---|---|---|---|
+| 🟡 **P1** | **Sprint 004** Docs/CI Cleanup | 当日作業の不整合 (H1〜H4 + M1〜M8) を 1 PR で | 半日 |
+| 🔴 **P0** | **Sprint 005** Critical Security | リリース blocker (C-1, C-2, H-1〜H-4) を 3 PR で → **Alpha publish 可** | 2〜3 日 |
+| 🟢 **P2** | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 2 PR で | 2 日 |
+| 🟢 **P2** | **Sprint 007** Dashboard 外部依存ゼロ化 | pico/htmx → 自前 HTML/CSS/JS (ADR 0004) を 4 PR で → **Beta publish 可** | 1〜2 週間 |
+| ⚪ **P3** | **Sprint 008** Low Polish | Low 指摘解消 + 1.0 release candidate | 1 日 |
+| P1 | **#31 user smoke** | user 環境で 11 項目確認、Sprint 005 alpha 後に実施 | user 依存 |
+| ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様確定後 | 未定 |
 
 ---
 

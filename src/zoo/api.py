@@ -20,11 +20,11 @@ from typing import Any
 
 from . import runner
 
+# ADR 0002 D1/D5: Makefile は配布から外す（maintainer 用に source repo にのみ残す）
 _BUNDLED_FILES = [
     "docker-compose.yml",
     "docker-compose.strict.yml",
     "policy.toml",
-    "Makefile",
 ]
 _BUNDLED_DIRS = [
     "container",
@@ -50,24 +50,30 @@ def _asset_source() -> Path:
 
 
 def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
-    """Bootstrap a ready-to-use agent-zoo workspace at ``target_dir``.
+    """Bootstrap a ready-to-use agent-zoo workspace at ``target_dir`` (ADR 0002).
 
-    Copies bundled docker-compose / policy / container / addons files into
-    the target and creates the empty mount directories (``data/``,
-    ``workspace/``, ``certs/``).  Existing files are preserved unless
-    ``force=True``.
+    新 layout: 全 zoo 管理ファイルを ``target/.zoo/`` 配下に集約。
+    - ``target/.zoo/`` 配下に bundled files / dirs をコピー
+    - ``target/.gitignore`` (workspace 用、`.zoo/` 1 行) を配置（既存 skip）
+    - ``target/.zoo/.gitignore`` (内部 runtime artifact 除外) を配置
+    - runtime dirs (``data/``, ``certs/``, ``inbox/``) と
+      ``policy.runtime.toml`` を作成
 
-    Returns the resolved target path.
+    既存ファイルは ``force=True`` 指定がない限り保持される。
+
+    Returns: the resolved target path (= workspace root).
     """
     target = Path(target_dir).expanduser().resolve()
     target.mkdir(parents=True, exist_ok=True)
     source = _asset_source()
+    zoo_target = target / ".zoo"
+    zoo_target.mkdir(parents=True, exist_ok=True)
 
     for name in _BUNDLED_FILES:
         src = source / name
         if not src.exists():
             continue
-        dst = target / name
+        dst = zoo_target / name
         if dst.exists() and not force:
             continue
         shutil.copy2(src, dst)
@@ -76,16 +82,29 @@ def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
         src = source / name
         if not src.exists():
             continue
-        dst = target / name
+        dst = zoo_target / name
         if dst.exists():
             if not force:
                 continue
             shutil.rmtree(dst)
         shutil.copytree(src, dst)
 
-    for d in ("data", "workspace", "certs"):
-        (target / d).mkdir(exist_ok=True)
-    (target / "policy.runtime.toml").touch(exist_ok=True)
+    # workspace root .gitignore（既存 skip）
+    ws_gi_src = source / "templates" / "workspace-gitignore"
+    ws_gi_dst = target / ".gitignore"
+    if ws_gi_src.exists() and not ws_gi_dst.exists():
+        shutil.copy2(ws_gi_src, ws_gi_dst)
+
+    # .zoo/.gitignore（force で更新可、初回は配置）
+    zoo_gi_src = source / "templates" / "zoo-gitignore"
+    zoo_gi_dst = zoo_target / ".gitignore"
+    if zoo_gi_src.exists() and (force or not zoo_gi_dst.exists()):
+        shutil.copy2(zoo_gi_src, zoo_gi_dst)
+
+    # Runtime dirs/files（.zoo/ 配下）
+    for d in ("data", "certs", "inbox"):
+        (zoo_target / d).mkdir(exist_ok=True)
+    (zoo_target / "policy.runtime.toml").touch(exist_ok=True)
 
     return target
 

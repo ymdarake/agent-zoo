@@ -92,8 +92,8 @@ Live monitor requests, tool_uses, and blocks; nurture your whitelist; review and
 | [Codex Integration Guide](docs/codex-integration.md) | Codex CLI integration notes (Japanese) |
 | [Security Model](docs/security.md) | Defense in depth, known constraints, operating principles (Japanese) |
 | [Policy Reference](docs/policy-reference.md) | All `policy.toml` settings (Japanese) |
-| [BACKLOG](BACKLOG.md) | Issue grooming + per-task plans |
-| [ROADMAP](ROADMAP.md) | Unimplemented features and future plans |
+| [BACKLOG](BACKLOG.md) | Active tasks + ROADMAP + Resolved Decisions (the old ROADMAP.md / TODO.md were consolidated here) |
+| [Sprint history](docs/sprints/) | Completed-task archive per sprint |
 
 ## License
 

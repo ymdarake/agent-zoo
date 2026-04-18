@@ -89,6 +89,44 @@ class TestComposeUpInbox:
         assert (repo_root / "workspace" / ".zoo" / "inbox").is_dir()
 
 
+class TestBuildBase:
+    """B-1: Dockerfile.base を独立ビルドするヘルパー。"""
+
+    def test_build_base_invokes_docker_build(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        # 必要な Dockerfile.base が存在することを fixture に追加
+        container = repo_root / "container"
+        container.mkdir(exist_ok=True)
+        (container / "Dockerfile.base").write_text("FROM node:20-slim\n")
+        calls: list[list[str]] = []
+        monkeypatch.setattr(runner, "run", lambda cmd, **kw: calls.append(cmd))
+
+        runner.build_base()
+
+        assert any(
+            "docker" == c[0] and "build" in c and "agent-zoo-base:latest" in " ".join(c)
+            for c in calls
+        )
+
+    def test_build_includes_base_then_compose(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """api.build は base → compose build の順で呼ぶ。"""
+        container = repo_root / "container"
+        container.mkdir(exist_ok=True)
+        (container / "Dockerfile.base").write_text("FROM node:20-slim\n")
+        (repo_root / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
+        calls: list[list[str]] = []
+        monkeypatch.setattr(runner, "run", lambda cmd, **kw: calls.append(cmd))
+
+        api.build(agent="claude")
+
+        # 1番目: base ビルド, 2番目: compose build
+        assert any("agent-zoo-base:latest" in " ".join(c) for c in calls)
+        assert any("compose" in c and "build" in c for c in calls)
+
+
 class TestRun:
     def test_invokes_compose_up_and_interactive(
         self, repo_root: Path, monkeypatch: pytest.MonkeyPatch

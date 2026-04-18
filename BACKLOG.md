@@ -468,7 +468,7 @@ E-1, E-2 (independent)
 - [ ] A-9 テスト整備 + smoke
 
 ### Group B: ベースイメージ統合（P1）
-- [ ] B-1 Dockerfile.base 切出し
+- [x] B-1 Dockerfile.base 切出し（2026-04-18 / 二段ビルド agent-zoo-base + agent別）
 - [ ] B-2 base にツール群追加
 - [ ] B-3 gemini-cli 追加
 - [ ] B-4 bash モード

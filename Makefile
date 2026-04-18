@@ -35,8 +35,12 @@ certs/mitmproxy-ca-cert.pem:
 certs: certs/mitmproxy-ca-cert.pem
 
 # === ビルド ===
+.PHONY: build-base
+build-base:
+	docker build -t agent-zoo-base:latest -f container/Dockerfile.base container/
+
 .PHONY: build
-build: certs
+build: certs build-base
 	HOST_UID=$(HOST_UID) docker compose build $(AGENT) dashboard
 
 # === コンテナモード ===

@@ -122,6 +122,23 @@ def run_interactive(cmd: list[str], *, env: dict[str, str] | None = None) -> int
         return 130
 
 
+def build_base() -> None:
+    """共通 base イメージ `agent-zoo-base:latest` をビルドする（B-1）。
+
+    `container/Dockerfile.base` を使う。各 agent イメージはこれを `FROM` する。
+    """
+    container_dir = repo_root() / "container"
+    base_dockerfile = container_dir / "Dockerfile.base"
+    if not base_dockerfile.exists():
+        return
+    run([
+        "docker", "build",
+        "-t", "agent-zoo-base:latest",
+        "-f", str(base_dockerfile),
+        str(container_dir),
+    ], env=compose_env())
+
+
 def ensure_certs() -> None:
     """Generate mitmproxy CA cert if missing."""
     cert = cert_path()

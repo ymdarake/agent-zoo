@@ -169,9 +169,13 @@ def reload_policy() -> None:
 
 
 def build(*, agent: str = "claude") -> None:
-    """Build docker images for the given agent + dashboard."""
+    """Build docker images for the given agent + dashboard.
+
+    まず共通 base（B-1: `agent-zoo-base:latest`）をビルドし、次に compose build。
+    """
     cfg = runner.resolve_agent(agent)
     runner.ensure_certs()
+    runner.build_base()
     runner.run(
         ["docker", "compose", "build", cfg.name, "dashboard"],
         env=runner.compose_env(),

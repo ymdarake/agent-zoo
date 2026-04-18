@@ -1,0 +1,14 @@
+# 共通 base イメージ（agent-zoo-base:latest）
+# B-1: claude / codex / gemini で共有する OS layer
+# UID 固定は agent ごとの Dockerfile（claude/codex/...）で行う。
+
+FROM node:20-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates git sqlite3 curl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+WORKDIR /workspace

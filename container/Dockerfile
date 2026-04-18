@@ -1,19 +1,13 @@
-FROM node:20-slim
+# Claude Code agent image
+# B-1: 共通 base （agent-zoo-base:latest）に Claude Code CLI を載せる。
+# user/UID 固定は本ファイルで行う（base には含めない）。
 
-# ホスト側のUIDと合わせてworkspaceのパーミッション問題を防止
+FROM agent-zoo-base:latest
+
 ARG HOST_UID=1001
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates git sqlite3 curl \
-    && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g @anthropic-ai/claude-code
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
-
-WORKDIR /workspace
 RUN useradd -m -u ${HOST_UID} claude
-# 認証データ保存先を事前作成（ボリュームマウント時の所有権問題を防止）
 RUN mkdir -p /home/claude/.claude && chown claude:claude /home/claude/.claude
 USER claude

@@ -239,7 +239,7 @@ path = Path(inbox_dir) / f"{record_id}.toml"
 
 **修正**: `record_id` を strict regex (`^[A-Za-z0-9T:_-]+$`) でホワイトリスト検証、または `mark_status` 内で `path.resolve().is_relative_to(Path(inbox_dir).resolve())` チェック。`api_inbox_reject` は accept 側と同様に `inbox_list_requests` で存在確認してから渡す。
 
-#### H-3. proxy / dashboard / dns コンテナに `cap_drop` ／ `security_opt` 未適用、root 実行
+#### H-3. proxy / dashboard / dns コンテナに `cap_drop` ／ `security_opt` 未適用、root 実行 — ✅ Sprint 005 PR C で resolved（全 3 service に `cap_drop: [ALL]` + `no-new-privileges` + 非 root user 適用）
 
 **ファイル**: `bundle/docker-compose.yml:106-160`
 

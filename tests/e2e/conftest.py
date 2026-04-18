@@ -21,6 +21,13 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 BUNDLE = REPO_ROOT / "bundle"
 
+# Playwright Chromium を .venv 配下に閉じ込める（system / user の ~/.cache を汚さない）
+# pytest 実行時 + `playwright install chromium` 実行時の両方で同じ env を使う
+os.environ.setdefault(
+    "PLAYWRIGHT_BROWSERS_PATH",
+    str(REPO_ROOT / ".venv" / "playwright-browsers"),
+)
+
 
 def _wait_port(host: str, port: int, timeout: float = 15.0) -> bool:
     deadline = time.time() + timeout

@@ -12,13 +12,18 @@
 
 ## 初回 Setup
 
+Playwright Chromium は **`.venv/playwright-browsers/` に閉じ込め** る（system / user の `~/.cache/ms-playwright` を汚さない）。
+
 ```bash
 # 1. e2e extras を install
 uv pip install -e ".[e2e]"
 
-# 2. Playwright バイナリ download (~150MB、初回のみ)
-playwright install chromium
+# 2. Playwright Chromium を .venv 配下に download (~150MB、初回のみ)
+PLAYWRIGHT_BROWSERS_PATH=$PWD/.venv/playwright-browsers \
+  uv run playwright install chromium
 ```
+
+`pytest tests/e2e/` 実行時は `conftest.py` が自動で `PLAYWRIGHT_BROWSERS_PATH` を設定するため、env 指定不要。
 
 ## 実行
 

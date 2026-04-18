@@ -16,7 +16,7 @@ mitmproxy payload inspection + TOML policy control. Agent-agnostic.
 
 - **Standalone** — Proxy-only (`zoo host start`). Works with any agent on the host.
 - **Docker Compose isolation** — Agents are isolated on an `internal: true` network. *"They can read, but they can't send."*
-  - Supported: Claude Code, Codex CLI, Gemini CLI (single + unified images, see #27)
+  - Supported: Claude Code / Codex CLI / Gemini CLI (single + all-in-one unified image)
 
 ## Features
 
@@ -76,8 +76,6 @@ The `zoo` CLI covers all features. `zoo --help` / `zoo <cmd> --help` for details
 | Log analysis | `zoo logs analyze` / `summarize` / `alerts` |
 | Tests | `zoo test unit` |
 
-> **Maintainer note**: the `zoo` CLI does not run at the root of the agent-zoo source repo (clone) because there is no `.zoo/` there. Dogfood from a separate dir with `pip install -e . && zoo init && zoo build`. See [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離).
-
 ## Dashboard
 
 Run `zoo up --dashboard-only` and open http://localhost:8080.
@@ -88,34 +86,34 @@ Live monitor requests, tool_uses, and blocks; nurture your whitelist; review and
 |---|---|---|---|
 | ![Requests](docs/images/requests.png) | ![Tool Uses](docs/images/tool-uses.png) | _(ADR 0001)_ | ![Whitelist](docs/images/whitelist.png) |
 
-**Inbox** ([User guide (JP)](docs/user/inbox.md) / [Design ADR 0001](docs/dev/adr/0001-policy-inbox.md)): the agent files allow-list requests it deems necessary; humans approve or reject them in the dashboard, and accepted ones flow into `policy.runtime.toml`.
+**Inbox** ([User guide (JP)](docs/user/inbox.md)): the agent files allow-list requests it deems necessary; humans approve or reject them in the dashboard, and accepted ones flow into `policy.runtime.toml`.
 
 ## Documentation
 
-### For users ([docs/user/](docs/user/))
-
 | Document | Contents |
 |---|---|
-| [Install from package](docs/user/install-from-package.md) | `uv tool install` → `zoo init` → `zoo run` setup + `.zoo/` layout |
+| [Install & setup](docs/user/install-from-package.md) | `uv tool install` → `zoo init` → `zoo run` setup + `.zoo/` layout |
 | [Inbox guide (JP)](docs/user/inbox.md) | Approve agent-submitted allow-list requests in the dashboard |
-| [Security Model](docs/user/security.md) | Defense in depth, known constraints, operating principles (Japanese / EN) |
-| [Policy Reference](docs/user/policy-reference.md) | All `policy.toml` settings (Japanese / EN) |
+| [Security Model](docs/user/security.md) | Defense in depth, known constraints, operating principles |
+| [Policy Reference](docs/user/policy-reference.md) | All `policy.toml` settings |
 
-### For developers ([docs/dev/](docs/dev/))
+## Unified image (cross-agent)
 
-| Document | Contents |
-|---|---|
-| [Architecture](docs/dev/architecture.md) | Components, data flow, internal design (Japanese / EN) |
-| [Python API](docs/dev/python-api.md) | `zoo` library API for automation / notebook usage |
-| [ADR 0001 Policy Inbox](docs/dev/adr/0001-policy-inbox.md) | Design rationale: file format, atomic writes, dedup, lifecycle |
-| [ADR 0002 Workspace Layout](docs/dev/adr/0002-dot-zoo-workspace-layout.md) | source = `bundle/` / distribution = `.zoo/` naming separation |
-| [Sprint history](docs/dev/sprints/) | Completed-task archive per sprint |
+To use one agent from another (e.g., Claude calling Gemini), the `unified` profile bundles claude + codex + gemini into a single container:
 
-### Project management
+```bash
+cd <workspace>  # already zoo init'd
+HOST_UID=$(id -u) docker compose -f .zoo/docker-compose.yml --profile unified up -d unified
+docker compose -f .zoo/docker-compose.yml exec unified bash
+# run claude / codex / gemini inside the container
+```
 
-| | Contents |
-|---|---|
-| [BACKLOG](BACKLOG.md) | Active tasks + ROADMAP + sprint history links |
+Image size is larger (3 CLIs + deps).
+
+## Feedback & developers
+
+- Bug reports / feature requests: [GitHub Issues](https://github.com/ymdarake/agent-zoo/issues)
+- Internal design & contributing: [docs/dev/](docs/dev/) (architecture, Python API, ADRs, sprint history)
 
 ## License
 

@@ -1,76 +1,94 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+agent-zoo source repo で Claude Code が作業するための指示書。
 
 ## プロジェクト概要
 
-AIコーディングエージェント（Claude Code, Codex CLI, Aider, Cline等）を安全に自律実行するためのセキュリティハーネス。Docker Compose隔離 + mitmproxyペイロード検査 + TOMLポリシー制御をエージェント非依存で提供する。
+AI コーディングエージェント（Claude Code / Codex CLI / Gemini CLI 等）を安全に自律実行するためのセキュリティハーネス。Docker Compose 隔離 + mitmproxy ペイロード検査 + TOML ポリシー制御を **エージェント非依存** で提供する。
 
 セキュリティの根本思想: **「読めても送れない」— ネットワーク隔離が防御の本質。**
 
-ドキュメント: `docs/` / 未実装・将来計画: `ROADMAP.md`
+参照:
+- 利用者向け docs: [`docs/user/`](docs/user/)
+- 開発者向け docs: [`docs/dev/`](docs/dev/) (architecture, python-api, ADR, Sprint アーカイブ)
+- BACKLOG / ROADMAP: [`BACKLOG.md`](BACKLOG.md)
+
+## リポジトリ構造（ADR 0002）
+
+```
+agent-zoo/
+├── src/zoo/                  # Python source: zoo CLI / API
+│   ├── api.py / runner.py / cli.py
+│   └── _init_assets/         # zoo init() で workspace に配布する .gitignore 等
+├── bundle/                   # 配布資材（zoo init で <workspace>/.zoo/ にコピーされる元）
+│   ├── docker-compose.yml
+│   ├── policy.toml
+│   ├── Makefile              # maintainer 専用（user 配布物には含めない、ADR 0002 D5）
+│   ├── addons/               # mitmproxy addons (policy / policy_enforcer / sse_parser / policy_inbox 等)
+│   ├── container/            # Dockerfile.{base,codex,gemini,unified}
+│   ├── dashboard/            # Flask + HTMX ダッシュボード
+│   ├── templates/            # HARNESS_RULES.md（agent への指示テンプレ）
+│   └── host/, dns/, certs/, data/
+├── tests/                    # pytest（repo root、bundle/ を pythonpath で参照）
+├── docs/user/                # 利用者向け（install / security / policy-reference）
+├── docs/dev/                 # 開発者向け（architecture / python-api / adr/ / sprints/）
+└── BACKLOG.md                # active タスク + ROADMAP + Sprint 履歴 link
+```
+
+**source repo では `zoo` CLI は動かない**（`.zoo/` が無いため）。dogfood は (a) `cd bundle && make build` (b) 別 dir で `pip install -e . && zoo init` のいずれか。詳細は [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md)。
 
 ## アーキテクチャ
 
-2モード構成:
-- **コンテナモード**: Docker `internal: true` ネットワークでエージェントを隔離。mitmproxyサイドカーが唯一の外部通信経路。`--dangerously-skip-permissions` + `cap_drop: [ALL]`
-- **ホストモード**: ネイティブClaude Code → srt customProxy → localhost mitmproxy。Seatbeltサンドボックス有効
+2 モード構成（詳細: [docs/dev/architecture.md](docs/dev/architecture.md)）:
+- **コンテナモード**: `internal: true` ネットワークで agent を隔離。mitmproxy サイドカーが唯一の外部通信経路。`cap_drop: [ALL]` + dangerously-skip-permissions
+- **ホストモード**: ネイティブ CLI → mitmproxy (localhost:8080)。Seatbelt サンドボックス併用
 
-核心コンポーネント:
-- `policy.toml` — ドメイン制御、レート制限、ペイロード検査ルール（両モード共通、ホットリロード対応）
-- `addons/policy.py` — ポリシーエンジン（純粋ロジック、mitmproxy非依存）
-- `addons/policy_enforcer.py` — mitmproxyアドオン。request()フックでドメイン制御/レート制限/ペイロード検査、SSEストリーミングtool_use検出
-- `addons/sse_parser.py` — SSEステートマシン（mitmproxy非依存）
-- `addons/policy_edit.py` — ポリシー編集・ホワイトリスト育成ロジック（mitmproxy非依存）
-- `data/harness.db` — SQLite（WALモード）。requests, tool_uses, blocks, alertsテーブル
-
-## 開発コマンド
+## 開発コマンド（maintainer、`bundle/` 内）
 
 ```bash
-# コンテナモード
-WORKSPACE=/path/to/project make run                 # 対話実行（初回は /login 必要）
-WORKSPACE=/path/to/project make run-dangerous       # 箱庭モード（承認なし、ネットワーク隔離で保護）
-CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="..." # 自律実行（トークン認証）
+cd bundle
 
-# ホストモード
-make host             # mitmproxyをローカル起動
-make host-stop        # 停止
+# build
+make build               # base + claude (default)。AGENT=codex/gemini も可
+make build-base          # base のみ
 
-# オプションプロファイル
-make up-dashboard     # ダッシュボード（http://localhost:8080）
-make up-strict        # CoreDNS strictモード（DNS漏洩対策）
+# Docker smoke
+make test                # Allowed / Blocked 403 / Isolated / SQLite Logs の 4 段階
 
-# テスト
-make unit             # ユニットテスト（144件）
-make test             # Dockerスモークテスト
+# dogfood run
+make run                 # 対話モード（初回は /login）
+make run-dangerous       # 箱庭モード（承認なし）
+CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="..."
+make bash                # コンテナ内 bash
+make up-dashboard        # dashboard のみ起動
+make down                # 停止
 
-# ビルド・管理
-make certs            # mitmproxy CA証明書の事前生成
-make build            # Dockerイメージビルド
-make reload           # policy.toml変更を反映（proxy再起動）
-make down             # コンテナ停止
-
-# ログ分析（ホスト側Claude CLI利用）
-make analyze          # ブロックログ → policy.toml改善提案
-make summarize        # tool_use履歴 → ホストモード最小権限提案
-make alerts           # アラート履歴の分析
-make clear-logs       # ログDB削除
+# ログ
+make clear-logs
+make analyze / summarize / alerts   # ホスト側 claude CLI で AI 分析
 ```
 
-## 実装状態
+## ユニットテスト（repo root）
 
-Phase 1-3 実装済み。ユニットテスト144件、Dockerスモークテスト。
+```bash
+uv run python -m pytest tests/ -v
+```
 
-## テスト実行ルール
-
-- **pytestは必ず1プロセスだけフォアグラウンドで実行する。バックグラウンド実行禁止。**
-- 前のテスト完了を確認してから次を実行する。多重実行するとロックテストでデッドロックする。
+- 全 234 件
+- **pytest は必ず 1 プロセス・フォアグラウンド**（並列禁止、ロック系テストがデッドロックする）
+- `tests/` は repo root 直下、`pythonpath = ["bundle"]` (pyproject.toml) で `addons` / `dashboard` を top-level import
 
 ## 重要な設計判断
 
-- Dockerfile: **Alpine Linux禁止**（musl libc互換性でClaude Codeがクラッシュする）。node:20-slim を使う
-- 証明書: Dockerfile内COPYではなく**ランタイムボリュームマウント** + `NODE_EXTRA_CA_CERTS` + `SSL_CERT_FILE` 環境変数。`NODE_TLS_REJECT_UNAUTHORIZED=0` は絶対使わない
-- 認証: 対話モードはコンテナ内`/login`、自律実行は`CLAUDE_CODE_OAUTH_TOKEN`環境変数（`claude setup-token`で取得）
-- SSEストリーミング: ドメイン制御/レート制限は `request()` フックで完結。tool_use検出はSSEチャンクのステートマシン解析
-- ポリシー書き換え: atomic write（tmpfile + rename、Docker bind mountではフォールバック）
-- ダッシュボード: `127.0.0.1` バインド、データは読み取り専用マウント
+- **Dockerfile**: Alpine Linux 禁止（musl libc 互換性で agent がクラッシュ）。`node:20-slim` を使う
+- **証明書**: ランタイムボリュームマウント + `NODE_EXTRA_CA_CERTS` + `SSL_CERT_FILE` env。`NODE_TLS_REJECT_UNAUTHORIZED=0` は絶対使わない
+- **認証**: 対話 = コンテナ内 `/login` / 自律 = `CLAUDE_CODE_OAUTH_TOKEN` env（`claude setup-token` で取得）
+- **SSE 解析**: ドメイン制御/レート制限は `request()` フックで完結。tool_use 検出は SSE チャンクのステートマシン解析
+- **ポリシー書き換え**: atomic write（tmpfile + rename、Docker bind mount ではフォールバック）
+- **ダッシュボード**: `127.0.0.1` バインド、`bundle/data` は読み取り専用マウント
+- **Inbox** (ADR 0001): agent → `<workspace>/.zoo/inbox/*.toml` → dashboard accept → `policy.runtime.toml` 自動反映
+- **Workspace Layout** (ADR 0002): **source = `bundle/`** / **配布 = `.zoo/`** で命名分離
+
+## Sprint 進行状況
+
+[BACKLOG.md](BACKLOG.md) と [docs/dev/sprints/](docs/dev/sprints/) 参照。

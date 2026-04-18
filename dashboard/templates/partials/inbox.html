@@ -1,0 +1,71 @@
+<h4>Inbox Requests</h4>
+<p><small>エージェントが提出した未承認のリクエスト（ADR 0001）。許可するとそのまま <code>policy.runtime.toml</code> に反映されます。</small></p>
+
+{% if items %}
+<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem">
+    <button type="button" class="btn-sm" onclick="bulkInbox('/api/inbox/bulk-accept', '選択を一括許可しますか？')">選択を一括許可</button>
+    <button type="button" class="btn-sm secondary" onclick="bulkInbox('/api/inbox/bulk-reject', '選択を一括却下しますか？')">選択を一括却下</button>
+</div>
+
+<table style="font-size:0.85rem">
+    <thead>
+        <tr>
+            <th><input type="checkbox" id="inbox-select-all" onclick="toggleAllInbox(this)"></th>
+            <th>Action</th>
+            <th>Type</th>
+            <th>Value</th>
+            <th>Reason</th>
+            <th>Agent</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in items %}
+    <tr>
+        <td><input type="checkbox" class="inbox-cb" value="{{ r._id }}"></td>
+        <td style="white-space:nowrap">
+            <form style="display:inline;margin:0" hx-post="/api/inbox/accept" hx-target="#tab-inbox" hx-swap="innerHTML"
+                hx-confirm="このリクエストを許可しますか？" hx-ext="json-enc" hx-vals='{"record_id": "{{ r._id }}"}'>
+                <button type="submit" class="btn-sm">許可</button>
+            </form>
+            <form style="display:inline;margin:0" hx-post="/api/inbox/reject" hx-target="#tab-inbox" hx-swap="innerHTML"
+                hx-ext="json-enc" hx-vals='{"record_id": "{{ r._id }}"}'>
+                <button type="submit" class="btn-sm secondary">却下</button>
+            </form>
+        </td>
+        <td><strong>{{ r.type }}</strong></td>
+        <td>
+            {% if r.type == "path" %}
+            <code>{{ r.domain }}</code> <code>{{ r.value }}</code>
+            {% else %}
+            <code>{{ r.value }}</code>
+            {% endif %}
+        </td>
+        <td style="font-size:0.75rem;max-width:300px"><small>{{ r.reason }}</small></td>
+        <td><small>{{ r.agent }}</small></td>
+        <td><small>{{ r.created_at }}</small></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+<script>
+function toggleAllInbox(master) {
+    document.querySelectorAll('.inbox-cb').forEach(cb => cb.checked = master.checked);
+}
+function bulkInbox(url, confirmMsg) {
+    var ids = Array.from(document.querySelectorAll('.inbox-cb:checked')).map(cb => cb.value);
+    if (ids.length === 0) { alert('選択してください'); return; }
+    if (!confirm(confirmMsg)) return;
+    fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'HX-Request': 'true'},
+        body: JSON.stringify({record_ids: ids})
+    }).then(r => r.text()).then(html => {
+        document.getElementById('tab-inbox').innerHTML = html;
+    });
+}
+</script>
+{% else %}
+<p><small>未承認のリクエストはありません。</small></p>
+{% endif %}

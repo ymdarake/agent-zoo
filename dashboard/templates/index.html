@@ -48,6 +48,7 @@
         <div class="tab-nav" id="tabs">
             <a href="#" class="active" onclick="showTab('requests', this)">Requests</a>
             <a href="#" onclick="showTab('tool-uses', this)">Tool Uses</a>
+            <a href="#" onclick="showTab('inbox', this)">Inbox</a>
             <a href="#" onclick="showTab('whitelist', this)">Whitelist</a>
         </div>
 
@@ -73,6 +74,13 @@
         <!-- Tool Uses Tab -->
         <div id="tab-tool-uses" style="display:none">
             <div hx-get="/partials/tool-uses" hx-trigger="load, every 5s" hx-swap="innerHTML">
+                <p aria-busy="true">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Inbox Tab (ADR 0001 A-6) -->
+        <div id="tab-inbox" style="display:none">
+            <div hx-get="/partials/inbox" hx-trigger="load" hx-swap="innerHTML">
                 <p aria-busy="true">Loading...</p>
             </div>
         </div>

@@ -140,5 +140,144 @@ class TestDashboardAPI(unittest.TestCase):
         self.assertEqual(len(data), 1)
 
 
+class TestDashboardInbox(unittest.TestCase):
+    """ADR 0001 A-6: dashboard inbox 連携。"""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.inbox_dir = os.path.join(self.tmp.name, "inbox")
+        os.makedirs(self.inbox_dir, exist_ok=True)
+        self.policy_path = os.path.join(self.tmp.name, "policy.toml")
+        with open(self.policy_path, "w") as f:
+            f.write("[domains.allow]\nlist = []\n[paths.allow]\n")
+
+        os.environ["INBOX_DIR"] = self.inbox_dir
+        os.environ["POLICY_PATH"] = self.policy_path
+
+        sys.path.insert(
+            0, os.path.join(os.path.dirname(__file__), "..", "addons")
+        )
+        from policy_inbox import add_request  # noqa: E402
+
+        self._add = add_request
+        app.config["TESTING"] = True
+        self.client = app.test_client()
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_partial_inbox_empty(self):
+        rv = self.client.get("/partials/inbox")
+        self.assertEqual(rv.status_code, 200)
+        self.assertIn(b"Inbox", rv.data)
+
+    def test_partial_inbox_lists_pending(self):
+        self._add(self.inbox_dir, {
+            "type": "domain", "value": "needed.com",
+            "reason": "test", "agent": "claude",
+        })
+        rv = self.client.get("/partials/inbox")
+        self.assertIn(b"needed.com", rv.data)
+
+    def test_accept_reflects_to_runtime(self):
+        rid = self._add(self.inbox_dir, {
+            "type": "domain", "value": "ok.com",
+            "reason": "test", "agent": "claude",
+        })
+        rv = self.client.post(
+            "/api/inbox/accept", json={"record_id": rid}
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        import tomllib
+        rt_path = self.policy_path.replace(".toml", ".runtime.toml")
+        self.assertTrue(os.path.exists(rt_path))
+        with open(rt_path, "rb") as f:
+            rt = tomllib.load(f)
+        self.assertIn(
+            "ok.com",
+            rt.get("domains", {}).get("allow", {}).get("list", []),
+        )
+
+    def test_accept_path_request(self):
+        rid = self._add(self.inbox_dir, {
+            "type": "path", "value": "/foo/*",
+            "domain": "registry.npmjs.org",
+            "reason": "test", "agent": "claude",
+        })
+        rv = self.client.post(
+            "/api/inbox/accept", json={"record_id": rid}
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        import tomllib
+        rt_path = self.policy_path.replace(".toml", ".runtime.toml")
+        with open(rt_path, "rb") as f:
+            rt = tomllib.load(f)
+        patterns = rt.get("paths", {}).get("allow", {}).get(
+            "registry.npmjs.org", []
+        )
+        self.assertIn("/foo/*", patterns)
+
+    def test_accept_unknown_record_returns_404(self):
+        rv = self.client.post(
+            "/api/inbox/accept", json={"record_id": "ghost"}
+        )
+        self.assertEqual(rv.status_code, 404)
+
+    def test_accept_missing_record_id_returns_400(self):
+        rv = self.client.post("/api/inbox/accept", json={})
+        self.assertEqual(rv.status_code, 400)
+
+    def test_reject_marks_status(self):
+        rid = self._add(self.inbox_dir, {
+            "type": "domain", "value": "no.com",
+            "reason": "test", "agent": "claude",
+        })
+        rv = self.client.post(
+            "/api/inbox/reject", json={"record_id": rid, "reason": "noo"}
+        )
+        self.assertEqual(rv.status_code, 200)
+        rv2 = self.client.get("/partials/inbox")
+        self.assertNotIn(b"no.com", rv2.data)
+
+    def test_bulk_accept(self):
+        ids = [
+            self._add(self.inbox_dir, {
+                "type": "domain", "value": f"d{i}.com",
+                "reason": "t", "agent": "claude",
+            })
+            for i in range(3)
+        ]
+        rv = self.client.post(
+            "/api/inbox/bulk-accept", json={"record_ids": ids}
+        )
+        self.assertEqual(rv.status_code, 200)
+
+        import tomllib
+        rt_path = self.policy_path.replace(".toml", ".runtime.toml")
+        with open(rt_path, "rb") as f:
+            rt = tomllib.load(f)
+        allow = rt.get("domains", {}).get("allow", {}).get("list", [])
+        for d in ("d0.com", "d1.com", "d2.com"):
+            self.assertIn(d, allow)
+
+    def test_bulk_reject(self):
+        ids = [
+            self._add(self.inbox_dir, {
+                "type": "domain", "value": f"r{i}.com",
+                "reason": "t", "agent": "claude",
+            })
+            for i in range(2)
+        ]
+        rv = self.client.post(
+            "/api/inbox/bulk-reject", json={"record_ids": ids}
+        )
+        self.assertEqual(rv.status_code, 200)
+        rv2 = self.client.get("/partials/inbox")
+        for d in ("r0.com", "r1.com"):
+            self.assertNotIn(d.encode(), rv2.data)
+
+
 if __name__ == "__main__":
     unittest.main()

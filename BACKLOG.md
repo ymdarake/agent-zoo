@@ -462,7 +462,7 @@ E-1, E-2 (independent)
 - [x] A-3 docker-compose.yml volume 変更（2026-04-18 / inbox bind mount 追加 + runner/Makefile 自動 mkdir）
 - [x] A-4 harness テンプレ更新（2026-04-18 / CLAUDE/CODEX.harness.md を inbox 形式に書換）
 - [x] A-5 マイグレーションスクリプト（2026-04-18 / scripts/migrate_candidates_to_inbox.py / 10 tests / 冪等）
-- [ ] A-6 dashboard Inbox タブ
+- [x] A-6 dashboard Inbox タブ（2026-04-18 / 9 tests / accept 自動 runtime 反映 + bulk 操作）
 - [ ] A-7 #16 根本検証
 - [ ] A-8 ドキュメント更新
 - [ ] A-9 テスト整備 + smoke

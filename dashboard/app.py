@@ -28,10 +28,29 @@ from policy_edit import (
     remove_from_dismissed,
     remove_from_paths_allow,
 )
+from policy_inbox import (
+    bulk_mark_status as inbox_bulk_mark_status,
+)
+from policy_inbox import (
+    list_requests as inbox_list_requests,
+)
+from policy_inbox import (
+    mark_status as inbox_mark_status,
+)
 
 app = Flask(__name__)
 
 POLICY_PATH = os.environ.get("POLICY_PATH", "/app/policy.toml")
+
+
+def _policy_path() -> str:
+    """env を毎回参照（テストの monkeypatch 対応）。"""
+    return os.environ.get("POLICY_PATH", POLICY_PATH)
+
+
+def _inbox_dir() -> str:
+    """env を毎回参照（テストの monkeypatch 対応）。"""
+    return os.environ.get("INBOX_DIR", "/inbox")
 
 
 def _parse_int(value, default: int) -> int:
@@ -428,6 +447,104 @@ def api_whitelist_revoke_path():
     if request.headers.get("HX-Request"):
         return partial_whitelist()
     return jsonify({"status": "ok", "action": "revoked", "domain": domain, "path_pattern": path_pattern})
+
+
+# === Inbox (ADR 0001 A-6) ===
+
+
+@app.route("/partials/inbox")
+def partial_inbox():
+    items = inbox_list_requests(_inbox_dir(), status="pending")
+    return render_template("partials/inbox.html", items=items)
+
+
+def _apply_accept(record: dict) -> None:
+    """inbox record の type に応じて runtime policy へ反映する。"""
+    rtype = record.get("type")
+    policy_path = _policy_path()
+    if rtype == "domain":
+        add_to_allow_list(policy_path, record["value"])
+    elif rtype == "path":
+        add_to_paths_allow(policy_path, record["domain"], record["value"])
+    # tool_use_unblock は将来対応（ADR Open / Future）
+
+
+@app.route("/api/inbox/accept", methods=["POST"])
+def api_inbox_accept():
+    body = _get_json_body()
+    record_id = body.get("record_id", "").strip()
+    if not record_id:
+        return jsonify({"error": "record_id is required"}), 400
+
+    items = inbox_list_requests(_inbox_dir())
+    record = next((r for r in items if r["_id"] == record_id), None)
+    if record is None:
+        return jsonify({"error": "record not found"}), 404
+
+    _apply_accept(record)
+    inbox_mark_status(_inbox_dir(), record_id, "accepted")
+
+    if request.headers.get("HX-Request"):
+        return partial_inbox()
+    return jsonify({"status": "ok", "action": "accepted", "record_id": record_id})
+
+
+@app.route("/api/inbox/reject", methods=["POST"])
+def api_inbox_reject():
+    body = _get_json_body()
+    record_id = body.get("record_id", "").strip()
+    reason = body.get("reason", "").strip()
+    if not record_id:
+        return jsonify({"error": "record_id is required"}), 400
+    try:
+        inbox_mark_status(
+            _inbox_dir(), record_id, "rejected",
+            reason or "rejected via dashboard",
+        )
+    except FileNotFoundError:
+        return jsonify({"error": "record not found"}), 404
+
+    if request.headers.get("HX-Request"):
+        return partial_inbox()
+    return jsonify({"status": "ok", "action": "rejected", "record_id": record_id})
+
+
+@app.route("/api/inbox/bulk-accept", methods=["POST"])
+def api_inbox_bulk_accept():
+    body = _get_json_body()
+    record_ids = body.get("record_ids", [])
+    if not isinstance(record_ids, list):
+        return jsonify({"error": "record_ids must be a list"}), 400
+
+    items = inbox_list_requests(_inbox_dir())
+    by_id = {r["_id"]: r for r in items}
+    accepted = 0
+    for rid in record_ids:
+        record = by_id.get(rid)
+        if record is None:
+            continue
+        try:
+            _apply_accept(record)
+            inbox_mark_status(_inbox_dir(), rid, "accepted")
+            accepted += 1
+        except (FileNotFoundError, ValueError, KeyError):
+            continue
+
+    if request.headers.get("HX-Request"):
+        return partial_inbox()
+    return jsonify({"status": "ok", "accepted": accepted})
+
+
+@app.route("/api/inbox/bulk-reject", methods=["POST"])
+def api_inbox_bulk_reject():
+    body = _get_json_body()
+    record_ids = body.get("record_ids", [])
+    if not isinstance(record_ids, list):
+        return jsonify({"error": "record_ids must be a list"}), 400
+    n = inbox_bulk_mark_status(_inbox_dir(), record_ids, "rejected")
+    if request.headers.get("HX-Request"):
+        return partial_inbox()
+    return jsonify({"status": "ok", "rejected": n})
 
 
 if __name__ == "__main__":

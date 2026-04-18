@@ -3,6 +3,12 @@
 # B-2: 開発用 CLI ツール群（python3/jq/less/ripgrep）を同梱
 # D-1: 企業 proxy 配下での apt 失敗回避のため extra CA を取り込む
 # UID 固定は agent ごとの Dockerfile（claude/codex/...）で行う。
+#
+# NOTE: 本イメージは **ローカル daemon に `agent-zoo-base:latest` として保存** される
+#   （registry には push しない、local-only build 方針）。
+#   各 agent の Dockerfile は `FROM agent-zoo-base:latest` で参照するため、
+#   `make build` / `zoo build` を使うこと（依存解決込みで base を先にビルドする）。
+#   直接 `docker build` する場合は事前に `make build-base` 必須。
 
 FROM node:20-slim
 

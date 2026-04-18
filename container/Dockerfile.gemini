@@ -4,6 +4,10 @@
 # 注意: Makefile / runner への AGENT=gemini 統合と zoo run でのフラグ詳細
 # （対話モード / 自律モード / task mode）は、@google/gemini-cli の最新仕様を
 # 確認してから fill-in する必要がある（BACKLOG B-3 続編）。
+#
+# NOTE: `agent-zoo-base:latest` は **ローカルビルド前提** のタグ（registry push なし）。
+#   ビルドには必ず `make build` か `zoo build` を使うこと（base を先にビルドする依存）。
+#   直接 `docker build` するなら事前に `make build-base` を実行する必要がある。
 
 FROM agent-zoo-base:latest
 

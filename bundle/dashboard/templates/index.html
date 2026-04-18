@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- CSRF token (H-1): HTMX と fetch() でヘッダ送出、bulk 等の inline JS は meta から読む -->
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Agent Harness Dashboard</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
@@ -27,7 +29,7 @@
         .badge { background: var(--pico-del-color); color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; margin-left: 0.3rem; }
     </style>
 </head>
-<body>
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
     <nav class="container">
         <ul><li><h1>Agent Zoo</h1></li></ul>
         <ul><li><small>Dashboard</small></li></ul>

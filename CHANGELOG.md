@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - **mitmproxy addon の fail-closed 化** ([ADR 0005](docs/dev/adr/0005-fail-closed-addons.md)) — `policy_enforcer.py` の全 event hook (`request` / `response` / `websocket_message` / `websocket_end` / `done`) に fail-closed decorator を適用。addon 内で未捕捉例外が発生しても policy enforcement を bypass しない (Sprint 005 PR A、包括レビュー C-2 / Gemini 2.5 Pro 検出)
+- **dashboard の Werkzeug debugger を撤去** — `docker-compose.yml` の `FLASK_DEBUG=1` + `flask run` override を削除し Dockerfile CMD の `gunicorn` に戻す。`/console` 経由の任意 Python REPL 経路を遮断 (Sprint 005 PR B、包括レビュー C-1)
+- **dashboard CSRF 対策** — Flask-WTF CSRFProtect 導入。全 POST endpoint で `X-CSRFToken` ヘッダ or form token 検証。HTMX からは `<body hx-headers='{"X-CSRFToken": ...}'>` で自動送出、bulk 用 fetch() は meta tag から読取 (Sprint 005 PR B、包括レビュー H-1)
+- **inbox record_id の path traversal 対策** — `policy_inbox.mark_status` に strict regex 検証 (`^[A-Za-z0-9T:_-]+$`) と `path.resolve().is_relative_to(inbox_resolved)` の 2 段防御。dashboard 側でも API 層で同 regex 検証 (Sprint 005 PR B、包括レビュー H-2)
+- **inbox.html 属性 injection / XSS 対策** — `hx-vals` を `|tojson|forceescape` で JSON-safe に。`policy_inbox.list_requests` 側でも glob 取得時に stem を filter (Sprint 005 PR B、包括レビュー H-4)
+- **dashboard セキュリティヘッダ群** — `Content-Security-Policy` (default-src 'self' / frame-ancestors 'none' / base-uri 'none' / object-src 'none'), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer` を全レスポンスに付与 (Sprint 005 PR B、Gemini G-2)
+- **dashboard Host ヘッダ whitelist (DNS rebinding 対策)** — `127.0.0.1` / `localhost` 以外の Host ヘッダは 400。`DASHBOARD_ALLOWED_HOSTS` env で override 可能 (Sprint 005 PR B、Gemini G3-B2)
 
 ### Added
 - **Policy Inbox** ([ADR 0001](docs/dev/adr/0001-policy-inbox.md)) — agent が必要な許可 request を `<workspace>/.zoo/inbox/<id>.toml` に submit、dashboard で accept すると `policy.runtime.toml` に自動反映 (Sprint 001)

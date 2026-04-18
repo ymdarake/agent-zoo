@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import secrets
 import tomllib
 import warnings
@@ -28,6 +29,12 @@ VALID_STATUSES: tuple[str, ...] = ("pending", "accepted", "rejected", "expired")
 TERMINAL_STATUSES: tuple[str, ...] = ("accepted", "rejected", "expired")
 _CONTENT_HASH_LEN = 12  # 48-bit, ~10^14 衝突確率
 _SHORTID_BYTES = 2  # 4 文字 hex（同秒・同 content race 回避用）
+
+# record_id の許容文字 (包括レビュー H-2 対応)。
+# ファイル名 stem は `{ISO8601-dashes}-{shortid}-{contenthash}` パターン →
+# 英数字 + ハイフン + コロン (ISO 表記用) + T (ISO date/time 分離子)。
+# `..` / `/` / `\` を排除し path traversal を防ぐ。
+_RECORD_ID_RE: re.Pattern[str] = re.compile(r"^[A-Za-z0-9T:_-]+$")
 
 
 def _now_iso() -> str:
@@ -170,6 +177,15 @@ def list_requests(
         return []
     out: list[dict[str, Any]] = []
     for p in sorted(inbox.glob("*.toml")):
+        # 包括レビュー H-4: agent は mount 経由で任意名 .toml を直接書ける。
+        # stem に特殊文字 (quote / 制御文字等) を含むと dashboard HTML 属性
+        # injection / XSS の温床になりうるため ここで strict filter する。
+        if not _RECORD_ID_RE.match(p.stem):
+            warnings.warn(
+                f"policy_inbox: skip malformed record_id {p.name!r}",
+                stacklevel=2,
+            )
+            continue
         try:
             with p.open("rb") as f:
                 data = tomllib.load(f)
@@ -195,13 +211,26 @@ def mark_status(
 ) -> None:
     """指定 record の status を更新する（ADR D5: atomic overwrite）。
 
+    Path traversal 防御 (包括レビュー H-2):
+    - `record_id` に `..` / `/` 等を含めて inbox 外のファイルを書き換える経路を防ぐ。
+    - regex での文字種制限 (`_RECORD_ID_RE`) と、`path.resolve().is_relative_to(inbox_resolved)`
+      の 2 段構えで防御。
+
     NOTE: cleanup_expired と並行実行された場合、後勝ちで更新ロストの可能性あり。
     現状は serialize 運用前提（dashboard / cron 経由）。
     """
     if new_status not in VALID_STATUSES:
         raise ValueError(f"invalid status: {new_status}")
-    path = Path(inbox_dir) / f"{record_id}.toml"
-    if not path.exists():
+    if not _RECORD_ID_RE.match(record_id):
+        raise ValueError(f"invalid record_id: {record_id!r}")
+    inbox_resolved = Path(inbox_dir).resolve()
+    path = inbox_resolved / f"{record_id}.toml"
+    if not path.resolve().is_relative_to(inbox_resolved):
+        raise ValueError(f"record_id escapes inbox dir: {record_id!r}")
+    # agent が inbox/<name>.toml という dir を作って `record_id=name` で突いてきた場合、
+    # path.exists() は True になるが open(path, "rb") で IsADirectoryError が上がる。
+    # 明示的に is_file チェックして FileNotFoundError として 404 経路に乗せる。
+    if not path.is_file():
         raise FileNotFoundError(f"record not found: {record_id}")
     with path.open("rb") as f:
         data = tomllib.load(f)
@@ -219,7 +248,8 @@ def bulk_mark_status(
 ) -> int:
     """複数 ID で status を一括更新（dashboard の bulk 操作用）。
 
-    成功件数を返す。存在しない ID / invalid status の record は skip。
+    成功件数を返す。存在しない ID / invalid status / invalid record_id の record は skip
+    (mark_status が ValueError / FileNotFoundError を raise するため、吸収して continue)。
     """
     count = 0
     for rid in record_ids:

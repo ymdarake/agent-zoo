@@ -1,11 +1,14 @@
 """Agent Harness Dashboard - Flask + HTMX application."""
 
 import os
+import secrets
 import sqlite3
 import sys
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, abort, jsonify, render_template, request
+from flask_wtf.csrf import CSRFProtect
 
 # Import policy editing utilities
 # In Docker: addons mounted at /app/addons via docker-compose
@@ -29,6 +32,9 @@ from policy_edit import (
     remove_from_paths_allow,
 )
 from policy_inbox import (
+    _RECORD_ID_RE as _INBOX_RECORD_ID_RE,
+)
+from policy_inbox import (
     bulk_mark_status as inbox_bulk_mark_status,
 )
 from policy_inbox import (
@@ -39,6 +45,90 @@ from policy_inbox import (
 )
 
 app = Flask(__name__)
+
+# CSRF 対策 (包括レビュー H-1): 全 POST / PUT / PATCH / DELETE で token 検証。
+# dashboard は localhost bind だが、ブラウザ経由 CSRF / DNS rebinding で任意 origin
+# からの POST が成立しうるため防御が必須。
+# SECRET_KEY は env 優先（再起動で token を失効させたくない本番想定）。
+# 未設定 / 空白のみの場合はプロセスごとの random 値で fallback（単一 worker の dev 想定）。
+app.config["SECRET_KEY"] = (
+    os.environ.get("SECRET_KEY", "").strip() or secrets.token_hex(32)
+)
+# HTMX からの token 送出を header ベースで許容（body だけでなく X-CSRFToken を読む）
+app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
+# Flask-WTF 1.2.x は TESTING=True でも CSRF を自動無効化しない。既存 test は setUp で
+# `app.config["WTF_CSRF_ENABLED"] = False` を明示指定している。CSRF 動作検証は
+# test_dashboard_csrf.py で WTF_CSRF_ENABLED=True にして実施。
+csrf = CSRFProtect(app)
+
+
+# 包括レビュー G3-B2 (DNS rebinding 対策): Host ヘッダを whitelist に限定。
+# 悪意サイトが自ドメインの A レコードを 127.0.0.1 に設定することで同一 origin
+# policy を回避して dashboard を直接叩く攻撃 (DNS rebinding) を防ぐ。
+# HTTP Host RFC 7230: case-insensitive なので小文字で正規化。env の trailing whitespace
+# や大文字設定ミスを吸収するため strip + lower を常に通す。
+_ALLOWED_HOSTS = frozenset(
+    h.strip().lower()
+    for h in os.environ.get("DASHBOARD_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if h.strip()
+)
+
+
+def _extract_host_only(host_header: str) -> str:
+    """Host ヘッダから port を除去した hostname を返す（IPv6 リテラル対応 + 不正 port 拒否）。
+
+    `request.host` は `'127.0.0.1:8080'` や `'[::1]:8080'` の形で来る。
+    urlsplit は `[::1]` を正しく hostname として解釈する。
+
+    攻撃対応:
+    - `Host: localhost:evil.com` (port が非数値) → `parsed.port` アクセスで ValueError
+      → 空文字列を返し whitelist 外で reject
+    - `Host: 127.0.0.1.` (末尾 dot, DNS absolute) → rstrip で除去して比較
+    """
+    parsed = urlsplit(f"http://{host_header}")
+    try:
+        parsed.port  # 非数値 port なら ValueError を raise
+    except ValueError:
+        return ""
+    return (parsed.hostname or "").rstrip(".")
+
+
+@app.before_request
+def _enforce_strict_host() -> None:
+    """Host ヘッダが whitelist 外なら 400。
+
+    テスト (TESTING=True) では Flask test client が `localhost` を付与するため透過。
+    """
+    if app.config.get("TESTING"):
+        return None
+    host = _extract_host_only(request.host).lower()
+    if host not in _ALLOWED_HOSTS:
+        abort(400, description=f"Invalid Host header: {request.host!r}")
+
+
+@app.after_request
+def _add_security_headers(response):
+    """包括レビュー H-4 / G-2: 最低限の Content-Security-Policy を全レスポンスに付与。
+
+    Sprint 007 で pico.css / htmx.org を自前実装化したら CDN host を削除し `'self'` のみに。
+    """
+    response.headers.setdefault(
+        "Content-Security-Policy",
+        "default-src 'self'; "
+        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-ancestors 'none'; "
+        "base-uri 'none'; "
+        "object-src 'none'",
+    )
+    # 関連 hardening (本 PR のスコープ内で追加コストがほぼ 0)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    return response
+
 
 POLICY_PATH = os.environ.get("POLICY_PATH", "/app/policy.toml")
 
@@ -469,12 +559,25 @@ def _apply_accept(record: dict) -> None:
     # tool_use_unblock は将来対応（ADR Open / Future）
 
 
+def _validate_record_id(record_id: str) -> tuple[str, str | None]:
+    """record_id を strict 検証（包括レビュー H-2: path traversal 対策）。
+
+    Returns: (cleaned_id, error_message_or_None)
+    """
+    cleaned = record_id.strip()
+    if not cleaned:
+        return cleaned, "record_id is required"
+    if not _INBOX_RECORD_ID_RE.match(cleaned):
+        return cleaned, "invalid record_id"
+    return cleaned, None
+
+
 @app.route("/api/inbox/accept", methods=["POST"])
 def api_inbox_accept():
     body = _get_json_body()
-    record_id = body.get("record_id", "").strip()
-    if not record_id:
-        return jsonify({"error": "record_id is required"}), 400
+    record_id, error = _validate_record_id(body.get("record_id", ""))
+    if error:
+        return jsonify({"error": error}), 400
 
     items = inbox_list_requests(_inbox_dir())
     record = next((r for r in items if r["_id"] == record_id), None)
@@ -492,10 +595,10 @@ def api_inbox_accept():
 @app.route("/api/inbox/reject", methods=["POST"])
 def api_inbox_reject():
     body = _get_json_body()
-    record_id = body.get("record_id", "").strip()
+    record_id, error = _validate_record_id(body.get("record_id", ""))
+    if error:
+        return jsonify({"error": error}), 400
     reason = body.get("reason", "").strip()
-    if not record_id:
-        return jsonify({"error": "record_id is required"}), 400
     try:
         inbox_mark_status(
             _inbox_dir(), record_id, "rejected",
@@ -503,10 +606,23 @@ def api_inbox_reject():
         )
     except FileNotFoundError:
         return jsonify({"error": "record not found"}), 404
+    except ValueError:
+        # policy_inbox 側で更に defense-in-depth の path 検証を行っており、
+        # エッジケースで ValueError になった場合も 400 相当として扱う
+        return jsonify({"error": "invalid record_id"}), 400
 
     if request.headers.get("HX-Request"):
         return partial_inbox()
     return jsonify({"status": "ok", "action": "rejected", "record_id": record_id})
+
+
+def _filter_valid_record_ids(record_ids: list) -> list[str]:
+    """list の中から strict regex を満たす record_id のみ返す (H-2 defense-in-depth)。"""
+    result = []
+    for rid in record_ids:
+        if isinstance(rid, str) and _INBOX_RECORD_ID_RE.match(rid.strip()):
+            result.append(rid.strip())
+    return result
 
 
 @app.route("/api/inbox/bulk-accept", methods=["POST"])
@@ -515,11 +631,12 @@ def api_inbox_bulk_accept():
     record_ids = body.get("record_ids", [])
     if not isinstance(record_ids, list):
         return jsonify({"error": "record_ids must be a list"}), 400
+    valid_ids = _filter_valid_record_ids(record_ids)
 
     items = inbox_list_requests(_inbox_dir())
     by_id = {r["_id"]: r for r in items}
     accepted = 0
-    for rid in record_ids:
+    for rid in valid_ids:
         record = by_id.get(rid)
         if record is None:
             continue
@@ -541,7 +658,8 @@ def api_inbox_bulk_reject():
     record_ids = body.get("record_ids", [])
     if not isinstance(record_ids, list):
         return jsonify({"error": "record_ids must be a list"}), 400
-    n = inbox_bulk_mark_status(_inbox_dir(), record_ids, "rejected")
+    valid_ids = _filter_valid_record_ids(record_ids)
+    n = inbox_bulk_mark_status(_inbox_dir(), valid_ids, "rejected")
     if request.headers.get("HX-Request"):
         return partial_inbox()
     return jsonify({"status": "ok", "rejected": n})

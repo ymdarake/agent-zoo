@@ -31,6 +31,9 @@ from policy_edit import (
     remove_from_paths_allow,
 )
 from policy_inbox import (
+    _RECORD_ID_RE as _INBOX_RECORD_ID_RE,
+)
+from policy_inbox import (
     bulk_mark_status as inbox_bulk_mark_status,
 )
 from policy_inbox import (
@@ -482,12 +485,25 @@ def _apply_accept(record: dict) -> None:
     # tool_use_unblock は将来対応（ADR Open / Future）
 
 
+def _validate_record_id(record_id: str) -> tuple[str, str | None]:
+    """record_id を strict 検証（包括レビュー H-2: path traversal 対策）。
+
+    Returns: (cleaned_id, error_message_or_None)
+    """
+    cleaned = record_id.strip()
+    if not cleaned:
+        return cleaned, "record_id is required"
+    if not _INBOX_RECORD_ID_RE.match(cleaned):
+        return cleaned, "invalid record_id"
+    return cleaned, None
+
+
 @app.route("/api/inbox/accept", methods=["POST"])
 def api_inbox_accept():
     body = _get_json_body()
-    record_id = body.get("record_id", "").strip()
-    if not record_id:
-        return jsonify({"error": "record_id is required"}), 400
+    record_id, error = _validate_record_id(body.get("record_id", ""))
+    if error:
+        return jsonify({"error": error}), 400
 
     items = inbox_list_requests(_inbox_dir())
     record = next((r for r in items if r["_id"] == record_id), None)
@@ -505,10 +521,10 @@ def api_inbox_accept():
 @app.route("/api/inbox/reject", methods=["POST"])
 def api_inbox_reject():
     body = _get_json_body()
-    record_id = body.get("record_id", "").strip()
+    record_id, error = _validate_record_id(body.get("record_id", ""))
+    if error:
+        return jsonify({"error": error}), 400
     reason = body.get("reason", "").strip()
-    if not record_id:
-        return jsonify({"error": "record_id is required"}), 400
     try:
         inbox_mark_status(
             _inbox_dir(), record_id, "rejected",
@@ -516,10 +532,23 @@ def api_inbox_reject():
         )
     except FileNotFoundError:
         return jsonify({"error": "record not found"}), 404
+    except ValueError:
+        # policy_inbox 側で更に defense-in-depth の path 検証を行っており、
+        # エッジケースで ValueError になった場合も 400 相当として扱う
+        return jsonify({"error": "invalid record_id"}), 400
 
     if request.headers.get("HX-Request"):
         return partial_inbox()
     return jsonify({"status": "ok", "action": "rejected", "record_id": record_id})
+
+
+def _filter_valid_record_ids(record_ids: list) -> list[str]:
+    """list の中から strict regex を満たす record_id のみ返す (H-2 defense-in-depth)。"""
+    result = []
+    for rid in record_ids:
+        if isinstance(rid, str) and _INBOX_RECORD_ID_RE.match(rid.strip()):
+            result.append(rid.strip())
+    return result
 
 
 @app.route("/api/inbox/bulk-accept", methods=["POST"])
@@ -528,11 +557,12 @@ def api_inbox_bulk_accept():
     record_ids = body.get("record_ids", [])
     if not isinstance(record_ids, list):
         return jsonify({"error": "record_ids must be a list"}), 400
+    valid_ids = _filter_valid_record_ids(record_ids)
 
     items = inbox_list_requests(_inbox_dir())
     by_id = {r["_id"]: r for r in items}
     accepted = 0
-    for rid in record_ids:
+    for rid in valid_ids:
         record = by_id.get(rid)
         if record is None:
             continue
@@ -554,7 +584,8 @@ def api_inbox_bulk_reject():
     record_ids = body.get("record_ids", [])
     if not isinstance(record_ids, list):
         return jsonify({"error": "record_ids must be a list"}), 400
-    n = inbox_bulk_mark_status(_inbox_dir(), record_ids, "rejected")
+    valid_ids = _filter_valid_record_ids(record_ids)
+    n = inbox_bulk_mark_status(_inbox_dir(), valid_ids, "rejected")
     if request.headers.get("HX-Request"):
         return partial_inbox()
     return jsonify({"status": "ok", "rejected": n})

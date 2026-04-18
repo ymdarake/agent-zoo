@@ -43,7 +43,6 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 ### 運用
 
 - [ ] **CoreDNS と policy.toml の自動同期**: allow list 変更時に Corefile を動的生成してリロード
-- [ ] **`zoo test smoke` の実装**: Makefile 全廃止（zoo CLI 一本化）に伴い `zoo test smoke` コマンドは未実装に退避済。配布物でも動くよう Python (`subprocess` + `httpx` 等) で新規実装する
 - [ ] **SSE ストリーミング透過の復元**: mitmproxy 10.x の stream callable 非対応のため保留
 - [ ] **ダッシュボード HTMX ローディングインジケータ**
 

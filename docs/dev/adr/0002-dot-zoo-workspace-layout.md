@@ -184,7 +184,7 @@ D5 当初は「Makefile を配布物から除外、`bundle/Makefile` は maintai
 `zoo reload` / `zoo logs *` 等) に一本化した。
 
 - `bundle/Makefile` 削除
-- `api.test_smoke()` / `cli.test_smoke` は Makefile 依存のため併せて削除（Python 再実装は BACKLOG に起票）
+- `api.test_smoke()` / `cli.test_smoke` は Makefile 依存のため併せて削除（同等の疎通確認は E2E P2 `tests/e2e/test_proxy_block.py` でカバー済み、再実装なし）
 - maintainer の dogfood ルートは「別 dir で `zoo init` → `zoo build` → `zoo run`」の 1 通りに統一
 - repo root の空 `data/` ディレクトリも同時撤去（`.zoo/data/` に集約済）
 

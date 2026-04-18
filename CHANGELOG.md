@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 - `bundle/Makefile` — maintainer 用の Docker compose 操作も `zoo build` / `zoo run` / `zoo reload` 等で代替（ADR 0002 D5 の最終状態）
-- `zoo test smoke` コマンド — 従来 `bundle/Makefile` 依存だったため暫定で削除、Python 再実装は BACKLOG に起票
+- `zoo test smoke` コマンド — Makefile 依存だったため削除。同等の疎通確認は E2E P2 (`tests/e2e/test_proxy_block.py`) でカバー済みのため再実装しない
 - `policy_candidate.toml` 経路（Sprint 002 D8）— inbox に完全移行、互換層も削除
 - `docs/codex-integration.md` / `.en.md` — maintainer 用ガイドとしての役目終了
 - `ROADMAP.md` / `TODO.md` — `BACKLOG.md` に集約

@@ -121,6 +121,28 @@ class TestStrictHostMiddleware(unittest.TestCase):
         rv = self.client.get("/", headers={"Host": "evil.com:8080"})
         self.assertEqual(rv.status_code, 400)
 
+    def test_invalid_port_rejected_by_werkzeug(self):
+        """Host: localhost:evil.com (非数値 port) は Werkzeug が pre-middleware で弾く。
+
+        TESTING=False では Flask が例外を伝搬する。production では Werkzeug の
+        error handler が 400 Bad Request に変換する。いずれにせよ dashboard の
+        policy 層には到達しない (fail-closed)。
+        """
+        with self.assertRaises(ValueError):
+            self.client.get("/", headers={"Host": "localhost:evil.com"})
+
+    def test_host_case_insensitive(self):
+        """HTTP RFC 7230 準拠: Host は case-insensitive で許可判定される。"""
+        rv = self.client.get("/", headers={"Host": "LOCALHOST"})
+        self.assertEqual(rv.status_code, 200)
+        rv = self.client.get("/", headers={"Host": "LocalHost:8080"})
+        self.assertEqual(rv.status_code, 200)
+
+    def test_host_trailing_dot_accepted(self):
+        """DNS absolute 表記 (末尾 dot) は normalize して許可。"""
+        rv = self.client.get("/", headers={"Host": "localhost."})
+        self.assertEqual(rv.status_code, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

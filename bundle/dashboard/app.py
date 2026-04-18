@@ -75,12 +75,22 @@ _ALLOWED_HOSTS = frozenset(
 
 
 def _extract_host_only(host_header: str) -> str:
-    """Host ヘッダから port を除去した hostname を返す（IPv6 リテラル対応）。
+    """Host ヘッダから port を除去した hostname を返す（IPv6 リテラル対応 + 不正 port 拒否）。
 
     `request.host` は `'127.0.0.1:8080'` や `'[::1]:8080'` の形で来る。
     urlsplit は `[::1]` を正しく hostname として解釈する。
+
+    攻撃対応:
+    - `Host: localhost:evil.com` (port が非数値) → `parsed.port` アクセスで ValueError
+      → 空文字列を返し whitelist 外で reject
+    - `Host: 127.0.0.1.` (末尾 dot, DNS absolute) → rstrip で除去して比較
     """
-    return urlsplit(f"http://{host_header}").hostname or ""
+    parsed = urlsplit(f"http://{host_header}")
+    try:
+        parsed.port  # 非数値 port なら ValueError を raise
+    except ValueError:
+        return ""
+    return (parsed.hostname or "").rstrip(".")
 
 
 @app.before_request

@@ -100,7 +100,7 @@ services:
       - ../:/workspace  # ADR 0002: workspace = .zoo/ の親
       - unified-auth:/home/agent  # 認証 1 volume に集約
       - ./policy.toml:/harness/policy.toml:ro
-      - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001
+      - ./inbox:/harness/inbox  # ADR 0001 (A-3) — .zoo/inbox
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   proxy:

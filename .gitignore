@@ -5,10 +5,7 @@
 # Runtime policy (dashboard writes here, base policy.toml is preserved)
 *.runtime.toml
 
-# Data / certs / runtime artifacts (ADR 0002 では bundle/ 配下、互換のため root data/ もカバー)
-data/*.db
-data/*.db-wal
-data/*.db-shm
+# Runtime artifacts under bundle/ (ADR 0002): DB / certs は git 管理外
 bundle/data/*.db
 bundle/data/*.db-wal
 bundle/data/*.db-shm
@@ -17,6 +14,11 @@ bundle/certs/*
 !bundle/certs/extra
 bundle/certs/extra/*
 !bundle/certs/extra/.gitkeep
+
+# safety net: 過去 layout で root に作られた data/ や certs/ も無視
+data/*.db
+data/*.db-wal
+data/*.db-shm
 certs/*
 !certs/.gitkeep
 

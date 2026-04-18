@@ -208,14 +208,14 @@ def down() -> None:
         "-f", "docker-compose.yml", "-f", "docker-compose.strict.yml",
         "down",
     ]
-    result = subprocess.run(strict_cmd, env=env, cwd=runner.workspace_root())
+    result = subprocess.run(strict_cmd, env=env, cwd=runner.zoo_dir())
     if result.returncode != 0:
         runner.run(["docker", "compose", "down"], env=env, check=False)
 
 
 def reload_policy() -> None:
     """Reload policy.toml by restarting proxy + dashboard (clears addon cache)."""
-    cache = runner.workspace_root() / "addons" / "__pycache__"
+    cache = runner.zoo_dir() / "addons" / "__pycache__"
     if cache.exists():
         shutil.rmtree(cache)
     runner.run(
@@ -298,7 +298,7 @@ def logs_analyze() -> int:
         "FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') "
         "GROUP BY host ORDER BY n DESC"
     )
-    policy = (runner.workspace_root() / "policy.toml").read_text()
+    policy = (runner.zoo_dir() / "policy.toml").read_text()
     context = f"=== ブロックログ ===\n\n=== 現在のpolicy.toml ===\n{policy}"
     return _pipe_to_claude(
         query,
@@ -340,7 +340,7 @@ def test_smoke(*, agent: str = "claude") -> int:
     return subprocess.call(
         ["make", "test", f"AGENT={agent}"],
         env=env,
-        cwd=runner.workspace_root(),
+        cwd=runner.zoo_dir(),
     )
 
 
@@ -352,7 +352,7 @@ def _as_str(value: str | Path | None) -> str | None:
 
 def _pipe_to_claude(sqlite_query: str, prompt: str, *, extra_context: str = "") -> int:
     """Run ``sqlite3 ... | claude -p PROMPT``. Returns the claude exit code."""
-    db_path = runner.workspace_root() / "data" / "harness.db"
+    db_path = runner.zoo_dir() / "data" / "harness.db"
     if not db_path.exists():
         raise FileNotFoundError(
             "data/harness.db が見つかりません。先にエージェントを実行してください。"

@@ -55,7 +55,7 @@ if zoo.logs_clear():
 
 - `zoo.api` に純粋な関数 API を置き、`zoo.cli` は typer ラッパー
 - typer / rich 依存は CLI 層のみ。API 層は stdlib + `tomllib`
-- `zoo` パッケージは `docker-compose.yml` と `policy.toml` のあるディレクトリを
-  CWD から親方向に探索（`zoo.runner.repo_root()`）。agent-zoo リポジトリを
-  clone した場所で呼び出してください
+- `zoo` パッケージは `.zoo/docker-compose.yml` のあるディレクトリ（= workspace root）
+  を CWD から親方向に探索（`zoo.runner.workspace_root()`）。`zoo init` 済の
+  workspace 内（または親方向に `.zoo/` がある場所）で呼び出してください
 - 長時間実行されるコマンド（`run`, `task`）は subprocess を TTY に attach します

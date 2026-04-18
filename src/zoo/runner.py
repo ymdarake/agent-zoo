@@ -132,12 +132,12 @@ def compose_env(workspace: str | None = None) -> dict[str, str]:
 
 def run(cmd: list[str], *, env: dict[str, str] | None = None, check: bool = True,
         cwd: Path | None = None) -> subprocess.CompletedProcess:
-    """Run a subprocess with the repo root as CWD by default."""
+    """Run a subprocess with `.zoo/` as CWD by default (ADR 0002)."""
     proc_env = env if env is not None else os.environ.copy()
     return subprocess.run(
         cmd,
         env=proc_env,
-        cwd=cwd or repo_root(),
+        cwd=cwd or zoo_dir(),
         check=check,
     )
 
@@ -146,7 +146,7 @@ def run_interactive(cmd: list[str], *, env: dict[str, str] | None = None) -> int
     """Run a subprocess that attaches stdin/stdout/stderr (for TTY use)."""
     proc_env = env if env is not None else os.environ.copy()
     try:
-        return subprocess.call(cmd, env=proc_env, cwd=repo_root())
+        return subprocess.call(cmd, env=proc_env, cwd=zoo_dir())
     except KeyboardInterrupt:
         return 130
 

@@ -1,14 +1,24 @@
 # 共通 base イメージ（agent-zoo-base:latest）
 # B-1: claude / codex / gemini で共有する OS layer
+# B-2: 開発用 CLI ツール群（python3/jq/less/ripgrep）を同梱
+# D-1: 企業 proxy 配下での apt 失敗回避のため extra CA を取り込む
 # UID 固定は agent ごとの Dockerfile（claude/codex/...）で行う。
 
 FROM node:20-slim
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates git sqlite3 curl \
+# Extra CA certificates (D-1): host の certs/extra/ にユーザーが置いた CA を取り込む
+# build context = repo root を想定。空ディレクトリでも error にならないよう .gitkeep を許容
+COPY certs/extra/ /usr/local/share/ca-certificates/extra/
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git sqlite3 curl \
+    python3 python3-pip jq less ripgrep \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY container/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 WORKDIR /workspace

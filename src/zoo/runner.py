@@ -126,16 +126,17 @@ def build_base() -> None:
     """共通 base イメージ `agent-zoo-base:latest` をビルドする（B-1）。
 
     `container/Dockerfile.base` を使う。各 agent イメージはこれを `FROM` する。
+    build context は repo root（D-1: certs/extra/ も取り込むため）。
     """
-    container_dir = repo_root() / "container"
-    base_dockerfile = container_dir / "Dockerfile.base"
+    root = repo_root()
+    base_dockerfile = root / "container" / "Dockerfile.base"
     if not base_dockerfile.exists():
         return
     run([
         "docker", "build",
         "-t", "agent-zoo-base:latest",
         "-f", str(base_dockerfile),
-        str(container_dir),
+        str(root),
     ], env=compose_env())
 
 

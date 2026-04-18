@@ -469,7 +469,7 @@ E-1, E-2 (independent)
 
 ### Group B: ベースイメージ統合（P1）
 - [x] B-1 Dockerfile.base 切出し（2026-04-18 / 二段ビルド agent-zoo-base + agent別）
-- [ ] B-2 base にツール群追加
+- [x] B-2 base にツール群追加（2026-04-18 / python3/jq/less/ripgrep。gh/glab は別 issue 化推奨）
 - [ ] B-3 gemini-cli 追加
 - [ ] B-4 bash モード
 - [ ] B-5 AGENTS.md inject
@@ -479,8 +479,8 @@ E-1, E-2 (independent)
 - [x] C-1 `make candidates` SyntaxError 解消（2026-04-18 / commit 78dfb65 / 14 tests）
 
 ### Group D: 運用補助（P1）
-- [ ] D-1 docker build 時 extra CA
-- [ ] D-2 mitmproxy runtime extra CA
+- [x] D-1 docker build 時 extra CA（2026-04-18 / certs/extra/*.crt 規約 + Dockerfile.base で update-ca-certificates）
+- [x] D-2 mitmproxy runtime extra CA（2026-04-18 / certs/extra/bundle.pem があれば --set ssl_verify_upstream_trusted_ca）
 - [ ] D-3 one-liner proxy command
 
 ### Group E: ドキュメント（P2）

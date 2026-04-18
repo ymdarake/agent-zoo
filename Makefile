@@ -37,7 +37,8 @@ certs: certs/mitmproxy-ca-cert.pem
 # === ビルド ===
 .PHONY: build-base
 build-base:
-	docker build -t agent-zoo-base:latest -f container/Dockerfile.base container/
+	@mkdir -p certs/extra
+	docker build -t agent-zoo-base:latest -f container/Dockerfile.base .
 
 .PHONY: build
 build: certs build-base

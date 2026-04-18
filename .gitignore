@@ -14,6 +14,9 @@ workspace/
 # Certificates (runtime generated, may contain private keys)
 certs/*
 !certs/.gitkeep
+!certs/extra
+certs/extra/*
+!certs/extra/.gitkeep
 
 # Python (addons/__pycache__がproxyコンテナに影響するため確実に除外)
 __pycache__/

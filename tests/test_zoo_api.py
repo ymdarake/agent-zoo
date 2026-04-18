@@ -156,6 +156,32 @@ class TestComposeUpInbox:
         # workspace 引数なし → workspace_root()/.zoo/inbox に作る
         assert (repo_root / ".zoo" / "inbox").is_dir()
 
+    def test_workspace_arg_passes_explicit_zoo_as_cwd(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """ADR 0002 D2: --workspace 指定時は <ws>/.zoo/ を compose の cwd に。"""
+        ws = repo_root / "alt"
+        ws.mkdir()
+        captured: dict = {}
+        def fake_run(cmd, **kw):
+            captured["cwd"] = kw.get("cwd")
+            return None
+        monkeypatch.setattr(runner, "run", fake_run)
+        runner.compose_up(["claude"], workspace=str(ws))
+        assert captured["cwd"] == ws / ".zoo"
+
+    def test_default_workspace_uses_default_cwd(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """workspace 引数なし → cwd 指定なし（runner.run のデフォルト = zoo_dir()）。"""
+        captured: dict = {}
+        def fake_run(cmd, **kw):
+            captured["cwd"] = kw.get("cwd")
+            return None
+        monkeypatch.setattr(runner, "run", fake_run)
+        runner.compose_up(["claude"])
+        assert captured["cwd"] is None
+
 
 class TestBuildBase:
     """B-1: Dockerfile.base を独立ビルドするヘルパー。"""

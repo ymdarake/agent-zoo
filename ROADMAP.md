@@ -15,6 +15,7 @@ Agent Zooの未実装機能と将来の拡張計画。
 ### 運用
 
 - [ ] **CoreDNSとpolicy.tomlの自動同期**: allow list変更時にCorefileを動的生成してリロード
+- [ ] **`zoo test smoke` の Python 化**: ADR 0002 D5 で Makefile を配布廃止したため、現状 `api.test_smoke()` は `bundle/Makefile` 依存（maintainer 用）。配布物でも動くよう Python (`subprocess` + `httpx` 等) で再実装
 
 ### マルチプロバイダ対応
 

@@ -204,6 +204,9 @@ def compose_up(services: list[str], *, workspace: str | None = None,
     touch_runtime_files()
     _ensure_inbox_dir(workspace)
     env = compose_env(workspace)
+    # ADR 0002: workspace 指定時はその `.zoo/` を compose の cwd に
+    # （`../:/workspace` mount が指定 path を指すように）
+    cwd = (Path(workspace) / ".zoo") if workspace else None
     if strict:
         cmd = [
             "docker", "compose", "--profile", "strict",
@@ -212,7 +215,7 @@ def compose_up(services: list[str], *, workspace: str | None = None,
         ]
     else:
         cmd = ["docker", "compose", "up", "-d", *services]
-    run(cmd, env=env)
+    run(cmd, env=env, cwd=cwd)
 
 
 def require_env(var: str, *, hint: str) -> str:

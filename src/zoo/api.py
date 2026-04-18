@@ -334,7 +334,15 @@ def test_unit() -> int:
 
 
 def test_smoke(*, agent: str = "claude") -> int:
-    """Run the Docker smoke test (delegates to Makefile)."""
+    """Run the Docker smoke test (delegates to bundled Makefile).
+
+    NOTE (ADR 0002 D5): Makefile は配布物に含まれない。
+    現状は `runner.zoo_dir()/Makefile` を呼ぶため、agent-zoo source repo の
+    `bundle/` 内 (cwd = bundle/) で `zoo test smoke` した場合か、別途配置した
+    場合のみ成功する。配布物の汎用 smoke は将来的に Python 化予定（ROADMAP）。
+
+    maintainer 用ワンライナー: `cd bundle && make test AGENT=claude`
+    """
     env = runner.compose_env()
     env["AGENT"] = agent
     return subprocess.call(

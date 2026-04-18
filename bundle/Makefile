@@ -140,7 +140,7 @@ host-stop:
 # === テスト ===
 .PHONY: unit
 unit:
-	uv run python -m pytest tests/ -v
+	uv run python -m pytest ../tests/ -v
 
 .PHONY: test
 test: certs

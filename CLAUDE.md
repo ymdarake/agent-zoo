@@ -68,15 +68,24 @@ make clear-logs
 make analyze / summarize / alerts   # ホスト側 claude CLI で AI 分析
 ```
 
-## ユニットテスト（repo root）
+## テスト・dev タスク（repo root の `Makefile`）
+
+repo root の `Makefile` は dev 用（`bundle/Makefile` は Docker compose 用、責務が異なる）。
+`PLAYWRIGHT_BROWSERS_PATH` を `.venv/playwright-browsers/` へ強制 export し、system の `~/Library/Caches/ms-playwright/` を汚さない仕組み。
 
 ```bash
-uv run python -m pytest tests/ -v
+make help           # ターゲット一覧
+make setup          # uv sync --extra dev --extra e2e
+make e2e-install    # Playwright Chromium を .venv 配下に download (~150MB、初回)
+make unit           # ユニットテスト 234 件
+make e2e            # E2E P1 (dashboard, Docker 不要、~5 秒)
+make e2e-all        # E2E 全実行 (P2 は Docker daemon 必要)
+make test           # unit + e2e
 ```
 
-- 全 234 件
 - **pytest は必ず 1 プロセス・フォアグラウンド**（並列禁止、ロック系テストがデッドロックする）
 - `tests/` は repo root 直下、`pythonpath = ["bundle"]` (pyproject.toml) で `addons` / `dashboard` を top-level import
+- E2E 詳細は [tests/e2e/README.md](tests/e2e/README.md)、戦略は [ADR 0003](docs/dev/adr/0003-e2e-test-strategy.md)
 
 ## 重要な設計判断
 

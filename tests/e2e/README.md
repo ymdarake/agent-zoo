@@ -12,31 +12,29 @@
 
 ## 初回 Setup
 
-Playwright Chromium は **`.venv/playwright-browsers/` に閉じ込め** る（system / user の `~/.cache/ms-playwright` を汚さない）。
+Playwright Chromium は **`.venv/playwright-browsers/` に閉じ込め** る（system / user の `~/Library/Caches/ms-playwright` を汚さない）。
+repo root の **`Makefile` で `PLAYWRIGHT_BROWSERS_PATH` を強制 export** しているため、env 指定漏れは起きない仕組み:
 
 ```bash
-# 1. e2e extras を install
-uv pip install -e ".[e2e]"
-
-# 2. Playwright Chromium を .venv 配下に download (~150MB、初回のみ)
-PLAYWRIGHT_BROWSERS_PATH=$PWD/.venv/playwright-browsers \
-  uv run playwright install chromium
+make setup        # uv sync --extra dev --extra e2e
+make e2e-install  # Chromium を .venv 配下に download (~150MB、初回のみ)
 ```
 
-`pytest tests/e2e/` 実行時は `conftest.py` が自動で `PLAYWRIGHT_BROWSERS_PATH` を設定するため、env 指定不要。
+直接 `uv run playwright install chromium` を素の shell から叩くと **system の `~/Library/Caches/ms-playwright/` に入ってしまう** ため、必ず `make e2e-install` を使う。
+（`pytest` 実行時は `conftest.py` も同じ env を `setdefault` するため、すでに download 済なら検出される）
 
 ## 実行
 
 ```bash
-# P1 のみ（Docker 不要、~30 秒）
-pytest tests/e2e/test_dashboard.py -v
+# P1 のみ（Docker 不要、~5 秒）
+make e2e
 
-# P2 のみ（Docker 必要、~2 分）
+# 全 E2E（P2 は Docker daemon 必要）
 cd bundle && make build && cd ..
-pytest tests/e2e/test_proxy_block.py -v
+make e2e-all
 
-# 全 E2E
-pytest tests/e2e/ -v
+# unit + E2E P1
+make test
 ```
 
 ## fixture（conftest.py）

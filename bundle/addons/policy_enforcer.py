@@ -17,6 +17,7 @@ from mitmproxy import ctx, http
 
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
+from _db_secure import secure_db_file
 from _fail_closed import (
     fail_closed_block,
     fail_closed_lifecycle,
@@ -98,6 +99,10 @@ class PolicyEnforcer:
             """
         )
         db.commit()
+        # 包括レビュー G3-B1 (Sprint 006 PR D): PII / 機密情報を含む sqlite ファイルを
+        # 同一 host の他ユーザーから読まれないよう chmod 600 を強制。
+        # WAL / SHM は上記 commit で生成済。bind mount で EPERM なら ctx.log.error。
+        secure_db_file(self.engine.db_path, log_fn=ctx.log.error)
 
     def _log_request(self, host, method, url, status, body_size, reason=""):
         """リクエストをログし、ブロック系ステータスの場合はblocksテーブルにも記録する。"""

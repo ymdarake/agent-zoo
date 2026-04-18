@@ -4,6 +4,8 @@
 
 # Agent Zoo
 
+> 日本語 | [English](README.en.md)
+
 AIコーディングエージェントを安全に自律実行するためのセキュリティハーネス。
 
 mitmproxyペイロード検査 + TOMLポリシー制御。エージェント非依存で動作。

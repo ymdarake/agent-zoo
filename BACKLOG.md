@@ -484,7 +484,7 @@ E-1, E-2 (independent)
 - [x] D-3 one-liner proxy command（2026-04-18 / `zoo proxy <agent>` ラッパー、TestProxy 2 ケース）
 
 ### Group E: ドキュメント（P2）
-- [ ] E-1 README/docs 英語版
+- [部分完了] E-1 README/docs 英語版（2026-04-18 / README.en.md 作成 + README.md に言語切替リンク。docs/* の英訳は別 issue 化推奨）
 - [保留] E-2 OpenAI `exec_command` 引数検知の高度化（Q8 / 仕様確定待ち、ROADMAP 追記のみ先行可）
 
 ---

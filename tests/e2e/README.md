@@ -30,7 +30,7 @@ make e2e-install  # Chromium を .venv 配下に download (~150MB、初回のみ
 make e2e
 
 # 全 E2E（P2 は Docker daemon 必要）
-cd bundle && make build && cd ..
+# P2 用 image のビルドは dogfood workspace で事前に: `zoo init && zoo build`
 make e2e-all
 
 # unit + E2E P1

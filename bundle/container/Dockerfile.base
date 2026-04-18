@@ -7,8 +7,8 @@
 # NOTE: 本イメージは **ローカル daemon に `agent-zoo-base:latest` として保存** される
 #   （registry には push しない、local-only build 方針）。
 #   各 agent の Dockerfile は `FROM agent-zoo-base:latest` で参照するため、
-#   `make build` / `zoo build` を使うこと（依存解決込みで base を先にビルドする）。
-#   直接 `docker build` する場合は事前に `make build-base` 必須。
+#   `zoo build` を使うこと（依存解決込みで base を先にビルドする）。
+#   直接 `docker build` する場合は事前に base を build すること。
 
 FROM node:20-slim
 
@@ -33,7 +33,7 @@ RUN mkdir -p -m 755 /etc/apt/keyrings \
     && rm -rf /var/lib/apt/lists/*
 
 # B-2 (cont.): GitLab CLI (glab) を release ページから .deb 直 install
-# 更新時は GLAB_VERSION を書き換え、make build-base
+# 更新時は GLAB_VERSION を書き換え、`zoo build` で base を再ビルド
 ARG GLAB_VERSION=1.92.1
 RUN ARCH=$(dpkg --print-architecture) \
     && curl -sSL "https://gitlab.com/gitlab-org/cli/-/releases/v${GLAB_VERSION}/downloads/glab_${GLAB_VERSION}_linux_${ARCH}.deb" -o /tmp/glab.deb \

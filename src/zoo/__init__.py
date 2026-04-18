@@ -15,7 +15,6 @@ from .api import (
     reload_policy,
     run,
     task,
-    test_smoke,
     test_unit,
     up,
 )
@@ -39,7 +38,6 @@ __all__ = [
     "reload_policy",
     "run",
     "task",
-    "test_smoke",
     "test_unit",
     "up",
 ]

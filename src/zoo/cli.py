@@ -195,11 +195,5 @@ def test_unit() -> None:
     sys.exit(api.test_unit())
 
 
-@test_app.command("smoke")
-def test_smoke(agent: str = AgentOpt) -> None:
-    """Docker スモークテスト。まだ Makefile 実装に委譲（複雑なため）。"""
-    sys.exit(api.test_smoke(agent=agent))
-
-
 if __name__ == "__main__":
     app()

@@ -35,7 +35,7 @@ agent-zoo/
 └── BACKLOG.md                # active タスク + ROADMAP + Sprint 履歴 link
 ```
 
-**source repo では `zoo` CLI は動かない**（`.zoo/` が無いため）。dogfood は (a) `cd bundle && make build` (b) 別 dir で `pip install -e . && zoo init` のいずれか。詳細は [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md)。
+**source repo では `zoo` CLI は動かない**（`.zoo/` が無いため）。dogfood は別 dir で `pip install -e . && zoo init && zoo build` する。詳細は [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md)。
 
 ## アーキテクチャ
 
@@ -43,35 +43,37 @@ agent-zoo/
 - **コンテナモード**: `internal: true` ネットワークで agent を隔離。mitmproxy サイドカーが唯一の外部通信経路。`cap_drop: [ALL]` + dangerously-skip-permissions
 - **ホストモード**: ネイティブ CLI → mitmproxy (localhost:8080)。Seatbelt サンドボックス併用
 
-## 開発コマンド（maintainer、`bundle/` 内）
+## 開発コマンド（maintainer、dogfood workspace で `zoo` CLI）
+
+source repo 直下では動かないため、別 dir で dogfood する:
 
 ```bash
-cd bundle
+pip install -e .
+mkdir /tmp/zoo-dogfood && cd /tmp/zoo-dogfood
+zoo init                          # `.zoo/` を作成
 
 # build
-make build               # base + claude (default)。AGENT=codex/gemini も可
-make build-base          # base のみ
-
-# Docker smoke
-make test                # Allowed / Blocked 403 / Isolated / SQLite Logs の 4 段階
+zoo build --agent claude          # base + agent image
 
 # dogfood run
-make run                 # 対話モード（初回は /login）
-make run-dangerous       # 箱庭モード（承認なし）
-CLAUDE_CODE_OAUTH_TOKEN=xxx make task PROMPT="..."
-make bash                # コンテナ内 bash
-make up-dashboard        # dashboard のみ起動
-make down                # 停止
+zoo run                           # 対話モード（初回は /login）
+zoo run --dangerous               # 箱庭モード（承認なし）
+CLAUDE_CODE_OAUTH_TOKEN=xxx zoo task "..."
+zoo bash                          # コンテナ内 bash
+zoo up --dashboard-only           # dashboard のみ起動
+zoo down                          # 停止
+zoo reload                        # policy.toml 変更後のリロード
 
 # ログ
-make clear-logs
-make analyze / summarize / alerts   # ホスト側 claude CLI で AI 分析
+zoo logs clear
+zoo logs analyze / summarize / alerts   # ホスト側 claude CLI で AI 分析
 ```
+
+配布物には Makefile を含めない（zoo CLI 一本化）。
 
 ## テスト・dev タスク（repo root の `Makefile`）
 
-repo root の `Makefile` は dev 用（`bundle/Makefile` は Docker compose 用、責務が異なる）。
-`PLAYWRIGHT_BROWSERS_PATH` を `.venv/playwright-browsers/` へ強制 export し、system の `~/Library/Caches/ms-playwright/` を汚さない仕組み。
+repo root の `Makefile` は **dev 専用**。`PLAYWRIGHT_BROWSERS_PATH` を `.venv/playwright-browsers/` へ強制 export し、system の `~/Library/Caches/ms-playwright/` を汚さない仕組み。配布物の Docker compose 操作は `zoo` CLI に一本化（Makefile は source repo にも配布物にも含めない）。
 
 ```bash
 make help           # ターゲット一覧

@@ -2,7 +2,7 @@
 
 > [日本語](policy-reference.md) | English
 
-All settings in `policy.toml`. In host mode, file save is reflected immediately. In container mode, run `zoo reload` (or `cd bundle && make reload` for maintainers).
+All settings in `policy.toml`. In host mode, file save is reflected immediately. In container mode, run `zoo reload`.
 
 Operations from the dashboard are written to `policy.runtime.toml`; comments in the base config are preserved.
 

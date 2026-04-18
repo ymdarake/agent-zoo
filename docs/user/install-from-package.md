@@ -86,9 +86,14 @@ zoo.init("~/my-zoo")   # 同じことをプログラムから
 agent-zoo の source repo（git clone）では、配布資材は **`bundle/` 配下**にまとまっており、
 **source repo 直下では `zoo` CLI は動きません**（ADR 0002 D7、`.zoo/` が無いため）。
 
-開発時の動作確認は 2 通り:
+開発時の動作確認は別ディレクトリで `zoo init` する:
 
-1. **`bundle/` で直接 make を叩く** — `cd bundle && make build && make test`
-2. **別ディレクトリで `zoo init` する** — `pip install -e .` 後、別 dir で `zoo init` → そこで `zoo run` 等
+```bash
+pip install -e .
+mkdir /tmp/zoo-dogfood && cd /tmp/zoo-dogfood
+zoo init
+zoo build
+zoo run
+```
 
-詳細は [ADR 0002 D7](adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離) を参照。
+詳細は [ADR 0002 D7](../dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離) を参照。

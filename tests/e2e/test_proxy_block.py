@@ -5,7 +5,7 @@ ADR 0003 D2: docker compose で proxy + claude を起動し、
 
 実行前提:
 - Docker daemon 動作中
-- `cd bundle && make build-base && docker compose build claude` 済
+- dogfood workspace で `zoo init && zoo build` 済（agent-zoo-base + claude image）
 - bundle/certs/mitmproxy-ca-cert.pem 生成済（無ければ docker run で自動生成）
 
 skip: Docker daemon が無い、または bundle/ が無い環境では自動 skip。

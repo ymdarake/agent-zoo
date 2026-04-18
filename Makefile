@@ -1,10 +1,10 @@
-# agent-zoo dev Makefile (repo root)
+# agent-zoo dev Makefile (repo root, dev 用)
 #
 # 目的: 開発時の env 設定漏れを防ぎ、ローカル環境を汚さない。
 #
 # - PLAYWRIGHT_BROWSERS_PATH を `.venv/playwright-browsers/` に強制 export し、
 #   system / user の `~/Library/Caches/ms-playwright/` を汚染しない仕組みにする。
-# - bundle/Makefile は Docker compose 系（maintainer 用）。本ファイルとは責務が異なる。
+# - 配布用 Docker compose 操作は `zoo` CLI (`zoo build` / `zoo run` / `zoo reload` 等) に一本化。
 
 PLAYWRIGHT_BROWSERS_PATH := $(CURDIR)/.venv/playwright-browsers
 export PLAYWRIGHT_BROWSERS_PATH

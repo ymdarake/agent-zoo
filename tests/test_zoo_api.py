@@ -34,7 +34,7 @@ class TestPublicExports:
             "run", "task", "up", "down", "reload_policy", "build", "certs",
             "host_start", "host_stop", "logs_clear",
             "logs_analyze", "logs_summarize", "logs_alerts",
-            "test_unit", "test_smoke",
+            "test_unit",
             "bash",  # B-4
         ):
             assert hasattr(zoo, name), f"zoo.{name} missing"

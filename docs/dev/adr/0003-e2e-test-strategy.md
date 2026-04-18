@@ -32,7 +32,7 @@ Accepted (2026-04-18)
   - 許可ドメイン → 200/404
   - 未許可 → 403
   - direct (proxy バイパス) → 接続失敗
-- 既存 `make test` smoke と重複するが pytest 統合で reporting 統一
+- 従来 `bundle/Makefile` の smoke test と重複するが pytest 統合で reporting 統一（Makefile 自体は後日撤去、ADR 0002 Follow-up 参照）
 
 **CI: Docker runner、PR or nightly**、~2 分/run
 

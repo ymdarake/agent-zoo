@@ -38,7 +38,7 @@ The source repo and the distributed user workspace use **separate naming**:
 |---|---|---|
 | Meaning | Where bundled assets live (maintainer-edited) | The harness installed inside the user's workspace |
 | `docker-compose.yml` etc. | `bundle/docker-compose.yml` | `.zoo/docker-compose.yml` |
-| `Makefile` | `bundle/Makefile` (maintainer-only) | **not distributed** (use `zoo` CLI) |
+| Makefile | **none** (Docker compose ops are unified under the `zoo` CLI) | **none** |
 | Detection | — | `runner.workspace_root()` walks up to find `.zoo/docker-compose.yml` |
 
 See [ADR 0002 .zoo/ Workspace Layout](adr/0002-dot-zoo-workspace-layout.md) for details.

@@ -3,8 +3,8 @@
 # user/UID 固定は本ファイルで行う（base には含めない）。
 #
 # NOTE: `agent-zoo-base:latest` は **ローカルビルド前提** のタグ（registry push なし）。
-#   ビルドには必ず `make build` か `zoo build` を使うこと（base を先にビルドする依存）。
-#   直接 `docker build` するなら事前に `make build-base` を実行する必要がある。
+#   ビルドには `zoo build` を使うこと（base を先にビルドする依存）。
+#   直接 `docker build` するなら事前に base image をビルドする必要がある。
 
 FROM agent-zoo-base:latest
 

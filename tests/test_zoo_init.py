@@ -66,7 +66,7 @@ class TestInit:
     def test_makefile_is_not_distributed(
         self, repo_root: Path, tmp_path: Path
     ) -> None:
-        """ADR 0002 D5: Makefile は配布物に含めない（bundle/ から除外）。"""
+        """Makefile は配布物に含めない（zoo CLI 一本化、ADR 0002 D5 の後継）。"""
         # source 側に Makefile を置いても、_BUNDLED_FILES に含まれないので copy されない
         (repo_root / "Makefile").write_text("makefile-source")
         target = tmp_path / "ws"

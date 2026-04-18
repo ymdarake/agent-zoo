@@ -6,9 +6,9 @@ Import as:
 All functions are plain Python — no typer/rich dependency — so you can use them
 from notebooks, other scripts, or custom tooling.
 
-Interactive commands (``run``, ``task``, ``host_start``, ``test_unit``,
-``test_smoke``) attach the current process stdio and return a subprocess-style
-exit code. Non-interactive commands raise on failure or return structured data.
+Interactive commands (``run``, ``task``, ``host_start``, ``test_unit``)
+attach the current process stdio and return a subprocess-style exit code.
+Non-interactive commands raise on failure or return structured data.
 """
 from __future__ import annotations
 
@@ -16,11 +16,9 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
 
 from . import runner
 
-# ADR 0002 D1/D5: Makefile は配布から外す（maintainer 用に source repo にのみ残す）
 _BUNDLED_FILES = [
     "docker-compose.yml",
     "docker-compose.strict.yml",
@@ -333,25 +331,6 @@ def test_unit() -> int:
     )
 
 
-def test_smoke(*, agent: str = "claude") -> int:
-    """Run the Docker smoke test (delegates to bundled Makefile).
-
-    NOTE (ADR 0002 D5): Makefile は配布物に含まれない。
-    現状は `runner.zoo_dir()/Makefile` を呼ぶため、agent-zoo source repo の
-    `bundle/` 内 (cwd = bundle/) で `zoo test smoke` した場合か、別途配置した
-    場合のみ成功する。配布物の汎用 smoke は将来的に Python 化予定（ROADMAP）。
-
-    maintainer 用ワンライナー: `cd bundle && make test AGENT=claude`
-    """
-    env = runner.compose_env()
-    env["AGENT"] = agent
-    return subprocess.call(
-        ["make", "test", f"AGENT={agent}"],
-        env=env,
-        cwd=runner.zoo_dir(),
-    )
-
-
 # --- internal helpers --------------------------------------------------------
 
 def _as_str(value: str | Path | None) -> str | None:
@@ -376,7 +355,7 @@ def _pipe_to_claude(sqlite_query: str, prompt: str, *, extra_context: str = "") 
             input_bytes = (extra_context + "\n" + data.decode()).encode()
             claude = subprocess.Popen(["claude", "-p", prompt], stdin=subprocess.PIPE)
             claude.stdin.write(input_bytes)  # type: ignore[union-attr]
-            claude.stdin.close()
+            claude.stdin.close()  # type: ignore[union-attr]
             return claude.wait()
         claude = subprocess.Popen(["claude", "-p", prompt], stdin=sqlite.stdout)
         sqlite.stdout.close()  # type: ignore[union-attr]

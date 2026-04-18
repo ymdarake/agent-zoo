@@ -4,7 +4,7 @@
 # AGENT_NAME (=unified) で全 *.md（CLAUDE.md/AGENTS.md/GEMINI.md）を inject する。
 #
 # NOTE: `agent-zoo-base:latest` は **ローカルビルド前提** のタグ。
-#   `make build-base` を先に実行すること。
+#   `zoo build` で base を先にビルドすること。
 #   イメージサイズは 3 CLI 同梱で大きい。サイズ最適化が必要なら別途検討。
 
 FROM agent-zoo-base:latest

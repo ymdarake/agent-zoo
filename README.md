@@ -74,7 +74,7 @@ GEMINI_API_KEY=xxx zoo task --agent gemini -p "テストを追加して"
 | ログ分析 | `zoo logs analyze` / `summarize` / `alerts` |
 | テスト | `zoo test unit` |
 
-> **Maintainer 開発時のみ**: agent-zoo source repo (clone) では `bundle/Makefile` を `cd bundle && make build` 等で利用。詳細は [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離)。
+> **Maintainer 開発時**: agent-zoo source repo (clone) 直下では `zoo` CLI は動かない（`.zoo/` 未生成のため）。別 dir で `pip install -e . && zoo init && zoo build` して dogfood する。詳細は [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離)。
 
 ## ダッシュボード
 

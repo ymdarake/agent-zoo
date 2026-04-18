@@ -74,7 +74,7 @@ The `zoo` CLI covers all features. `zoo --help` / `zoo <cmd> --help` for details
 | Log analysis | `zoo logs analyze` / `summarize` / `alerts` |
 | Tests | `zoo test unit` |
 
-> **Maintainer-only**: in the agent-zoo source repo (clone), `bundle/Makefile` is available via `cd bundle && make build` etc. See [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離).
+> **Maintainer note**: the `zoo` CLI does not run at the root of the agent-zoo source repo (clone) because there is no `.zoo/` there. Dogfood from a separate dir with `pip install -e . && zoo init && zoo build`. See [ADR 0002 D7](docs/dev/adr/0002-dot-zoo-workspace-layout.md#d7-source-repo-bundle-と配布先-zoo-の命名分離).
 
 ## Dashboard
 

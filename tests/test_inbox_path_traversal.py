@@ -65,6 +65,24 @@ class TestMarkStatusPathTraversal(unittest.TestCase):
         # ファイルが更新され inbox_dir の中に残っている
         self.assertTrue((Path(self.tmp) / f"{rid}.toml").exists())
 
+    def test_url_encoded_dotdot_rejected(self):
+        """URL-encoded `../` (Flask が decode する前のバイト) も regex で reject される。"""
+        with self.assertRaises(ValueError):
+            mark_status(self.tmp, "%2e%2e%2fescape", "rejected")
+
+    def test_unicode_homoglyph_rejected(self):
+        """Unicode 同形異義文字 (fraction slash U+2044 等) も ASCII 限定 regex で reject。"""
+        with self.assertRaises(ValueError):
+            mark_status(self.tmp, "2026-04-18T12\u2044evil", "rejected")
+
+    def test_record_id_pointing_to_directory_returns_not_found(self):
+        """agent が inbox/valid.toml ディレクトリを作っても IsADirectoryError で 500 にせず、
+        FileNotFoundError として正しく伝搬する (is_file チェックあり)。"""
+        fake_dir = Path(self.tmp) / "validid.toml"
+        fake_dir.mkdir()
+        with self.assertRaises(FileNotFoundError):
+            mark_status(self.tmp, "validid", "rejected")
+
 
 class TestDashboardRecordIdValidation(unittest.TestCase):
     """dashboard 側でも API 層で record_id を弾くこと (defense-in-depth)。"""

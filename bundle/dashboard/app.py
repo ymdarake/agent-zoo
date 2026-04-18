@@ -5,6 +5,7 @@ import secrets
 import sqlite3
 import sys
 from datetime import UTC, datetime, timedelta
+from urllib.parse import urlsplit
 
 from flask import Flask, abort, jsonify, render_template, request
 from flask_wtf.csrf import CSRFProtect
@@ -49,20 +50,37 @@ app = Flask(__name__)
 # dashboard は localhost bind だが、ブラウザ経由 CSRF / DNS rebinding で任意 origin
 # からの POST が成立しうるため防御が必須。
 # SECRET_KEY は env 優先（再起動で token を失効させたくない本番想定）。
-# 未設定時はプロセスごとの random 値で fallback（単一 worker の dev 想定）。
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+# 未設定 / 空白のみの場合はプロセスごとの random 値で fallback（単一 worker の dev 想定）。
+app.config["SECRET_KEY"] = (
+    os.environ.get("SECRET_KEY", "").strip() or secrets.token_hex(32)
+)
 # HTMX からの token 送出を header ベースで許容（body だけでなく X-CSRFToken を読む）
 app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
-# TESTING=True では Flask-WTF が自動で CSRF を無効化するため既存 test に影響なし。
+# Flask-WTF 1.2.x は TESTING=True でも CSRF を自動無効化しない。既存 test は setUp で
+# `app.config["WTF_CSRF_ENABLED"] = False` を明示指定している。CSRF 動作検証は
+# test_dashboard_csrf.py で WTF_CSRF_ENABLED=True にして実施。
 csrf = CSRFProtect(app)
 
 
 # 包括レビュー G3-B2 (DNS rebinding 対策): Host ヘッダを whitelist に限定。
 # 悪意サイトが自ドメインの A レコードを 127.0.0.1 に設定することで同一 origin
 # policy を回避して dashboard を直接叩く攻撃 (DNS rebinding) を防ぐ。
+# HTTP Host RFC 7230: case-insensitive なので小文字で正規化。env の trailing whitespace
+# や大文字設定ミスを吸収するため strip + lower を常に通す。
 _ALLOWED_HOSTS = frozenset(
-    filter(None, os.environ.get("DASHBOARD_ALLOWED_HOSTS", "127.0.0.1,localhost").split(","))
+    h.strip().lower()
+    for h in os.environ.get("DASHBOARD_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
+    if h.strip()
 )
+
+
+def _extract_host_only(host_header: str) -> str:
+    """Host ヘッダから port を除去した hostname を返す（IPv6 リテラル対応）。
+
+    `request.host` は `'127.0.0.1:8080'` や `'[::1]:8080'` の形で来る。
+    urlsplit は `[::1]` を正しく hostname として解釈する。
+    """
+    return urlsplit(f"http://{host_header}").hostname or ""
 
 
 @app.before_request
@@ -73,9 +91,9 @@ def _enforce_strict_host() -> None:
     """
     if app.config.get("TESTING"):
         return None
-    host = request.host.split(":", 1)[0]
+    host = _extract_host_only(request.host).lower()
     if host not in _ALLOWED_HOSTS:
-        abort(400, description=f"Invalid Host header: {host}")
+        abort(400, description=f"Invalid Host header: {request.host!r}")
 
 
 @app.after_request

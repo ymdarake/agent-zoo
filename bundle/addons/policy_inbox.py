@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import re
 import secrets
 import tomllib
 import warnings
@@ -33,8 +34,7 @@ _SHORTID_BYTES = 2  # 4 文字 hex（同秒・同 content race 回避用）
 # ファイル名 stem は `{ISO8601-dashes}-{shortid}-{contenthash}` パターン →
 # 英数字 + ハイフン + コロン (ISO 表記用) + T (ISO date/time 分離子)。
 # `..` / `/` / `\` を排除し path traversal を防ぐ。
-import re as _re
-_RECORD_ID_RE: _re.Pattern[str] = _re.compile(r"^[A-Za-z0-9T:_-]+$")
+_RECORD_ID_RE: re.Pattern[str] = re.compile(r"^[A-Za-z0-9T:_-]+$")
 
 
 def _now_iso() -> str:
@@ -227,7 +227,10 @@ def mark_status(
     path = inbox_resolved / f"{record_id}.toml"
     if not path.resolve().is_relative_to(inbox_resolved):
         raise ValueError(f"record_id escapes inbox dir: {record_id!r}")
-    if not path.exists():
+    # agent が inbox/<name>.toml という dir を作って `record_id=name` で突いてきた場合、
+    # path.exists() は True になるが open(path, "rb") で IsADirectoryError が上がる。
+    # 明示的に is_file チェックして FileNotFoundError として 404 経路に乗せる。
+    if not path.is_file():
         raise FileNotFoundError(f"record not found: {record_id}")
     with path.open("rb") as f:
         data = tomllib.load(f)

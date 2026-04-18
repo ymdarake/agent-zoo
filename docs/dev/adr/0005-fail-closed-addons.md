@@ -101,6 +101,30 @@ addon ではなく mitmproxy の `events.py` を改造する案。
 - 既存 policy 判定で設定される `flow.response` (403 block / 429 rate limit / 403 payload block) は decorator に触られない（例外が起きない限り通過）
 - mitmproxy v11.x 以降で fail-closed 挙動が native に入った場合、本 decorator は冗長になるが依然として correctness を担保する層として残す価値あり
 
+### Known Limitations (follow-up)
+
+#### addon load 失敗時の挙動
+
+`PolicyEnforcer.__init__` 自体で例外が発生した場合、mitmproxy は addon 無しで起動してしまう（= fail-open）。本 PR のスコープは hook レベルの fail-closed のみで、addon load レベルは未対応。
+
+対応案:
+- A: `__init__` で全例外を catch し `sys.exit(1)` で mitmproxy プロセス停止（container restart policy で agent 起動を防ぐ）
+- B: `__init__` 内で `self._init_failed = True` を立て、hook の最初で check して 500 を返す
+
+次の follow-up PR（Sprint 005 の C 以降）で対応する。
+
+#### mitmproxy 制御例外の透過
+
+`_MITMPROXY_CONTROL_EXCEPTIONS` (`AddonHalt`, `OptionsError` 等) は decorator が吸収せず再 raise する。これにより mitmproxy 本体の addon 実行チェーン制御が破壊されない。現状 `policy_enforcer.py` は使用していないが、将来 addon 拡張時の足枷を防ぐ防御的実装。
+
+#### HTTP status 500 vs 502/503 の選択
+
+fail-closed 時に返す status code は **500** を採用。検討した代替案:
+- `502 Bad Gateway`: proxy 側の内部問題を明示するが意味的に "upstream が応答しなかった" に近い
+- `503 Service Unavailable` + `Retry-After`: agent の retry 間隔を制御できるが、retry 自体を促進してしまう
+
+現状 500 としているが、agent 側の retry 挙動（一部 CLI は 5xx で exponential backoff）が運用ログを汚染する可能性がある。実測後に 502/503 への変更を検討（follow-up）。
+
 ## Test Strategy
 
 `tests/test_addon_fail_closed.py`（12 ケース）:

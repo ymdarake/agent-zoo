@@ -29,14 +29,27 @@ from __future__ import annotations
 import functools
 import sys
 
-from mitmproxy import ctx, http
+from mitmproxy import ctx, exceptions, http
 
 
 _FAIL_CLOSED_BODY = b"Policy enforcer internal error (fail-closed)"
 
+# mitmproxy 内部でフロー制御に使われる例外 (AddonHalt, OptionsError 等) は吸収しない。
+# これらを吸収すると mitmproxy 本体の addon 実行チェーン制御 / option 再設定が壊れる。
+# 検出経路: `from mitmproxy.exceptions import *` → 全クラス列挙して BaseException 扱い。
+_MITMPROXY_CONTROL_EXCEPTIONS: tuple[type, ...] = tuple(
+    cls
+    for cls in vars(exceptions).values()
+    if isinstance(cls, type) and issubclass(cls, BaseException) and cls is not BaseException
+)
+
 
 def _log_error(self_or_cls: object, fn_name: str, exc: Exception) -> None:
-    """エラー内容を ctx.log.error に送出。ctx が使えない場合は stderr にフォールバック。"""
+    """エラー内容を ctx.log.error に送出。ctx が使えない場合は stderr にフォールバック。
+
+    stderr への print も失敗するような極端環境 (sys.stderr=None 等) では silently 捨てる。
+    **ログ出力は best-effort** であり、fail-closed 本体 (flow 遮断) を妨げない。
+    """
     cls_name = type(self_or_cls).__name__ if not isinstance(self_or_cls, type) else self_or_cls.__name__
     message = (
         f"addon {cls_name}.{fn_name} raised {type(exc).__name__}: {exc} — "
@@ -46,20 +59,26 @@ def _log_error(self_or_cls: object, fn_name: str, exc: Exception) -> None:
         ctx.log.error(message)
     except Exception:
         # ctx が未セットアップ (import 直後やテスト環境) の場合のフォールバック
-        print(message, file=sys.stderr)
+        try:
+            print(message, file=sys.stderr)
+        except Exception:
+            pass  # stderr 自体が壊れても fail-closed 本体は止めない
 
 
 def fail_closed_block(fn):
     """request / response hook 用: 例外発生時に flow.response を 500 で置換し block する。
 
     hook が正常完了した場合 (policy 判定結果として flow.response を設定した場合も含む)
-    は何も触らない。
+    は何も触らない。hook 内で明示的に flow.response = 403 を set した後に後続処理
+    (DB log 等) で例外が起きた場合は **fail-closed 原則で 500 に上書き** する。
     """
 
     @functools.wraps(fn)
     def wrapper(self, flow):
         try:
             return fn(self, flow)
+        except _MITMPROXY_CONTROL_EXCEPTIONS:
+            raise  # mitmproxy 内部制御例外は透過
         except Exception as exc:
             _log_error(self, fn.__name__, exc)
             flow.response = http.Response.make(
@@ -82,6 +101,8 @@ def fail_closed_ws_message(fn):
     def wrapper(self, flow):
         try:
             return fn(self, flow)
+        except _MITMPROXY_CONTROL_EXCEPTIONS:
+            raise
         except Exception as exc:
             _log_error(self, fn.__name__, exc)
             try:
@@ -105,6 +126,8 @@ def fail_closed_lifecycle(fn):
     def wrapper(self, *args, **kwargs):
         try:
             return fn(self, *args, **kwargs)
+        except _MITMPROXY_CONTROL_EXCEPTIONS:
+            raise
         except Exception as exc:
             _log_error(self, fn.__name__, exc)
 

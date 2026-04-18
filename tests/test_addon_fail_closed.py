@@ -16,13 +16,18 @@ from unittest.mock import MagicMock
 import pytest
 
 # ── mitmproxy の sys.modules shim ──
-# addons._fail_closed は `from mitmproxy import ctx, http` を行うが、
+# addons._fail_closed は `from mitmproxy import ctx, http, exceptions` を行うが、
 # mitmproxy はランタイム (proxy コンテナ) にしか存在しない。
 # テストでは shim で置き換え、decorator の振る舞いだけを検証する。
+#
+# 注意: shim は pytest プロセス全体で共有される。将来 mitmproxy 本物を dev 依存に
+# 追加して integration test を書く場合は、conftest.py の autouse fixture で
+# `sys.modules.pop("mitmproxy", None)` のクリーンアップが必要。
 _mitm = MagicMock()
 sys.modules.setdefault("mitmproxy", _mitm)
 sys.modules.setdefault("mitmproxy.ctx", _mitm.ctx)
 sys.modules.setdefault("mitmproxy.http", _mitm.http)
+sys.modules.setdefault("mitmproxy.exceptions", _mitm.exceptions)
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "bundle"))
 
@@ -133,6 +138,28 @@ def test_block_exception_never_reraises(mitm_mock):
 
     # pytest.raises でないことを確認
     hook(_FakeAddon(), flow)  # returns None silently
+
+
+def test_block_explicit_response_overridden_on_subsequent_exception(mitm_mock):
+    """hook が明示的に 403 などを set した後に後続処理で例外が起きた場合、
+    fail-closed 原則で 500 に上書きする（policy 判定は失っても traffic は block を維持）。
+    """
+    log, http_mod, response_obj = mitm_mock
+    flow = MagicMock()
+    initial_403 = MagicMock(name="PolicyBlock403")
+
+    @fail_closed_block
+    def hook(self, flow):
+        flow.response = initial_403  # policy 判定で 403 set
+        raise RuntimeError("DB logging failed after policy set")
+
+    hook(_FakeAddon(), flow)
+
+    # 500 に上書きされる (fail-closed 原則)
+    assert flow.response is response_obj
+    status_code = http_mod.Response.make.call_args[0][0]
+    assert status_code == 500
+    log.error.assert_called_once()
 
 
 # ─────────────────────────────────────────────────────────

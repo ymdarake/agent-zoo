@@ -23,12 +23,11 @@ agent-zoo/
 ├── bundle/                   # 配布資材（zoo init で <workspace>/.zoo/ にコピーされる元）
 │   ├── docker-compose.yml
 │   ├── policy.toml
-│   ├── Makefile              # maintainer 専用（user 配布物には含めない、ADR 0002 D5）
 │   ├── addons/               # mitmproxy addons (policy / policy_enforcer / sse_parser / policy_inbox 等)
 │   ├── container/            # Dockerfile.{base,codex,gemini,unified}
 │   ├── dashboard/            # Flask + HTMX ダッシュボード
 │   ├── templates/            # HARNESS_RULES.md（agent への指示テンプレ）
-│   └── host/, dns/, certs/, data/
+│   └── host/, dns/, certs/
 ├── tests/                    # pytest（repo root、bundle/ を pythonpath で参照）
 ├── docs/user/                # 利用者向け（install / security / policy-reference）
 ├── docs/dev/                 # 開発者向け（architecture / python-api / adr/ / sprints/）

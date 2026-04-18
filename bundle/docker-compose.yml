@@ -138,8 +138,9 @@ services:
       - DB_PATH=/data/harness.db
       - POLICY_PATH=/config/policy.toml
       - PYTHONPATH=/app
-      - FLASK_DEBUG=1
-    command: ["python", "-m", "flask", "run", "--host=0.0.0.0", "--port=8080"]
+    # Note: `gunicorn` を Dockerfile CMD のまま使う (production server)。
+    # dev 時に Werkzeug debugger や auto reload が必要なら docker-compose.override.yml
+    # で `environment: FLASK_DEBUG=1` + `command: [flask run ...]` を opt-in する。
     volumes:
       - ./dashboard:/app
       - ./data:/data:ro

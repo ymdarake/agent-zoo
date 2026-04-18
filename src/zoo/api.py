@@ -26,7 +26,15 @@ _BUNDLED_FILES = [
     "policy.toml",
     "Makefile",
 ]
-_BUNDLED_DIRS = ["container", "addons", "dashboard", "templates", "host", "dns"]
+_BUNDLED_DIRS = [
+    "container",
+    "addons",
+    "dashboard",
+    "templates",
+    "host",
+    "dns",
+    "scripts",
+]
 
 
 def _asset_source() -> Path:

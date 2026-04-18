@@ -70,6 +70,7 @@ packages = ["src/zoo"]
 "templates" = "zoo/_assets/templates"
 "host" = "zoo/_assets/host"
 "dns" = "zoo/_assets/dns"
+"scripts" = "zoo/_assets/scripts"
 
 [tool.hatch.build.targets.sdist]
 include = [
@@ -84,6 +85,7 @@ include = [
     "templates",
     "host",
     "dns",
+    "scripts",
     "tests",
     "README.md",
     "CHANGELOG.md",

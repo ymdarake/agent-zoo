@@ -183,14 +183,7 @@ summarize:
 .PHONY: candidates
 candidates:
 	@echo "=== Policy Candidates ==="
-	@python3 -c "\
-	import tomllib, sys; \
-	try: \
-	    data = tomllib.load(open('policy_candidate.toml', 'rb')); \
-	    candidates = data.get('candidates', []); \
-	    print(f'{len(candidates)} candidate(s)'); \
-	    [print(f'  [{c.get(\"type\",\"?\")}] {c.get(\"value\",\"?\")} - {c.get(\"reason\",\"\")}') for c in candidates]; \
-	except Exception as e: print(f'Parse error: {e}', file=sys.stderr)"
+	@python3 scripts/show_candidates.py
 	@echo ""
 
 .PHONY: alerts

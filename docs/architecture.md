@@ -36,9 +36,31 @@ Docker不要。macOS Seatbeltサンドボックスと併用。
 | `addons/sse_parser.py` | SSE / JSON / OpenAI Responsesイベントからtool_useを抽出。`BaseSSEParser` + `AnthropicSSEParser` / `OpenAISSEParser` / `OpenAIResponsesStreamParser` / `AutoDetectSSEParser` を実装 | なし |
 | `addons/policy_enforcer.py` | mitmproxyアドオン。HTTP response と WebSocket message を検査し、tool_use抽出とブロックを行う | mitmproxy |
 | `addons/policy_edit.py` | ポリシー編集・ホワイトリスト育成（atomic write、ファイルロック） | tomli_w |
-| `dashboard/app.py` | Flask + HTMX ダッシュボード | Flask |
+| `addons/policy_inbox.py` | Policy Inbox の storage layer（pure logic、ADR 0001） | tomli_w |
+| `dashboard/app.py` | Flask + HTMX ダッシュボード（Inbox タブ含む） | Flask |
 | `policy.toml` | ベースポリシー（人間が編集、コメント付き、git管理） | — |
 | `policy.runtime.toml` | ランタイムポリシー（ダッシュボードが書き込み、gitignore） | — |
+| `${WORKSPACE}/.zoo/inbox/*.toml` | エージェントが提出する許可リクエスト（ADR 0001、bind mount） | — |
+| `templates/HARNESS_RULES.md` | Agent 共通の harness 規約（CLAUDE.md / AGENTS.md / GEMINI.md として inject） | — |
+| `scripts/migrate_candidates_to_inbox.py` | 旧 `policy_candidate.toml` → inbox の冪等 migration | — |
+| `container/Dockerfile.base` | 共通 base イメージ（agent-zoo-base:latest）。各 agent はこれを `FROM` する | — |
+
+## Policy Inbox（ADR 0001）
+
+エージェントが「ブロックされたが必要な通信」を **`/harness/inbox/<日時>-<id>.toml`** に書き込み、
+人間が dashboard で承認すれば `policy.runtime.toml` の `domains.allow` / `paths.allow` に自動反映される。
+
+```
+agent → /harness/inbox/*.toml (1 リクエスト 1 ファイル, atomic O_EXCL + content hash dedup)
+              ↓
+         dashboard /partials/inbox（pending 一覧）
+              ↓
+         accept → policy_edit.add_to_allow_list / add_to_paths_allow
+              ↓
+         policy.runtime.toml に追記 → 次の proxy reload で有効化
+```
+
+詳細は [ADR 0001 Policy Inbox](adr/0001-policy-inbox.md) を参照。
 
 ## データフロー
 

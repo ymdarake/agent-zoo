@@ -464,7 +464,7 @@ E-1, E-2 (independent)
 - [x] A-5 マイグレーションスクリプト（2026-04-18 / scripts/migrate_candidates_to_inbox.py / 10 tests / 冪等）
 - [x] A-6 dashboard Inbox タブ（2026-04-18 / 9 tests / accept 自動 runtime 反映 + bulk 操作）
 - [ ] A-7 #16 根本検証
-- [ ] A-8 ドキュメント更新
+- [x] A-8 ドキュメント更新（2026-04-18 / docs/architecture.md に Policy Inbox 章 + README に Inbox/ADR リンク）
 - [ ] A-9 テスト整備 + smoke
 
 ### Group B: ベースイメージ統合（P1）

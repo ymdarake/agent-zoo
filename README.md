@@ -73,18 +73,22 @@ OPENAI_API_KEY=xxx zoo task --agent codex -p "テストを追加して"
 
 リクエスト・tool_use・ブロックをリアルタイム監視し、ホワイトリストを育成できる。
 
-| Requests | Tool Uses | Whitelist |
-|---|---|---|
-| ![Requests](docs/images/requests.png) | ![Tool Uses](docs/images/tool-uses.png) | ![Whitelist](docs/images/whitelist.png) |
+| Requests | Tool Uses | Inbox | Whitelist |
+|---|---|---|---|
+| ![Requests](docs/images/requests.png) | ![Tool Uses](docs/images/tool-uses.png) | _(ADR 0001)_ | ![Whitelist](docs/images/whitelist.png) |
+
+**Inbox**（[ADR 0001](docs/adr/0001-policy-inbox.md)）: エージェントが必要と判断した通信許可リクエストを human-in-the-loop で承認・反映する。
 
 ## ドキュメント
 
 | ドキュメント | 内容 |
 |---|---|
 | [アーキテクチャ](docs/architecture.md) | コンポーネント、データフロー、内部設計 |
+| [ADR 0001 Policy Inbox](docs/adr/0001-policy-inbox.md) | Policy Inbox の設計判断（ファイル形式、atomic write、dedup、lifecycle） |
 | [Codex統合ガイド](docs/codex-integration.md) | Codex CLI対応の構成と実装メモ |
 | [セキュリティモデル](docs/security.md) | 多層防御、既知の制約、運用原則 |
 | [ポリシーリファレンス](docs/policy-reference.md) | policy.toml全設定項目 |
+| [BACKLOG](BACKLOG.md) | issue grooming + タスク詳細プラン |
 | [ROADMAP](ROADMAP.md) | 未実装機能・将来計画 |
 
 ## ライセンス

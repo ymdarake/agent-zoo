@@ -481,7 +481,7 @@ E-1, E-2 (independent)
 ### Group D: 運用補助（P1）
 - [x] D-1 docker build 時 extra CA（2026-04-18 / certs/extra/*.crt 規約 + Dockerfile.base で update-ca-certificates）
 - [x] D-2 mitmproxy runtime extra CA（2026-04-18 / certs/extra/bundle.pem があれば --set ssl_verify_upstream_trusted_ca）
-- [ ] D-3 one-liner proxy command
+- [x] D-3 one-liner proxy command（2026-04-18 / `zoo proxy <agent>` ラッパー、TestProxy 2 ケース）
 
 ### Group E: ドキュメント（P2）
 - [ ] E-1 README/docs 英語版

@@ -88,6 +88,24 @@ def bash_cmd(
     sys.exit(api.bash(agent=agent, workspace=workspace))
 
 
+@app.command(
+    name="proxy",
+    context_settings={
+        "allow_extra_args": True,
+        "ignore_unknown_options": True,
+    },
+)
+def proxy_cmd(
+    ctx: typer.Context,
+    agent: str = typer.Argument(..., help="実行するコマンド (claude / codex / gemini など)"),
+) -> None:
+    """ホスト CLI に zoo proxy 環境を注入して exec（D-3）。
+
+    例: `zoo proxy claude -p "テスト追加"`
+    """
+    sys.exit(api.proxy(agent=agent, agent_args=ctx.args))
+
+
 @app.command()
 def certs() -> None:
     """mitmproxy CA 証明書を生成（既に存在すれば何もしない）。"""

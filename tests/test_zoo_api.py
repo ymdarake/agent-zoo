@@ -37,6 +37,61 @@ class TestPublicExports:
             assert callable(getattr(zoo, name))
 
 
+class TestProxy:
+    """D-3: ホスト CLI に zoo proxy 環境を注入して exec。"""
+
+    def test_proxy_starts_mitmproxy_if_not_running(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        host_calls: list[list[str]] = []
+        sub_calls: list[list[str]] = []
+
+        def fake_interactive(cmd, **kw):
+            host_calls.append(cmd)
+            return 0
+
+        def fake_subcall(cmd, **kw):
+            sub_calls.append(cmd)
+            return 0
+
+        # cert を用意（NODE_EXTRA_CA_CERTS の env 注入で使う）
+        (repo_root / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
+        monkeypatch.setattr(runner, "run_interactive", fake_interactive)
+        import subprocess as sp_mod
+        monkeypatch.setattr(sp_mod, "call", fake_subcall)
+
+        rc = api.proxy(agent="claude", agent_args=["-p", "hi"])
+        assert rc == 0
+        # mitmproxy 未起動だったので host/setup.sh が呼ばれる
+        assert any("setup.sh" in str(c) for c in host_calls)
+        # subprocess.call で claude が exec される
+        assert sub_calls[0][0] == "claude"
+        assert "-p" in sub_calls[0]
+
+    def test_proxy_skips_setup_when_mitmproxy_running(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        (repo_root / "certs" / "mitmproxy-ca-cert.pem").write_text("x")
+        # PID ファイルを置いて「起動済み」と擬装
+        (repo_root / "data" / ".mitmproxy.pid").write_text("99999")
+
+        host_calls: list[list[str]] = []
+        sub_calls: list[list[str]] = []
+
+        monkeypatch.setattr(
+            runner, "run_interactive",
+            lambda cmd, **kw: host_calls.append(cmd) or 0,
+        )
+        import subprocess as sp_mod
+        monkeypatch.setattr(
+            sp_mod, "call", lambda cmd, **kw: sub_calls.append(cmd) or 0,
+        )
+
+        api.proxy(agent="codex", agent_args=[])
+        assert host_calls == []  # 起動済みなので setup.sh は呼ばれない
+        assert sub_calls[0][0] == "codex"
+
+
 class TestBash:
     """B-4: コンテナ内に bash シェルを開く。"""
 

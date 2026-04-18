@@ -208,6 +208,33 @@ def host_start() -> int:
     return runner.run_interactive(["./host/setup.sh"])
 
 
+def proxy(*, agent: str, agent_args: list[str] | None = None) -> int:
+    """D-3: ホスト CLI に zoo proxy 環境を注入して exec する。
+
+    mitmproxy が未起動なら host/setup.sh で起動。env に
+    HTTPS_PROXY / HTTP_PROXY / NODE_EXTRA_CA_CERTS / SSL_CERT_FILE / GIT_SSL_CAINFO
+    を注入してサブプロセスを実行する。
+    """
+    pid_file = runner.repo_root() / "data" / ".mitmproxy.pid"
+    if not pid_file.exists():
+        runner.run_interactive(["./host/setup.sh"])
+
+    cert = runner.cert_path()
+    env = os.environ.copy()
+    env.update({
+        "HTTPS_PROXY": "http://127.0.0.1:8080",
+        "HTTP_PROXY": "http://127.0.0.1:8080",
+        "NODE_EXTRA_CA_CERTS": str(cert),
+        "SSL_CERT_FILE": str(cert),
+        "GIT_SSL_CAINFO": str(cert),
+    })
+    cmd = [agent, *(agent_args or [])]
+    try:
+        return subprocess.call(cmd, env=env)
+    except KeyboardInterrupt:
+        return 130
+
+
 def host_stop() -> int:
     """Stop host-mode mitmproxy via host/stop.sh."""
     return runner.run_interactive(["./host/stop.sh"])

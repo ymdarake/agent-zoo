@@ -2,7 +2,7 @@
 set -euo pipefail
 
 MODE="${1:-interactive}"
-HARNESS_FILE="${CODEX_HARNESS_FILE:-/harness/CODEX.harness.md}"
+HARNESS_FILE="${CODEX_HARNESS_FILE:-/harness/HARNESS_RULES.md}"
 USER_PROMPT="${USER_PROMPT:-}"
 
 HARNESS_PROMPT=""

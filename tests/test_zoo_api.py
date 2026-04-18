@@ -31,9 +31,34 @@ class TestPublicExports:
             "host_start", "host_stop", "logs_clear", "logs_candidates",
             "logs_analyze", "logs_summarize", "logs_alerts",
             "test_unit", "test_smoke",
+            "bash",  # B-4
         ):
             assert hasattr(zoo, name), f"zoo.{name} missing"
             assert callable(getattr(zoo, name))
+
+
+class TestBash:
+    """B-4: コンテナ内に bash シェルを開く。"""
+
+    def test_invokes_compose_up_then_exec_bash(
+        self, repo_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        compose_up_called: list[tuple] = []
+        exec_called: list[list[str]] = []
+
+        monkeypatch.setattr(
+            runner, "compose_up",
+            lambda services, **kw: compose_up_called.append((tuple(services), kw)),
+        )
+        monkeypatch.setattr(
+            runner, "run_interactive",
+            lambda cmd, **kw: exec_called.append(cmd) or 0,
+        )
+
+        rc = api.bash(agent="claude")
+        assert rc == 0
+        assert compose_up_called[0][0] == ("claude", "dashboard")
+        assert exec_called[0][:5] == ["docker", "compose", "exec", "claude", "bash"]
 
 
 class TestLogsClear:

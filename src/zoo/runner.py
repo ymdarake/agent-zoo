@@ -43,18 +43,18 @@ CLAUDE = AgentConfig(
     run_hint="対話モード: 初回はコンテナ内で /login が必要です",
     run_cmd=[
         "docker", "compose", "exec", "claude",
-        "claude", "--append-system-prompt-file", "/harness/CLAUDE.harness.md",
+        "claude", "--append-system-prompt-file", "/harness/HARNESS_RULES.md",
     ],
     run_dangerous_cmd=[
         "docker", "compose", "exec", "claude",
         "claude", "--dangerously-skip-permissions",
-        "--append-system-prompt-file", "/harness/CLAUDE.harness.md",
+        "--append-system-prompt-file", "/harness/HARNESS_RULES.md",
     ],
     task_cmd_template=[
         "docker", "compose", "exec", "claude",
         "claude", "-p", "{prompt}",
         "--dangerously-skip-permissions",
-        "--append-system-prompt-file", "/harness/CLAUDE.harness.md",
+        "--append-system-prompt-file", "/harness/HARNESS_RULES.md",
     ],
     allowed_test_url="https://api.anthropic.com/",
 )

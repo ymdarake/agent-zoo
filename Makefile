@@ -8,9 +8,9 @@ endif
 ifeq ($(AGENT),claude)
 AGENT_REQUIRED_ENV := CLAUDE_CODE_OAUTH_TOKEN
 AGENT_RUN_HINT := 対話モード: 初回はコンテナ内で /login が必要です
-AGENT_RUN_CMD := docker compose exec claude claude --append-system-prompt-file /harness/CLAUDE.harness.md
-AGENT_RUN_DANGEROUS_CMD := docker compose exec claude claude --dangerously-skip-permissions --append-system-prompt-file /harness/CLAUDE.harness.md
-AGENT_TASK_CMD := docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions --append-system-prompt-file /harness/CLAUDE.harness.md
+AGENT_RUN_CMD := docker compose exec claude claude --append-system-prompt-file /harness/HARNESS_RULES.md
+AGENT_RUN_DANGEROUS_CMD := docker compose exec claude claude --dangerously-skip-permissions --append-system-prompt-file /harness/HARNESS_RULES.md
+AGENT_TASK_CMD := docker compose exec claude claude -p "$(PROMPT)" --dangerously-skip-permissions --append-system-prompt-file /harness/HARNESS_RULES.md
 AGENT_ALLOWED_URL := https://api.anthropic.com/
 else
 AGENT_REQUIRED_ENV := OPENAI_API_KEY
@@ -83,6 +83,13 @@ endif
 up: certs
 	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
 	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
+
+.PHONY: bash
+bash: certs
+	@touch policy.runtime.toml policy_candidate.toml
+	@mkdir -p $(or $(WORKSPACE),./workspace)/.zoo/inbox
+	HOST_UID=$(HOST_UID) docker compose up -d $(AGENT) dashboard
+	docker compose exec $(AGENT) bash
 
 .PHONY: up-dashboard
 up-dashboard: certs

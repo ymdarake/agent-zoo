@@ -79,6 +79,15 @@ def build(agent: str = AgentOpt) -> None:
     api.build(agent=agent)
 
 
+@app.command(name="bash")
+def bash_cmd(
+    agent: str = AgentOpt,
+    workspace: Optional[str] = WorkspaceOpt,
+) -> None:
+    """コンテナ内に対話 bash を開く（手動操作・調査用、B-4）。"""
+    sys.exit(api.bash(agent=agent, workspace=workspace))
+
+
 @app.command()
 def certs() -> None:
     """mitmproxy CA 証明書を生成（既に存在すれば何もしない）。"""

@@ -27,6 +27,7 @@ services:
     environment:
       <<: *agent-env
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      AGENT_NAME: claude  # B-5: entrypoint が CLAUDE.md を /workspace に inject
     volumes:
       - ./certs:/certs:ro
       - ${WORKSPACE:-./workspace}:/workspace
@@ -34,7 +35,7 @@ services:
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
-      - ./templates/CLAUDE.harness.md:/harness/CLAUDE.harness.md:ro
+      - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   codex:
     <<: *agent-common
@@ -47,6 +48,7 @@ services:
     environment:
       <<: *agent-env
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      AGENT_NAME: codex  # B-5: entrypoint が AGENTS.md を /workspace に inject
     volumes:
       - ./certs:/certs:ro
       - ${WORKSPACE:-./workspace}:/workspace
@@ -54,7 +56,7 @@ services:
       - ./policy.toml:/harness/policy.toml:ro
       - ./policy_candidate.toml:/harness/policy_candidate.toml
       - ${WORKSPACE:-./workspace}/.zoo/inbox:/harness/inbox  # ADR 0001 (A-3)
-      - ./templates/CODEX.harness.md:/harness/CODEX.harness.md:ro
+      - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   proxy:
     image: mitmproxy/mitmproxy:10

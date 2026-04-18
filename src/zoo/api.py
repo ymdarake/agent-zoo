@@ -128,6 +128,22 @@ def task(
     return runner.run_interactive(cmd)
 
 
+def bash(
+    *,
+    agent: str = "claude",
+    workspace: str | Path | None = None,
+) -> int:
+    """B-4: Open an interactive bash shell inside the agent container.
+
+    Useful for manual inspection / ad-hoc debugging within the harness.
+    """
+    cfg = runner.resolve_agent(agent)
+    runner.compose_up([cfg.name, "dashboard"], workspace=_as_str(workspace))
+    return runner.run_interactive(
+        ["docker", "compose", "exec", cfg.name, "bash"],
+    )
+
+
 def up(
     *,
     agent: str = "claude",

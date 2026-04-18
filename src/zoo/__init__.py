@@ -1,5 +1,6 @@
 """Agent Zoo — AIコーディングエージェント用セキュリティハーネス."""
 from .api import (
+    bash,
     build,
     certs,
     down,
@@ -23,6 +24,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "__version__",
+    "bash",
     "build",
     "certs",
     "down",

@@ -15,4 +15,20 @@ until [ -f /certs/mitmproxy-ca-cert.pem ]; do
 done
 echo "[entrypoint] Certificates found. Ready."
 
+# B-5: HARNESS_RULES.md を agent ごとの慣習名で /workspace に inject
+HARNESS_FILE="/harness/HARNESS_RULES.md"
+if [ -f "$HARNESS_FILE" ]; then
+  case "${AGENT_NAME:-}" in
+    claude)
+      [ -f /workspace/CLAUDE.md ] || cp "$HARNESS_FILE" /workspace/CLAUDE.md 2>/dev/null || true
+      ;;
+    codex)
+      [ -f /workspace/AGENTS.md ] || cp "$HARNESS_FILE" /workspace/AGENTS.md 2>/dev/null || true
+      ;;
+    gemini)
+      [ -f /workspace/GEMINI.md ] || cp "$HARNESS_FILE" /workspace/GEMINI.md 2>/dev/null || true
+      ;;
+  esac
+fi
+
 exec sleep infinity

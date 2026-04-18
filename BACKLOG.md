@@ -457,7 +457,7 @@ E-1, E-2 (independent)
 ## 進捗チェックリスト
 
 ### Group A: Policy Inbox（P0）
-- [ ] A-1 設計確定 & ADR 起票
+- [x] A-1 設計確定 & ADR 起票（2026-04-18 / [docs/adr/0001-policy-inbox.md](docs/adr/0001-policy-inbox.md)）
 - [ ] A-2 `addons/policy_inbox.py` 実装 + テスト
 - [ ] A-3 docker-compose.yml volume 変更
 - [ ] A-4 harness テンプレ更新

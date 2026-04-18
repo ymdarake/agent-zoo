@@ -109,8 +109,12 @@ def fail_closed_ws_message(fn):
                 if flow.websocket and flow.websocket.messages:
                     flow.websocket.messages[-1].drop()
             except Exception:
-                # drop 自体が壊れても mitmproxy に伝播させない（fail-closed の原則）
-                pass
+                # drop 失敗 = この message が agent に漏れる可能性 →
+                # フローごと kill して接続全体を遮断（fail-closed 最終防衛線）
+                try:
+                    flow.kill()
+                except Exception:
+                    pass  # kill も失敗した場合はログ出して諦める (既に _log_error 済)
 
     return wrapper
 

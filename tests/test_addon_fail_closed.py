@@ -202,6 +202,45 @@ def test_ws_message_exception_without_websocket_does_not_raise(mitm_mock):
     log.error.assert_called_once()
 
 
+def test_ws_message_drop_failure_falls_back_to_flow_kill(mitm_mock):
+    """message.drop() が失敗した場合、flow.kill() で接続全体を遮断する（最終防衛線）。"""
+    log, _, _ = mitm_mock
+    flow = MagicMock()
+    flow.websocket = MagicMock()
+    broken_message = MagicMock()
+    broken_message.drop.side_effect = RuntimeError("drop internal failure")
+    flow.websocket.messages = [broken_message]
+
+    @fail_closed_ws_message
+    def hook(self, flow):
+        raise ValueError("parse failure")
+
+    hook(_FakeAddon(), flow)  # should not raise
+
+    broken_message.drop.assert_called_once()
+    flow.kill.assert_called_once()
+    log.error.assert_called_once()
+
+
+def test_ws_message_drop_and_kill_failure_swallowed(mitm_mock):
+    """drop も kill も失敗しても decorator は raise しない（ログは出る）。"""
+    log, _, _ = mitm_mock
+    flow = MagicMock()
+    flow.websocket = MagicMock()
+    broken_message = MagicMock()
+    broken_message.drop.side_effect = RuntimeError("drop failed")
+    flow.websocket.messages = [broken_message]
+    flow.kill.side_effect = RuntimeError("kill also failed")
+
+    @fail_closed_ws_message
+    def hook(self, flow):
+        raise ValueError("boom")
+
+    hook(_FakeAddon(), flow)  # should not raise
+
+    log.error.assert_called_once()
+
+
 def test_ws_message_exception_with_empty_messages_does_not_raise(mitm_mock):
     """flow.websocket.messages が空でも decorator 自身は raise しない。"""
     log, _, _ = mitm_mock

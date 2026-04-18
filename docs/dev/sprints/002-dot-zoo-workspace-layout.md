@@ -130,9 +130,12 @@ ADR 0002 [docs/adr/0002-dot-zoo-workspace-layout.md](../adr/0002-dot-zoo-workspa
 
 ---
 
-## Commit Log（Sprint 002、9 commit）
+## Commit Log（Sprint 002、12 commit）
 
 ```
+8b41b6e :memo: CLAUDE.md を新 layout (ADR 0002) に合わせて簡潔に刷新
+62080be :memo: #28 docs cleanup: user/dev 分離 + 新 layout 反映 + codex-integration 削除
+0cd639c :memo: Sprint 002 アーカイブ + BACKLOG を slim 化
 249a252 :bug: #29 Phase 4 Gemini fix: workspace cwd / Makefile path / setup.sh / docstring
 7ac1cbd :bug: #29 Phase 2 self-review fix: H1-H5 + M1/M4/L4
 7ce7bfa :recycle: #29 Phase 3-5: source repo を bundle/ へ集約 + 配布先 .zoo/ と命名分離（rebase 済）

@@ -413,6 +413,62 @@ dashboard からポリシー編集中に enforcer が不完全な `policy.toml` 
 
 ---
 
+## 第 II.b 部: Gemini 3 Flash Preview サードオピニオン（2026-04-18 追加）
+
+> **Note**: 当初 `gemini-3.1-pro-preview` を指定したが server capacity 枯渇 (HTTP 429 RESOURCE_EXHAUSTED) のため、CLAUDE.md フォールバック規約に基づき `gemini-3-flash-preview` を使用。
+
+### Part A 当日作業: 追加検出
+
+#### G3-A1. Docker ビルド再現性の欠如（uv.lock 未使用）
+
+`bundle/container/Dockerfile.base` で `uv.lock` ベースの sync (`uv sync` 等) が行われていない。CI で E2E が通っても、ユーザー手元のビルドでパッケージバージョンがドリフトし、同一イメージである保証がない。
+
+**修正**: Dockerfile に `uv.lock` を `COPY` し、`uv sync --frozen` で固定。
+
+#### G3-A2. Makefile の責務再定義（M8 への補足）
+
+root `Makefile` 導入は `uv` 直叩き慣習者と抽象化を求めるユーザーの乖離に起因。`zoo` CLI 一本化方針を ADR で明記した以上、Makefile は **「`.github/workflows` のロジックのエイリアス」** として開発者専用と厳格に定義すべき。
+
+### Part B セキュリティ: 裏取り結果
+
+#### C-2 fail-open の実装根拠（mitmproxy v10.x）
+
+**結論: 既知指摘は事実。デフォルトで pass-through 確定**。
+
+- mitmproxy v10.x の `AddonManager` は addon イベントハンドラ (`request` 等) を個別 `try...except` でラップ
+- 例外発生時はエラーをログ出力した上で **次の addon またはフローのコア処理に制御を移す**
+- `flow.kill()` / `flow.intercept()` を明示的に呼ばない限り、リクエストは「処理継続」とみなされる
+- → セキュリティ enforcer が例外で死んだ場合、mitmproxy 本体のデフォルト（**転送**）が優先される
+- **意図しない fail-open は仕様上の挙動**
+
+**結論 (Gemini 3)**: 「鍵の掛からない金庫を販売することに等しく、許容できない」。先送り不可。
+
+### Part B 追加検出
+
+#### G3-B1. 監査ログ (`harness.db`) による機密情報 (PII) 蓄積（Medium-High）
+
+`policy_enforcer.py` がリクエストボディを全文保存（M-2 関連）→ agent が扱う API キー、個人情報、ソースコードが DB 永続化。**DB 暗号化や特定ドメインへのボディ保存オプトアウト機能** が無い → コンプライアンス上の懸念。
+
+**修正**:
+- `general` セクションに `body_capture_exclude_domains` を追加し、機微 API への request body 記録を停止
+- DB 暗号化 (sqlcipher 等) は重いので opt-in、最低でも file 権限 600 を強制
+
+#### G3-B2. DNS Rebinding による localhost 認証バイパス（既出だが Strict Host 検証推奨）
+
+dashboard が `Host` ヘッダ検証していない場合、DNS rebinding で外部サイトから `127.0.0.1:8080` の REST API を直接叩かれる（H-1 とは独立の攻撃ベクトル）。
+
+**修正**: dashboard 全 endpoint で `Host` ヘッダを `127.0.0.1:<port>` / `localhost:<port>` のみに制限する middleware を追加。
+
+### リリース判定（Gemini 3 結論）
+
+> **Phase 1 (C-1, C-2, H-1〜H-4) は全て非妥協の blocker**。特に **C-2 (fail-closed 化)** は本製品のアイデンティティ（セキュリティハーネス）を担保する最小要件。これを先送りすることは、鍵の掛からない金庫を販売することに等しい。
+
+### Gemini 3 総合所感
+
+> 本レビュー体制（Claude + Gemini 2.5 Pro）は非常に強力に機能している。Claude がコードの不整合や CI の brittle さを、Gemini 2.5 Pro がアーキテクチャ上の盲点やセキュリティ上の想定漏れを突くという、理想的な相互補完が成立している。今回のサードオピニオンとして、**「セキュリティ製品としての堅牢性」を製品の主機能と同等以上に優先することを改めて推奨**。Phase 1 修正完了で本プロジェクトは非常に信頼性の高いエージェント管理基盤となる。
+
+---
+
 ## 第 III 部: 統合アクションリスト（優先度順）
 
 ### Phase 1: リリース blocker（即時着手必須）
@@ -442,7 +498,7 @@ dashboard からポリシー編集中に enforcer が不完全な `policy.toml` 
 
 ### Phase 3: セキュリティ Hardening（次 PR でまとめて）
 
-11. **M-1** dashboard の CDN を self-host or SRI 追加
+11. **M-1** dashboard の HTML/CSS/JS 依存を **外部 CDN から自前実装に切り替え（user 指示で確定）** — `pico.css` / `htmx.org` を `bundle/dashboard/static/` に同梱し self-host 化。SRI 追加だけでなく完全自前化することでサプライチェーン攻撃の攻撃面を縮小、オフライン環境でも動作可能に
 12. **M-2** URL からの secret strip + secret_patterns を URL にも適用
 13. **M-3** Docker image を `@sha256:` で pin、Renovate / Dependabot 導入
 14. **M-4** GitHub Actions の third-party action を SHA pin
@@ -498,15 +554,16 @@ dashboard からポリシー編集中に enforcer が不完全な `policy.toml` 
 
 ## 付録: レビュー手法の差分
 
-| 観点 | Claude subagent | Gemini 2.5 Pro |
-|---|---|---|
-| アプローチ | git diff + Read で各 commit を逐一確認、grep で危険パターン検索 | 同様 + 設計面での独立検証（DNS rebinding / TOCTOU / fail-open 等） |
-| 検出件数（作業） | H 3 + M 6 + L 5 | + G 4 件追加 + M1 を H に格上げ |
-| 検出件数（セキュリティ） | C 1 + H 4 + M 7 + L 6 | + G 3 件追加（うち 1 件 Critical） |
-| 共通強み | 既存指摘の独立検証で agree、根拠 file:line 提示 | 設計面での「想定の妥当性」を独立評価（127.0.0.1 bind 神話の崩壊指摘） |
-| 各々の独自貢献 | 当日 commit の細部（commit log placeholder、PR template 文言）を網羅 | mitmproxy addon の fail-open（最重要 Critical）、TOCTOU、DNS rebinding 想定 |
+| 観点 | Claude subagent | Gemini 2.5 Pro | Gemini 3 Flash Preview |
+|---|---|---|---|
+| 役割 | 一次レビュー | セカンドオピニオン | サードオピニオン（裏取り + 補強） |
+| アプローチ | git diff + Read で各 commit を逐一確認、grep で危険パターン検索 | 同様 + 設計面での独立検証（DNS rebinding / TOCTOU / fail-open 等） | 既存レポートの精査 + mitmproxy v10.x ソース挙動の裏取り |
+| 検出件数（作業） | H 3 + M 6 + L 5 | + G 4 件追加 + M1 を H に格上げ | + G3-A1 (Docker 再現性) + G3-A2 (Makefile 責務再定義) |
+| 検出件数（セキュリティ） | C 1 + H 4 + M 7 + L 6 | + G 3 件追加（うち 1 件 Critical） | + C-2 fail-open の挙動裏取り完了 + G3-B1 (PII 蓄積) + G3-B2 (DNS rebinding Strict Host) |
+| 共通強み | 既存指摘の独立検証で agree、根拠 file:line 提示 | 設計面での「想定の妥当性」を独立評価（127.0.0.1 bind 神話の崩壊指摘） | レビュー体制自体の評価 + 「先送り不可」のリリース判定明確化 |
+| 各々の独自貢献 | 当日 commit の細部（commit log placeholder、PR template 文言）を網羅 | mitmproxy addon の fail-open（最重要 Critical）、TOCTOU、DNS rebinding 想定 | C-2 仕様確認、Docker ビルド再現性、`harness.db` PII / DB 暗号化、Strict Host middleware |
 
-両者ともに `git` コマンドと file Read を駆使し、根拠ベースで指摘。**互いに見落としを補完しており、片方だけでは Critical 1 件 + High 1 件を見逃していた**。
+3 者ともに `git` コマンドと file Read を駆使し、根拠ベースで指摘。**3 段重ねで Critical 1 + High 1 + Medium 2 件の追加検出**。Gemini 3.1 Pro Preview は server capacity 枯渇 (HTTP 429) のため `gemini-3-flash-preview` を使用（CLAUDE.md フォールバック規約準拠）。
 
 ---
 

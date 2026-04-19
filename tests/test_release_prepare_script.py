@@ -190,11 +190,11 @@ def test_accepts_valid_version_format_in_dry_run(version, tmp_path):
 
 
 def test_script_delegates_version_validate_to_lib():
-    """bash script が VERSION 検証を lib CLI (``python3 $LIB validate``) に
-    委譲しており、重複 regex を持っていないこと (single source of truth)。"""
+    """bash script が VERSION 検証を lib wrapper (``lib validate``) に委譲しており、
+    生の VERSION regex を持っていないこと (single source of truth)。"""
     script_text = SCRIPT.read_text()
-    assert "python3 \"$LIB\" validate" in script_text
-    # bash 側で生の regex を持っていない (lib 委譲に統一)
+    assert "lib validate" in script_text, "lib wrapper を使って validate を呼んでいない"
+    # bash 側で生の regex を持っていない (lib に単一化)
     assert "[[ \"$VERSION\" =~" not in script_text, (
         "bash に VERSION regex が残っている (lib に単一化すべき)"
     )

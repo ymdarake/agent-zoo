@@ -51,6 +51,20 @@ def proxy_up():
     env = {**os.environ, "HOST_UID": str(os.getuid())}
     # CI / 初回起動で bind-mount 対象ファイルが無いと Docker が dir 化してしまうため事前 touch
     (BUNDLE / "policy.runtime.toml").touch(exist_ok=True)
+    # issue #66 で bundle/policy.toml (単一 file) は bundle/policy/*.toml (5 profile)
+    # に分離された。本番 flow では `zoo init --policy <profile>` が <workspace>/
+    # .zoo/policy.toml を生成するが、E2E P2 は source bundle で直接 docker
+    # compose up するため bundle/policy.toml が不在。Docker は bind-mount 対象
+    # が無いと自動で dir を作成 → proxy container で IsADirectoryError になる。
+    # bundle/policy/all.toml (旧 default 相当) を bundle/policy.toml として
+    # 一時 copy して回避し、teardown で削除する。
+    policy_dst = BUNDLE / "policy.toml"
+    policy_dst_created = False
+    if not policy_dst.exists():
+        policy_src = BUNDLE / "policy" / "all.toml"
+        if policy_src.exists():
+            shutil.copy(policy_src, policy_dst)
+            policy_dst_created = True
     # Sprint 005 PR C (H-3) hardening: proxy container は user: "1000:1000"
     # 固定。bind mount された host dir の owner が違う場合 (Linux CI で顕著)、
     # proxy 非 root user が書けない (Permission denied)。
@@ -99,6 +113,8 @@ def proxy_up():
         )
         # 事前 touch した空ファイルをローカル環境から除去（.gitignore 済だが dev の作業 dir を汚さない）
         (BUNDLE / "policy.runtime.toml").unlink(missing_ok=True)
+        if policy_dst_created:
+            policy_dst.unlink(missing_ok=True)
 
 
 def _curl_via_proxy(url: str) -> int:

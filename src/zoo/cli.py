@@ -120,7 +120,24 @@ def init(
     """パッケージ同梱のアセットから agent-zoo ワークスペースを展開。"""
     resolved = api.init(target_dir=target, force=force)
     typer.echo(f"Workspace ready: {resolved}")
-    typer.echo("  cd into it and run `zoo build` then `zoo run`.")
+    typer.echo("")
+    typer.echo("Next steps:")
+    typer.echo(f"  cd {resolved}")
+    typer.echo("  zoo build              # build the claude image (5-10 min on first run)")
+    typer.echo("")
+    typer.echo("Run modes (default agent: claude; switch with --agent codex|gemini):")
+    typer.echo("  zoo run                # interactive mode (first run prompts /login for OAuth)")
+    typer.echo("                         #   injects HARNESS_RULES into both CLAUDE.md and system prompt")
+    typer.echo("  zoo run --dangerous    # sandbox mode (no approvals, protected by network isolation)")
+    typer.echo("  zoo task '<prompt>'    # autonomous one-shot (requires CLAUDE_CODE_OAUTH_TOKEN env)")
+    typer.echo("  zoo bash               # interactive bash inside the container (debug / manual ops)")
+    typer.echo("                         #   CLAUDE.md is injected; system prompt must be added manually")
+    typer.echo("")
+    typer.echo("Operations:")
+    typer.echo("  zoo up --dashboard-only  # start audit dashboard at http://127.0.0.1:8080")
+    typer.echo("  zoo down                 # stop all containers")
+    typer.echo("  zoo reload               # reload after editing policy.toml")
+    typer.echo("  zoo logs analyze         # AI-summarize accumulated logs (uses host claude CLI)")
 
 
 # === ホストモード ===

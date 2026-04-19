@@ -17,11 +17,14 @@ from mitmproxy import ctx, http
 
 # mitmproxy loads addons by path (-s flag), so add this directory to sys.path
 sys.path.insert(0, os.path.dirname(__file__))
+from _db_secure import secure_db_file
 from _fail_closed import (
     fail_closed_block,
     fail_closed_lifecycle,
     fail_closed_ws_message,
 )
+from _status_constants import BLOCK_STATUSES
+from _url_scrub import _MAX_BODY_BYTES, _parse_content_length, scrub_url
 from policy import PolicyEngine
 from sse_parser import (
     OpenAIResponsesStreamParser,
@@ -97,6 +100,10 @@ class PolicyEnforcer:
             """
         )
         db.commit()
+        # 包括レビュー G3-B1 (Sprint 006 PR D): PII / 機密情報を含む sqlite ファイルを
+        # 同一 host の他ユーザーから読まれないよう chmod 600 を強制。
+        # WAL / SHM は上記 commit で生成済。bind mount で EPERM なら ctx.log.error。
+        secure_db_file(self.engine.db_path, log_fn=ctx.log.error)
 
     def _log_request(self, host, method, url, status, body_size, reason=""):
         """リクエストをログし、ブロック系ステータスの場合はblocksテーブルにも記録する。"""
@@ -107,7 +114,7 @@ class PolicyEnforcer:
                 "VALUES (?, ?, ?, ?, ?)",
                 (host, method, url, status, body_size),
             )
-            if status in ("BLOCKED", "RATE_LIMITED", "PAYLOAD_BLOCKED") and reason:
+            if status in BLOCK_STATUSES and reason:
                 db.execute(
                     "INSERT INTO blocks (host, reason) VALUES (?, ?)",
                     (host, reason),
@@ -203,15 +210,37 @@ class PolicyEnforcer:
 
         host = flow.request.host
         method = flow.request.method
-        url = flow.request.url
+        # 包括レビュー M-2 (Sprint 006 PR D): raw URL は DB に保存しない。
+        # scrub_url で userinfo / query / fragment を redact。raw URL は
+        # secret_patterns 検査時のみ使用する。
+        url_raw = flow.request.url
+        url_safe = scrub_url(url_raw)
         body = flow.request.content
         body_size = len(body) if body else 0
+
+        # 0. Content-Length 前チェック（M-6 fail-closed）:
+        #    mitmproxy の --set body_size_limit=1m だけだと 1MB 超が stream
+        #    pass-through で check_payload を silently skip する副作用がある。
+        #    addon 側で Content-Length ヘッダを先行チェックし、明示的に 413 遮断。
+        content_length = _parse_content_length(
+            flow.request.headers.get("content-length")
+        )
+        if content_length is not None and content_length > _MAX_BODY_BYTES:
+            self._log_request(
+                host, method, url_safe, "BODY_TOO_LARGE",
+                content_length, f"content-length {content_length} > {_MAX_BODY_BYTES}",
+            )
+            flow.response = http.Response.make(
+                413, b"Payload too large", {"Content-Type": "text/plain"},
+            )
+            ctx.log.warn(f"BODY_TOO_LARGE: {host} content-length={content_length}")
+            return
 
         # 1. ドメイン + パス制御
         req_path = flow.request.path  # URLパス（クエリ含む）
         allowed, reason = self.engine.is_allowed(host, req_path)
         if not allowed:
-            self._log_request(host, method, url, "BLOCKED", body_size, reason)
+            self._log_request(host, method, url_safe, "BLOCKED", body_size, reason)
             flow.response = http.Response.make(
                 403, b"Blocked by policy", {"Content-Type": "text/plain"}
             )
@@ -221,7 +250,7 @@ class PolicyEnforcer:
         # 2. レート制限
         allowed, reason = self.engine.check_rate_limit(host)
         if not allowed:
-            self._log_request(host, method, url, "RATE_LIMITED", body_size, reason)
+            self._log_request(host, method, url_safe, "RATE_LIMITED", body_size, reason)
             flow.response = http.Response.make(
                 429,
                 b"Rate limit exceeded",
@@ -230,17 +259,30 @@ class PolicyEnforcer:
             ctx.log.warn(f"RATE_LIMITED: {host} ({reason})")
             return
 
-        # 3. ペイロード検査
+        # 3. URL secret_patterns 検査（M-2）: query に credential が乗っているケース
+        #    を body 検査より先に遮断。raw URL に対して検査、DB には scrubbed 版を保存。
+        url_secret_blocked, url_reason = self.engine.check_url_secrets(url_raw)
+        if url_secret_blocked:
+            self._log_request(
+                host, method, url_safe, "URL_SECRET_BLOCKED", body_size, url_reason,
+            )
+            flow.response = http.Response.make(
+                403, b"Blocked by URL policy", {"Content-Type": "text/plain"},
+            )
+            ctx.log.warn(f"URL_SECRET_BLOCKED: {host} ({url_reason})")
+            return
+
+        # 4. ペイロード検査
         blocked, reason = self.engine.check_payload(body)
         if blocked:
-            self._log_request(host, method, url, "PAYLOAD_BLOCKED", body_size, reason)
+            self._log_request(host, method, url_safe, "PAYLOAD_BLOCKED", body_size, reason)
             flow.response = http.Response.make(
                 403, b"Blocked by payload policy", {"Content-Type": "text/plain"}
             )
             ctx.log.warn(f"PAYLOAD_BLOCKED: {reason}")
             return
 
-        self._log_request(host, method, url, "ALLOWED", body_size)
+        self._log_request(host, method, url_safe, "ALLOWED", body_size)
 
     # Note: responseheaders()は意図的に未定義。
     # mitmproxy 10.xではstream callableが使えないため、SSEレスポンスをバッファし

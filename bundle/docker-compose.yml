@@ -120,14 +120,17 @@ services:
     environment:
       - PYTHONDONTWRITEBYTECODE=1
     # D-2: certs/extra/bundle.pem があれば上流 TLS 検証に使う（無ければ標準 CA）
+    # 包括レビュー M-6 (Sprint 006 PR D): --set body_size_limit=1m で 1MB 超の
+    # body を mitmproxy レベルで OOM 保護。addon 側では Content-Length > 1MB を
+    # 413 で fail-closed 遮断する 2 段防御（commit 4 で追加予定）。
     command:
       - sh
       - -c
       - |
         if [ -f /certs/extra/bundle.pem ]; then
-          exec mitmdump --set confdir=/certs --set ssl_verify_upstream_trusted_ca=/certs/extra/bundle.pem -s /scripts/policy_enforcer.py
+          exec mitmdump --set body_size_limit=1m --set confdir=/certs --set ssl_verify_upstream_trusted_ca=/certs/extra/bundle.pem -s /scripts/policy_enforcer.py
         else
-          exec mitmdump --set confdir=/certs -s /scripts/policy_enforcer.py
+          exec mitmdump --set body_size_limit=1m --set confdir=/certs -s /scripts/policy_enforcer.py
         fi
     healthcheck:
       test: ["CMD-SHELL", "python3 -c \"import socket; s = socket.create_connection(('localhost', 8080), timeout=2); s.close()\""]

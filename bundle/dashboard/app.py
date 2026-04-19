@@ -31,9 +31,15 @@ from policy_edit import (
     remove_from_dismissed,
     remove_from_paths_allow,
 )
+from _status_constants import (
+    BLOCK_STATUSES as _BLOCK_STATUSES,
+    block_statuses_sql_placeholders as _block_statuses_sql_placeholders,
+)
 from policy_inbox import (
     _RECORD_ID_RE as _INBOX_RECORD_ID_RE,
 )
+
+_BLOCK_STATUSES_PLACEHOLDERS = _block_statuses_sql_placeholders()
 from policy_inbox import (
     bulk_mark_status as inbox_bulk_mark_status,
 )
@@ -178,7 +184,8 @@ def api_stats():
             "SELECT COUNT(*) FROM requests WHERE status='ALLOWED'"
         ).fetchone()[0]
         blocked = db.execute(
-            "SELECT COUNT(*) FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED')"
+            f"SELECT COUNT(*) FROM requests WHERE status IN ({_BLOCK_STATUSES_PLACEHOLDERS})",
+            _BLOCK_STATUSES,
         ).fetchone()[0]
         tool_uses = db.execute("SELECT COUNT(*) FROM tool_uses").fetchone()[0]
         alerts = db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0]
@@ -328,7 +335,8 @@ def partial_stats():
         stats = {
             "total": db.execute("SELECT COUNT(*) FROM requests").fetchone()[0],
             "blocked": db.execute(
-                "SELECT COUNT(*) FROM requests WHERE status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED')"
+                f"SELECT COUNT(*) FROM requests WHERE status IN ({_BLOCK_STATUSES_PLACEHOLDERS})",
+                _BLOCK_STATUSES,
             ).fetchone()[0],
             "tool_uses": db.execute("SELECT COUNT(*) FROM tool_uses").fetchone()[0],
             "alerts": db.execute("SELECT COUNT(*) FROM alerts").fetchone()[0],
@@ -363,8 +371,8 @@ def partial_whitelist():
         try:
             for c in candidates:
                 rows = db.execute(
-                    "SELECT DISTINCT url FROM requests WHERE host=? AND status IN ('BLOCKED','RATE_LIMITED','PAYLOAD_BLOCKED') LIMIT 5",
-                    (c["host"],),
+                    f"SELECT DISTINCT url FROM requests WHERE host=? AND status IN ({_BLOCK_STATUSES_PLACEHOLDERS}) LIMIT 5",
+                    (c["host"], *_BLOCK_STATUSES),
                 ).fetchall()
                 c["paths"] = [r["url"] for r in rows]
         finally:
@@ -413,7 +421,13 @@ def partial_whitelist():
 
 import re
 
-_DOMAIN_RE = re.compile(r"^(\*\.)?[a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?$")
+# 包括レビュー M-5 (Sprint 006 PR D): RFC 1035 準拠の strict regex に置換。
+# ラベルごとに leading/trailing hyphen 禁止、1〜63 文字、`*.` wildcard は
+# 最後に 2 ラベル以上を強制。`localhost` / `*.com` / `a..com` / `a-.com` / `-a.com`
+# / `*.*.example.com` / `example.com.` を全部 reject する。
+# 許可 / 拒否の full matrix は tests/test_dashboard_domain_validation.py 参照。
+_LABEL_RE = r"(?!-)[A-Za-z0-9-]{1,63}(?<!-)"
+_DOMAIN_RE = re.compile(rf"^(\*\.)?({_LABEL_RE}\.)+{_LABEL_RE}$")
 
 
 def _validate_domain(domain: str) -> str | None:
@@ -549,13 +563,28 @@ def partial_inbox():
 
 
 def _apply_accept(record: dict) -> None:
-    """inbox record の type に応じて runtime policy へ反映する。"""
+    """inbox record の type に応じて runtime policy へ反映する。
+
+    self-review M-3: agent が inbox に書いた `value` を validation 無しで
+    runtime policy に流すと M-5 の strict regex 防御が UI 経由 (whitelist API)
+    でしか効かなくなる。inbox accept でも同じ strict regex を要求する。
+    invalid な entry は ValueError を raise し caller (api_inbox_accept /
+    api_inbox_bulk_accept) 側で 400 / skip 扱いにする。
+    """
     rtype = record.get("type")
     policy_path = _policy_path()
     if rtype == "domain":
-        add_to_allow_list(policy_path, record["value"])
+        domain = record.get("value", "")
+        err = _validate_domain(domain)
+        if err:
+            raise ValueError(f"invalid inbox domain: {err}")
+        add_to_allow_list(policy_path, domain)
     elif rtype == "path":
-        add_to_paths_allow(policy_path, record["domain"], record["value"])
+        domain = record.get("domain", "")
+        err = _validate_domain(domain)
+        if err:
+            raise ValueError(f"invalid inbox domain: {err}")
+        add_to_paths_allow(policy_path, domain, record["value"])
     # tool_use_unblock は将来対応（ADR Open / Future）
 
 
@@ -584,7 +613,12 @@ def api_inbox_accept():
     if record is None:
         return jsonify({"error": "record not found"}), 404
 
-    _apply_accept(record)
+    try:
+        _apply_accept(record)
+    except ValueError as e:
+        # self-review M-3: inbox に書かれた value が strict domain regex を
+        # 通らない場合は 400 で拒否（agent が緩い entry を流し込むのを防ぐ）
+        return jsonify({"error": str(e)}), 400
     inbox_mark_status(_inbox_dir(), record_id, "accepted")
 
     if request.headers.get("HX-Request"):

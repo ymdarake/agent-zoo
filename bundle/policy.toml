@@ -92,6 +92,10 @@ secret_patterns = [
 block_tools = []
 
 # 引数にこの文字列が含まれたらブロック（実行コマンド・パスのパターン）
+# 注: block_args はワード境界マッチで、完全な危険パターン検知は困難です。
+#     最終的な防御は domains.allow の厳格化によるネットワーク隔離であり、
+#     block_args は補助的な早期検知として使ってください。あなたの threat model
+#     に合わせて customize を。詳細: docs/user/policy-reference.md
 block_args = [
     "rm -rf /",
     "chmod 777",

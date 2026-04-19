@@ -230,6 +230,21 @@ class PolicyEngine:
         burst_window.append(now)
         return True, ""
 
+    def check_url_secrets(self, url: str) -> tuple[bool, str]:
+        """URL 文字列に対して secret_patterns を適用する（Sprint 006 PR D, M-2）。
+
+        flow.request.url には query / fragment / userinfo が含まれ、`api_key=xxx`
+        のような credential が流入する可能性がある。secret_patterns のみ適用し、
+        block_patterns は URL 文脈で FP 多いため適用しない。
+        (True, reason) = secret 検出, (False, "") = 通過。
+        """
+        if not url:
+            return False, ""
+        for pattern in self.secret_patterns:
+            if pattern.search(url):
+                return True, f"secret_pattern matched in url: {pattern.pattern}"
+        return False, ""
+
     def check_payload(self, body: bytes | None) -> tuple[bool, str]:
         """リクエストボディに危険パターンや機密情報が含まれていないかチェックする。
         (True, reason) = ブロック, (False, "") = 通過。

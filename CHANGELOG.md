@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **request body サイズ上限 + URL secret 検査 + URL scrub** — mitmproxy `--set body_size_limit=1m` で OOM 保護しつつ、addon 側で `Content-Length > 1MB` を 413 で fail-closed 遮断（M-6）。`flow.request.url` を `scrub_url` で userinfo / query / fragment 全部 redact してから DB 保存（M-2、ログ流出防止 + log injection / smuggling 防御の制御文字 reject）。`secret_patterns` を URL にも適用し credential が乗った request を 403 `URL_SECRET_BLOCKED` で遮断 (Sprint 006 PR D、包括レビュー M-2 / M-6)
+- **dashboard `_validate_domain` を RFC 1035 準拠 strict regex 化** — `localhost` / `*.com` / `a..com` / `a-.com` / `*.*.example.com` を UI から追加不可に。inbox accept 経由の bypass も塞ぐ (Sprint 006 PR D、包括レビュー M-5)
+- **harness.db / WAL / SHM の chmod 600** — PII / 機密情報を含む sqlite 関連ファイル群を同一 host の他ユーザから保護。symlink follow を抑止 (TOCTOU 緩和)、bind mount EPERM は fail-safe (Sprint 006 PR D、Gemini G3-B1)
+- **block_args の限界を docs に明記** — user-docs に抽象 warning、dev-docs (`docs/dev/security-notes.md`) に bypass 例 / URL scrub 設計根拠 / DB chmod 運用 / strict regex behavior change / policy_lock defer 分析を集約。agent self-jailbreak 対策で具体例は dev-only に分離 (Sprint 006 PR D、包括レビュー M-7)
 - **mitmproxy addon の fail-closed 化** ([ADR 0005](docs/dev/adr/0005-fail-closed-addons.md)) — `policy_enforcer.py` の全 event hook (`request` / `response` / `websocket_message` / `websocket_end` / `done`) に fail-closed decorator を適用。addon 内で未捕捉例外が発生しても policy enforcement を bypass しない (Sprint 005 PR A、包括レビュー C-2 / Gemini 2.5 Pro 検出)
 - **dashboard の Werkzeug debugger を撤去** — `docker-compose.yml` の `FLASK_DEBUG=1` + `flask run` override を削除し Dockerfile CMD の `gunicorn` に戻す。`/console` 経由の任意 Python REPL 経路を遮断 (Sprint 005 PR B、包括レビュー C-1)
 - **dashboard CSRF 対策** — Flask-WTF CSRFProtect 導入。全 POST endpoint で `X-CSRFToken` ヘッダ or form token 検証。HTMX からは `<body hx-headers='{"X-CSRFToken": ...}'>` で自動送出、bulk 用 fetch() は meta tag から読取 (Sprint 005 PR B、包括レビュー H-1)
@@ -34,6 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release workflow に TestPyPI デプロイ対応 — `workflow_dispatch` の `target` 入力で `none` / `testpypi` を選択可能。本番 PyPI へのリリースは `v*.*.*` タグ push 専用とし、手動実行からの本番公開経路は塞いでいる
 
 ### Changed
+- **dashboard domain validation を strict 化 (behavior change)** — UI 経由で `localhost` / 単一ラベル host / TLD-only wildcard (`*.com`) / 連続 dot / leading-trailing hyphen / 多段 wildcard を追加できなくなる。これらを使いたい場合は base `policy.toml` を直接編集する。詳細は [docs/dev/security-notes.md](docs/dev/security-notes.md) (Sprint 006 PR D、包括レビュー M-5)
+- **log DB の URL 列に query / fragment / userinfo が保存されなくなる** — Sprint 006 PR D 以前に保存された row はそのまま残る。clean したい場合は `zoo logs clear` を実行してください
+- **新 status `URL_SECRET_BLOCKED` / `BODY_TOO_LARGE` を block 集計に追加** — dashboard の "blocked" カウント / whitelist candidate 抽出に反映。新 status の event は `blocks` テーブルにも転記される
 - **Workspace layout を `.zoo/` 集約に移行** — `zoo init` は `<workspace>/.zoo/` 配下に展開（ADR 0002）
 - docs を **`docs/user/`（利用者向け）と `docs/dev/`（開発者向け）に分離**
 - Docker compose 操作を **`zoo` CLI に一本化** — Makefile は source repo / 配布物ともに含めない

@@ -115,6 +115,50 @@ class TestPayloadRules(unittest.TestCase):
         self.assertEqual(len(self.engine.secret_patterns), 3)
 
 
+class TestCheckUrlSecrets(unittest.TestCase):
+    """URL 文字列に secret_patterns を適用するチェック（Sprint 006 PR D, M-2）。
+
+    block_patterns は URL 文脈で FP 多い (e.g. `/etc/passwd` path) ので適用しない。
+    secret_patterns のみ URL に適用する。
+    """
+
+    def setUp(self):
+        self.path = _write_policy(PAYLOAD_POLICY)
+        self.engine = PolicyEngine(self.path)
+
+    def tearDown(self):
+        os.unlink(self.path)
+
+    def test_url_with_secret_blocked(self):
+        """query 内の AWS_SECRET_ACCESS_KEY 相当は block"""
+        url = "https://example.com/v1?AWS_SECRET_ACCESS_KEY=xxxx"
+        blocked, reason = self.engine.check_url_secrets(url)
+        self.assertTrue(blocked)
+        self.assertIn("secret_pattern", reason)
+
+    def test_url_without_secret_passes(self):
+        url = "https://api.example.com/v1/messages"
+        blocked, _ = self.engine.check_url_secrets(url)
+        self.assertFalse(blocked)
+
+    def test_url_with_api_key_in_query_blocked(self):
+        # PAYLOAD_POLICY の secret_patterns は ANTHROPIC_API_KEY / AWS_SECRET_ACCESS_KEY
+        url = "https://example.com/v1?ANTHROPIC_API_KEY=sk-xxxx"
+        blocked, reason = self.engine.check_url_secrets(url)
+        self.assertTrue(blocked)
+        self.assertIn("secret_pattern", reason)
+
+    def test_url_block_pattern_not_applied(self):
+        """block_patterns (e.g., rm -rf /) は URL には適用しない (FP 防止)"""
+        url = "https://example.com/search?q=rm+-rf+/"
+        blocked, _ = self.engine.check_url_secrets(url)
+        self.assertFalse(blocked)
+
+    def test_empty_url_passes(self):
+        blocked, _ = self.engine.check_url_secrets("")
+        self.assertFalse(blocked)
+
+
 class TestPayloadRulesNoConfig(unittest.TestCase):
     def test_no_payload_rules_section(self):
         """[payload_rules]セクションがなくてもエラーにならない"""

@@ -30,8 +30,8 @@ unit:  ## ユニットテスト (tests/ 配下、e2e 除く)
 	uv run python -m pytest tests/ -v
 
 .PHONY: e2e
-e2e:  ## E2E P1 (dashboard, Docker 不要)
-	uv run pytest tests/e2e/test_dashboard.py -v
+e2e:  ## E2E P1 (dashboard + offline、Docker 不要)
+	uv run pytest tests/e2e/test_dashboard.py tests/e2e/test_dashboard_offline.py -v
 
 .PHONY: e2e-all
 e2e-all:  ## E2E 全実行 (P2 は Docker daemon 必要)

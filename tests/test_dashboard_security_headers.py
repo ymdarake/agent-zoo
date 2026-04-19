@@ -51,6 +51,19 @@ class TestSecurityHeaders(unittest.TestCase):
         # frame-ancestors 'none' で clickjacking 防御
         self.assertIn("frame-ancestors 'none'", csp)
 
+    def test_csp_strict_no_unsafe_inline(self):
+        """Sprint 007 PR I (review H-2): 'unsafe-inline' 完全排除を既存 test 側でも防衛。"""
+        rv = self.client.get("/")
+        csp = rv.headers["Content-Security-Policy"]
+        self.assertNotIn("'unsafe-inline'", csp)
+
+    def test_csp_strict_no_cdn_domains(self):
+        """Sprint 007 PR I (M-1 / L-6 resolved): CDN ドメインが CSP に残っていない。"""
+        rv = self.client.get("/")
+        csp = rv.headers["Content-Security-Policy"]
+        self.assertNotIn("cdn.jsdelivr.net", csp)
+        self.assertNotIn("unpkg.com", csp)
+
     def test_csp_header_present_on_api(self):
         rv = self.client.get("/api/requests")
         self.assertIn("Content-Security-Policy", rv.headers)

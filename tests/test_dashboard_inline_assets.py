@@ -171,6 +171,44 @@ class TestIndexInlineAssets(_BaseInlineAssetsTest):
                    if "/static/app.js" in (s.get("src") or "")]
         self.assertGreater(len(scripts), 0, "/static/app.js script missing")
 
+    def test_no_cdn_urls(self) -> None:
+        """Sprint 007 PR I: CDN URL が完全削除されている (M-1 / L-6 resolved)。"""
+        soup = self._get_soup("/")
+        # link href / script src に CDN URL が無い
+        for el in soup.find_all(["link", "script"]):
+            for attr in ("href", "src"):
+                value = el.get(attr) or ""
+                self.assertNotIn(
+                    "cdn.jsdelivr.net", value,
+                    f"<{el.name}> {attr}=\"{value}\" contains cdn.jsdelivr.net",
+                )
+                self.assertNotIn(
+                    "unpkg.com", value,
+                    f"<{el.name}> {attr}=\"{value}\" contains unpkg.com",
+                )
+
+    def test_no_base_element(self) -> None:
+        """Sprint 007 PR I (review M-3): <base> が存在しない (CSP base-uri 'none' を有効に)。"""
+        soup = self._get_soup("/")
+        bases = soup.find_all("base")
+        self.assertEqual(
+            len(bases), 0,
+            f"<base> element found ({len(bases)}), CSP base-uri 'none' violation",
+        )
+
+    def test_no_cdn_prefetch_or_preconnect(self) -> None:
+        """Sprint 007 PR I (Gemini L-5): dns-prefetch / preconnect の CDN 向けリソースヒント不在。"""
+        soup = self._get_soup("/")
+        for link in soup.find_all("link"):
+            rels = link.get("rel") or []
+            if any(r in ("dns-prefetch", "preconnect", "prefetch", "preload")
+                   for r in rels):
+                href = link.get("href") or ""
+                self.assertNotIn("cdn.jsdelivr.net", href,
+                                 f"resource hint to CDN: {link!r}")
+                self.assertNotIn("unpkg.com", href,
+                                 f"resource hint to CDN: {link!r}")
+
 
 class TestPartialStatsInlineAssets(_BaseInlineAssetsTest):
     def test_no_inline_assets(self) -> None:

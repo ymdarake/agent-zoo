@@ -7,12 +7,9 @@
        PR H 以降は <meta> を head から削除しないこと (Plan F G1 / Plan H 受入基準)。 #}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Agent Harness Dashboard</title>
-    {# CDN pico/htmx は Sprint 007 PR I で削除予定。本 PR (H) では並存させ、
-       自前 CSS が後勝ちで上書きする (link 順序が後)。 #}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
-    {# 自前 CSS / JS。{% if asset_version %} で空時 query 省略 (Plan G G3 defensive)。 #}
+    {# Sprint 007 PR I: CDN link (cdn.jsdelivr.net / unpkg.com) を完全削除。
+       自前 CSS/JS のみで動作。{% if asset_version %} で空時 query 省略 (defensive)。 #}
     <link rel="stylesheet" href="/static/app.css{% if asset_version %}?v={{ asset_version }}{% endif %}">
-    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script defer src="/static/app.js{% if asset_version %}?v={{ asset_version }}{% endif %}"></script>
 </head>
 <body>

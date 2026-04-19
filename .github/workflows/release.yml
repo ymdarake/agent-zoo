@@ -3,6 +3,11 @@ name: Release to PyPI
 on:
   push:
     tags:
+      # PEP 440 native public version (issue #68):
+      #   - stable:       v0.1.0
+      #   - pre-release:  v0.1.0a1 / v0.1.0b1 / v0.1.0rc1
+      # 非 anchor glob なので `v*.*.*` で両方捕捉できる。分岐は build job の
+      # Classify step (regex strict 判定) に寄せる。
       - "v*.*.*"
   workflow_dispatch:
     inputs:
@@ -25,6 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      # issue #68: pre-release 判定を job output で一元管理。下流 job が
+      # needs.build.outputs.is_prerelease で参照する。classify step が skip
+      # された場合 (workflow_dispatch) は empty string になり、== 'true' /
+      # == 'false' の literal 比較で安全に false 判定される。
+      is_prerelease: ${{ steps.classify.outputs.is_prerelease }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # v6.0.2
 
@@ -35,6 +45,104 @@ jobs:
 
       - name: Set up Python
         run: uv python install 3.12
+
+      # issue #68: tag と pyproject.toml の version が一致することを保証する。
+      # bit-for-bit 比較 (`removeprefix("v") == pyproject.version`)。
+      # packaging.version.Version の正規化は意図的に使わず、非 PEP 440 native な
+      # tag (`v0.1.0-beta-1` 等) を silent に通さないことで事故を防ぐ。
+      - name: Verify tag matches pyproject.toml version
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          python <<'PY'
+          import os
+          import pathlib
+          import sys
+          import tomllib
+
+          # runner の system python が 3.11+ であることを明示 guard
+          # (tomllib stdlib 導入は 3.11)。uv python install 3.12 は PATH 上の
+          # `python` を必ずしも shim しないため、fail-fast。
+          assert sys.version_info >= (3, 11), (
+              f"Python 3.11+ required (tomllib), got {sys.version}"
+          )
+
+          ref = os.environ["GITHUB_REF_NAME"]
+          if not ref.startswith("v"):
+              print(
+                  f"::error::tag {ref!r} must start with 'v' (e.g. v0.1.0)",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          tag_version = ref.removeprefix("v")
+          data = tomllib.loads(pathlib.Path("pyproject.toml").read_text())
+          project = data.get("project", {})
+          # dynamic version (hatch-vcs 等) は未対応。cryptic な KeyError で
+          # 落ちる前に明示 error で案内する。
+          if "version" not in project:
+              print(
+                  "::error::pyproject.toml has no static project.version. "
+                  "Dynamic version (`dynamic = [\"version\"]`) is not "
+                  "supported by this workflow; use a static version string "
+                  "that matches the tag.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          pyproject_version = project["version"]
+          if tag_version != pyproject_version:
+              print(
+                  f"::error::tag {ref!r} (stripped={tag_version!r}) != "
+                  f"pyproject.toml project.version {pyproject_version!r}. "
+                  f"Bump pyproject.toml to match the tag before tagging.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          print(f"tag and pyproject version match: {tag_version}")
+          PY
+
+      # issue #68: PEP 440 native public version のみ accept。
+      # 判定 regex (leading zero も reject、PyPI 正規化衝突を防ぐ):
+      #   stable:       ^v\d+\.\d+\.\d+$
+      #   pre-release:  ^v\d+\.\d+\.\d+(a|b|rc)(0|[1-9]\d*)$
+      # 例: `v0.1.0b01` は accept 後 PyPI 側で `0.1.0b1` に正規化され、
+      # 後続の `v0.1.0b1` push が 400 (already exists) で弾かれる事故を
+      # regex 側で未然に防ぐ。
+      # dash 形 (`v0.1.0-beta-1`) / dot 形 (`v0.1.0.post1` / `v0.1.0.dev1` /
+      # `v0.1.0-rc.1`) / `vv0.1.0` / `v0.1.0post1` / `v0.1.0dev1` 等も
+      # exit 1 で明示的に reject し、silent に is_prerelease=false →
+      # 本番 PyPI に流れる事故を防ぐ。
+      - name: Classify tag as pre-release
+        id: classify
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          python <<'PY'
+          import os
+          import re
+          import sys
+
+          ref = os.environ["GITHUB_REF_NAME"]
+          stable_re = re.compile(r"^v\d+\.\d+\.\d+$")
+          # (0|[1-9]\d*) で leading zero (例: `01`) を reject。
+          prerelease_re = re.compile(r"^v\d+\.\d+\.\d+(a|b|rc)(0|[1-9]\d*)$")
+          if stable_re.match(ref):
+              is_prerelease = "false"
+          elif prerelease_re.match(ref):
+              is_prerelease = "true"
+          else:
+              print(
+                  f"::error::tag {ref!r} is not a PEP 440 native public "
+                  f"version. Expected v<X>.<Y>.<Z> or "
+                  f"v<X>.<Y>.<Z>(a|b|rc)<N> with no leading zeros.",
+                  file=sys.stderr,
+              )
+              sys.exit(1)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"is_prerelease={is_prerelease}\n")
+          print(f"tag={ref} is_prerelease={is_prerelease}")
+          PY
 
       - name: Build
         run: uv build
@@ -62,7 +170,12 @@ jobs:
 
   publish-testpypi:
     name: Publish to TestPyPI
-    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+    # issue #68: 従来の workflow_dispatch 経路を維持しつつ、pre-release tag
+    # push で自動発火させる。is_prerelease は build job の classify step
+    # output (literal 'true' / 'false' / empty)。
+    if: |
+      (github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi') ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && needs.build.outputs.is_prerelease == 'true')
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -83,9 +196,13 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    # 本番 PyPI は tag push (`v*.*.*`) でのみ発火させる。手動実行 (workflow_dispatch)
-    # からの本番公開は意図的に塞いでいる。
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    # 本番 PyPI は stable tag push (`v*.*.*` で suffix 無し) でのみ発火。
+    # issue #68: pre-release tag を絶対に通さないよう is_prerelease == 'false'
+    # を明示。workflow_dispatch からの本番公開は従来通り塞いでいる。
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/') &&
+      needs.build.outputs.is_prerelease == 'false'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -104,8 +221,15 @@ jobs:
 
   github-release:
     name: Create GitHub Release
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
-    needs: publish-pypi
+    # issue #68 belt-and-suspenders: needs: publish-pypi の skip 伝播
+    # (success() が skip でも true を返す仕様) に依存せず、is_prerelease ==
+    # 'false' を明示。needs に build を追加して outputs を直接参照する
+    # (transitive needs では outputs は見えないため)。
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/') &&
+      needs.build.outputs.is_prerelease == 'false'
+    needs: [publish-pypi, build]
     runs-on: ubuntu-latest
     permissions:
       contents: write

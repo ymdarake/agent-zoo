@@ -229,7 +229,10 @@ else
     git commit -q -m ":bookmark: release: v$VERSION"
 fi
 
-git tag "v$VERSION"
+# annotated tag (`-a -m`) で作る。lightweight tag は `git push --follow-tags`
+# の対象外で、docs で案内している 1 発 push フロー (branch + tag atomic push)
+# が silent に動かなくなる (commit のみ push され release workflow 非発火)。
+git tag -a "v$VERSION" -m "Release v$VERSION"
 
 trap - ERR INT TERM
 

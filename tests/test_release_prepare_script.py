@@ -264,6 +264,42 @@ def test_real_run_creates_prerelease_tag(tmp_path):
     assert "v0.1.0b1" in tags.stdout
 
 
+def test_created_tag_is_annotated_not_lightweight(tmp_path):
+    """作成される tag が annotated であること。
+
+    lightweight tag (`git tag v<VERSION>`) は `git push --follow-tags` で
+    push されず、docs で案内している 1 発 push フローが silent に動かなくなる
+    (commit のみ push され tag が remote に届かない → release workflow 非発火)。
+    annotated tag は `git cat-file -t refs/tags/<tag>` が `tag` を返す。
+    """
+    _init_mini_repo(tmp_path, version="0.1.0")
+    r = _run_script(tmp_path, "0.1.0b1")
+    assert r.returncode == 0, r.stderr
+
+    obj_type = subprocess.run(
+        ["git", "cat-file", "-t", "refs/tags/v0.1.0b1"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert obj_type.stdout.strip() == "tag", (
+        "tag が lightweight (`commit`) になっている。`git push --follow-tags` で "
+        "push されず release workflow が発火しない。`git tag -a ...` を使うこと。"
+        f" got: {obj_type.stdout!r}"
+    )
+
+    # tag message も残っていること (annotated の意義)
+    show = subprocess.run(
+        ["git", "tag", "-l", "--format=%(contents)", "v0.1.0b1"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert show.stdout.strip(), (
+        f"annotated tag に message が無い: {show.stdout!r}"
+    )
+
+
 # ---------- 事前チェック: working tree / tag existence ----------
 
 

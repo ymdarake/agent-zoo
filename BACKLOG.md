@@ -85,6 +85,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | 003 | 2026-04-18 | E2E Test Foundation + zoo CLI 一本化 (#33) | [003-e2e-foundation-and-zoo-cli-unification.md](docs/dev/sprints/003-e2e-foundation-and-zoo-cli-unification.md) |
 | 004 | 2026-04-19 | Docs / CI Cleanup (包括レビュー Phase 2) | [004-docs-ci-cleanup.md](docs/dev/sprints/004-docs-ci-cleanup.md) |
 | 005 | 2026-04-18〜19 | Critical Security (包括レビュー Phase 1、C-1/C-2/H-1〜H-4) | [005-critical-security.md](docs/dev/sprints/005-critical-security.md) |
+| 006 | 2026-04-19 | Security Hardening (Medium M-2〜M-8 + Supply Chain + G3-B1、3 PR) | [006-security-hardening.md](docs/dev/sprints/006-security-hardening.md) |
 
 過去の Resolved Decisions（Q1〜Q9 / 案 A 採用 / 命名分離 等）は各 sprint アーカイブを参照。
 

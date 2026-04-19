@@ -50,6 +50,10 @@ class TestStaticAssets(unittest.TestCase):
             b"removedNodes",
             b"_pollTimers",
             b"document.hidden",
+            # Plan H 追加: bulk toggle-all delegation + triggerFrom 重複 attach 修正
+            b"data-bulk-toggle-all",
+            b"_triggerListenersByTarget",
+            b"aria-selected",
         ):
             self.assertIn(ident, rv.data, f"missing required identifier: {ident!r}")
 

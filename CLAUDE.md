@@ -76,9 +76,16 @@ zoo logs analyze / summarize / alerts   # ホスト側 claude CLI で AI 分析
 ./scripts/dogfood-dashboard.sh                # /tmp/zoo-trial で隔離 venv → init/build/up + 自動検証
 ./scripts/dogfood-dashboard.sh --no-build     # build skip (image 再利用)
 ./scripts/dogfood-dashboard.sh --cleanup-only # zoo down + workspace 削除
+
+./scripts/check-release-cleanliness.sh        # リリース前 cleanliness 検査 (credential / PII / dev artifact)
 ```
 
 詳細: [scripts/README.md](scripts/README.md)
+
+### リリーステスト
+
+editable install (`pip install -e`) ではなく **wheel install** で本番互換性を検証する手順:
+[docs/dev/release-testing.md](docs/dev/release-testing.md)
 
 ## テスト・dev タスク（repo root の `Makefile`）
 

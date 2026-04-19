@@ -31,8 +31,8 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | 優先度 | Sprint | 内容 | 期間 |
 |---|---|---|---|
 | ✅ | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 3 PR で (PR D = M-2/M-5/M-6/M-7/G3-B1 ✅ / PR E = M-3/M-4 + Dependabot + pip-audit ✅ / PR F = M-8 policy_lock 共通化 ✅) | 完了 |
-| 🟢 **P2** | **Sprint 007** Dashboard 外部依存ゼロ化 | pico/htmx → 自前 HTML/CSS/JS (ADR 0004) を 4 PR で → **Beta publish 可** | 1〜2 週間 |
-| ⚪ **P3** | **Sprint 008** Low Polish | Low 指摘解消 + 1.0 release candidate | 1 日 |
+| ✅ | **Sprint 007** Dashboard 外部依存ゼロ化 | pico/htmx → 自前 HTML/CSS/JS (ADR 0004) を 4 PR で (PR F = ADR/設計 ✅ / PR G = CSS/JS 基盤 ✅ / PR H = template 書換 ✅ / PR I = CDN 削除+CSP 厳格化 ✅) → **M-1 / L-6 完全 resolved**、**Beta release candidate 到達** | 完了 |
+| ⚪ **P3** | **Sprint 008** Low Polish + a11y polish | Low 指摘解消 + Sprint 007 follow-up (tabindex / dispatchEvent / id slugify / dark theme / COOP/CORP) + 1.0 release candidate | 1〜2 日 |
 | P1 | **#31 user smoke** | user 環境で 11 項目確認、Sprint 005 alpha 後に実施 | user 依存 |
 | ⏸ | **E-2 (#3)** | OpenAI `exec_command` 引数検知の仕様確定後 | 未定 |
 
@@ -44,11 +44,11 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 > **⚠ 2026-04-18 包括レビューで Critical/High 多数検出**。詳細: [docs/dev/reviews/2026-04-18-comprehensive-review.md](docs/dev/reviews/2026-04-18-comprehensive-review.md)。
 > 「localhost 専用のため認証不要」前提は CSRF / DNS rebinding により破綻していることが判明。下記「ダッシュボード認証」の優先度を上げる。
+>
+> 2026-04-19 update: **Sprint 005 / 006 / 007 の完了で Critical / High / Medium / 包括レビュー M-1 / L-6 まで全て resolved**。Beta release candidate 到達。
 
-- [ ] **ダッシュボード CSRF 対策**（包括レビュー H-1）: Flask-WTF CSRFProtect or Origin / Sec-Fetch-Site 検証
-- [ ] **mitmproxy addon の fail-closed 化**（包括レビュー C-2 / Gemini 検出）: 全 event handler に top-level try/except + `flow.kill()`
-- [ ] **dashboard 認証機構**（旧「Basic 認証 or API キー」）: 起動時生成 token 等で無認証 + CSRF を解消
-- [ ] **dashboard を外部依存ゼロの自前 HTML/CSS/vanilla JS に書き直す**（包括レビュー M-1）: 現状 `pico.css` / `htmx.org` を unpkg / jsdelivr から SRI 無しで読込 → CDN 乗っ取り / タンパリングリスク。dashboard は数画面規模なので**自前 CSS（数百行）+ vanilla JS（`fetch` + `form.addEventListener` で HTMX 置換、~50 行）に完全移行**する方が、外部ライブラリを self-host するより long-term simple。依存 0 にすることでサプライチェーン攻撃面消滅 + オフライン動作 + 監査対象縮小。規模見積: テンプレート書換 ~500 行、CSS ~300 行、JS ~50 行
+- [x] ✅ **dashboard を外部依存ゼロの自前 HTML/CSS/vanilla JS に書き直す**（包括レビュー M-1）: **Sprint 007 (PR F〜I) で完全達成**。pico/htmx を撤去し自前 CSS (~284 行) + vanilla JS (~268 行) に完全移行、CSP `'self'` only に厳格化、Permissions-Policy 追加、E2E オフライン動作確認 (Playwright route で CDN block) 全 PASS。詳細: [docs/dev/sprints/007-dashboard-zero-deps.md](docs/dev/sprints/007-dashboard-zero-deps.md)
+- [ ] **ダッシュボード認証機構**（旧「Basic 認証 or API キー」）: 起動時生成 token 等で無認証 + CSRF を解消（CSRF は H-1 で resolved 済、認証は dashboard が attacker controlled な local user から守るための機能）
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列検知 (`[payload_rules.advanced] entropy_threshold = 4.5`)
 - [ ] **npm CLI 版固定**: `bundle/container/Dockerfile.{codex,gemini,unified}` の `npm install -g @<vendor>/cli` をバージョン pin して bit-for-bit 再現性を担保 (Sprint 006 PR E plan review で defer。詳細: docs/dev/security-notes.md)
 - [ ] **`uv.lock` activation in Dockerfile.base / hash 入り requirements.txt**: `uv sync --frozen --locked` および `pip install --require-hashes` で build 時の依存固定を強化 (Sprint 006 PR E plan review で defer)
@@ -86,6 +86,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | 004 | 2026-04-19 | Docs / CI Cleanup (包括レビュー Phase 2) | [004-docs-ci-cleanup.md](docs/dev/sprints/004-docs-ci-cleanup.md) |
 | 005 | 2026-04-18〜19 | Critical Security (包括レビュー Phase 1、C-1/C-2/H-1〜H-4) | [005-critical-security.md](docs/dev/sprints/005-critical-security.md) |
 | 006 | 2026-04-19 | Security Hardening (Medium M-2〜M-8 + Supply Chain + G3-B1、3 PR) | [006-security-hardening.md](docs/dev/sprints/006-security-hardening.md) |
+| 007 | 2026-04-19 | Dashboard 外部依存ゼロ化 (M-1 / L-6 / Beta release candidate、4 PR) | [007-dashboard-zero-deps.md](docs/dev/sprints/007-dashboard-zero-deps.md) |
 
 過去の Resolved Decisions（Q1〜Q9 / 案 A 採用 / 命名分離 等）は各 sprint アーカイブを参照。
 

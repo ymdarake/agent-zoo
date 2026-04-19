@@ -65,8 +65,89 @@ cd / && rm -rf /tmp/zoo-wheel-test
 
 - `scripts/dogfood-dashboard-wheel.sh`: dist/*.whl を install + 同じ自動検証 18 項目を実行
 
+## beta / pre-release tag 運用 (issue #68)
+
+release workflow は PEP 440 **native** pre-release suffix (`a` / `b` / `rc`) 付き tag を
+TestPyPI 限定経路で自動処理する。`v0.1.0b1` を push → TestPyPI のみ発火、本番 PyPI と
+GitHub Release は skip される。
+
+### ルーティング表
+
+| tag 形式 | 例 | TestPyPI | 本番 PyPI | GitHub Release |
+|---|---|---|---|---|
+| stable | `v0.1.0` | ❌ | ✅ | ✅ |
+| pre-release | `v0.1.0a1` / `v0.1.0b1` / `v0.1.0rc1` | ✅ | ❌ | ❌ |
+| `workflow_dispatch` target=testpypi | (tag 非依存) | ✅ | ❌ | ❌ |
+
+### beta release フロー (stable 前の疎通確認)
+
+```bash
+# 1. pyproject.toml の version を pre-release に bump (`0.1.0b1`)
+vim pyproject.toml                            # version = "0.1.0b1"
+
+# 2. 同じ version で tag を切って push
+git commit -am "bump version: 0.1.0b1"
+git tag v0.1.0b1
+git push origin v0.1.0b1
+
+# 3. TestPyPI に自動 publish される。wheel install で疎通確認
+pip install --index-url https://test.pypi.org/simple/ --pre agent-zoo==0.1.0b1
+# or 本手順冒頭の「手順」セクションの wheel install 検証を TestPyPI 経由で実施
+
+# 4. 問題があれば TestPyPI 上で yank (後述)。version を bump (`0.1.0b2`) して再試行
+# 5. OK なら stable version に bump して tag
+vim pyproject.toml                            # version = "0.1.0"
+git commit -am "bump version: 0.1.0"
+git tag v0.1.0
+git push origin v0.1.0                        # 本番 PyPI + GitHub Release
+```
+
+**注意事項**:
+
+- **`pyproject.toml` と tag は常に bit-for-bit 一致** させる。build job の Verify step が
+  `removeprefix("v") == project.version` で厳密比較し、不一致なら fail。正規化は意図的に
+  行わない (`v0.1.0-beta-1` のような非 PEP 440 native 形は silent に `0.1.0b1` へ
+  正規化されると事故になるため)。
+- **leading zero 禁止** — `v0.1.0b01` は classify regex で reject。PyPI 側で `0.1.0b1` に
+  正規化され、後続の `v0.1.0b1` push と衝突する事故を未然に防ぐ。
+- **同一 version の再 upload 不可** — TestPyPI / PyPI は同一 version の 2 回目 upload を
+  reject。beta 毎に `b1 → b2 → ...` で bump する。
+- **dynamic version (`dynamic = ["version"]`) は未対応**。Verify step が明示 error で
+  fail する。hatch-vcs 等への移行が必要になった時点で workflow を拡張する。
+
+### TestPyPI の yank / rollback
+
+broken な beta を上げてしまった場合:
+
+1. https://test.pypi.org/manage/project/agent-zoo/ にログイン
+2. 対象 version の "Manage" → "Yank" (install 時に `--pre` + 明示 version 指定されない限り skip される)
+3. 修正を commit し `b2` に bump して再 tag (同一 version の再 upload は不可)
+
+完全削除 (release file の delete) も同画面で可能だが、既存の install を破壊するので yank を優先する。
+
+### PyPI / TestPyPI の Trusted Publisher 設定
+
+OIDC trusted publishing を使う場合、PyPI 側の project 設定で以下を確認:
+
+- **Workflow filename**: `release.yml`
+- **Environment**: `pypi` / `testpypi` (本 workflow で使い分け)
+- **Tag pattern**: PyPI 側で tag filter を絞っている場合、pre-release suffix を含む tag
+  (`v*.*.*b*` 等) も許可範囲に入れる。通常 `v*.*.*` のような broad glob で問題ない。
+
+設定が pre-release 未許可のまま `v0.1.0b1` を push すると、`pypa/gh-action-pypi-publish`
+step が認証エラーで fail する (ただし build 自体は通っているので artifact は残る)。
+
+### 想定外 tag が push された時の挙動
+
+- **非 PEP 440 native (`v0.1.0-beta-1`, `v0.1.0.post1`, `vv0.1.0` 等)**: build job の
+  Classify step が exit 1 で止める。TestPyPI / 本番 PyPI / GitHub Release いずれにも
+  発火しない。failing red build は意図的 (silent > loud)。
+- **`v*.*.*` glob に偶然マッチする tag (例 `v2026.04.19`)**: 同上、Classify で明示
+  reject される。workflow を通したい場合は `on.push.tags` pattern を見直す。
+
 ## 関連
 
 - `pyproject.toml` の hatchling 設定 (`force-include` / sdist include)
 - `src/zoo/api.py::_asset_source()` の installed/source 分岐
 - リリースワークフロー: `.github/workflows/release.yml` (tag push で TestPyPI / PyPI に自動 publish)
+- `tests/test_release_workflow.py` (workflow yaml assertion + inline python の subprocess test)

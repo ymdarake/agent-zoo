@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **release workflow: PEP 440 native pre-release tag で TestPyPI 限定発火** ([#68](https://github.com/ymdarake/agent-zoo/issues/68)) — `v0.1.0a1` / `v0.1.0b1` / `v0.1.0rc1` 形式の tag push で TestPyPI のみ自動 publish。stable tag (`v0.1.0`) は従来どおり本番 PyPI + GitHub Release。build job で tag と `pyproject.toml` project.version の bit-for-bit 整合チェック (不一致 / 非 PEP 440 native / leading zero / `dynamic version` を fail-fast で reject)。pre-release 判定は `build.outputs.is_prerelease` で一元化し、`publish-pypi` / `github-release` 双方に belt-and-suspenders で `is_prerelease == 'false'` を明示。運用フロー / yank 手順 / Trusted Publisher 設定確認は [docs/dev/release-testing.md](docs/dev/release-testing.md) の beta tag section 参照
+
 ### Security
 - **`zoo init --policy <profile>` で secure-by-default** ([#66](https://github.com/ymdarake/agent-zoo/issues/66)) — `zoo init` の default profile が `minimal` (空 allow list) になり、初期状態では全外向き通信が BLOCKED → Inbox に pending として積まれる。従来は Anthropic / OpenAI / Google の 13 domain が最初から allow されていたため、企業環境 / 高セキュリティ環境では意図せず provider への通信が通る状態だった。初体験を secure by default に転換 (breaking change、user 0 のため migration guide 不要)
 - **dashboard 外部依存ゼロ化** ([ADR 0004](docs/dev/adr/0004-dashboard-external-deps-removal.md)) — pico.css / htmx.org の CDN 経由読込を完全撤去し、自前 HTML/CSS/vanilla JS (CSS ~284 行 + JS ~268 行) に移行。CDN 乗っ取り / unpkg リダイレクト改ざんによる任意 JS 注入経路を消滅 (Sprint 007 PR F〜I、包括レビュー M-1)

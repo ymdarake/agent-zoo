@@ -58,6 +58,9 @@ class TestInit:
         # runtime dirs
         assert (target / ".zoo" / "data").is_dir()
         assert (target / ".zoo" / "certs").is_dir()
+        # zoo build (Dockerfile.base COPY certs/extra/ ...) で必要 + .gitkeep で空 dir 維持
+        assert (target / ".zoo" / "certs" / "extra").is_dir()
+        assert (target / ".zoo" / "certs" / "extra" / ".gitkeep").is_file()
         assert (target / ".zoo" / "inbox").is_dir()
         # Sprint 006 PR F: cross-container policy lock 用 dir
         assert (target / ".zoo" / "locks").is_dir()

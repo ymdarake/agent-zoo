@@ -1,7 +1,7 @@
 # 包括レビュー M-3 (Sprint 006 PR E): mutable tag を sha256 digest で pin。
 # multi-arch manifest list の digest（amd64 / arm64 / armv5/v7 を含む）。Dependabot
 # の docker ecosystem が週次で更新 PR を出す。
-FROM python:3.12-slim@sha256:804ddf3251a60bbf9c92e73b7566c40428d54d0e79d3428194edf40da6521286
+FROM python:3.14-slim@sha256:bc389f7dfcb21413e72a28f491985326994795e34d2b86c8ae2f417b4e7818aa
 
 WORKDIR /app
 

@@ -54,6 +54,12 @@ def proxy_up():
     # Sprint 006 PR F: locks dir を bind mount 用に確保 (mount source 不在で
     # Docker が file を作る誤検知を防ぐ)
     (BUNDLE / "locks").mkdir(exist_ok=True)
+    # Sprint 005 PR C (H-3) hardening: proxy container は user: "1000:1000"
+    # 固定。bundle/certs/ owner と異なる場合 mitmproxy が CA cert を書けない
+    # (Permission denied)。0777 で UID 不一致でも書込可能化 (test ephemeral dir)
+    certs_dir = BUNDLE / "certs"
+    certs_dir.mkdir(exist_ok=True)
+    os.chmod(certs_dir, 0o777)
     try:
         subprocess.run(
             ["docker", "compose", "up", "-d", "proxy"],

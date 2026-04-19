@@ -14,12 +14,10 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 | # | タイトル | 状態 |
 |---|---|---|
 | [#3](https://github.com/ymdarake/agent-zoo/issues/3) | OpenAI形式の tool_call ポリシー例 | ⏸ 仕様確定待ち（ROADMAP 参照） |
-| [#29](https://github.com/ymdarake/agent-zoo/issues/29) | .zoo/ 集約構造への workspace layout refactor | 🟡 実装完了（[Sprint 002 アーカイブ](docs/dev/sprints/002-dot-zoo-workspace-layout.md)）+ bundle/Makefile 撤去で zoo CLI 一本化済。残: #31 user smoke のみ |
 | [#31](https://github.com/ymdarake/agent-zoo/issues/31) | user 実機動作確認 (11 項目 smoke) | ⏳ user 環境で実施 |
-| [#32](https://github.com/ymdarake/agent-zoo/issues/32) | README dashboard スクショ追加・更新（Inbox タブ含む） | ⏳ user 環境で実施 |
-| [#33](https://github.com/ymdarake/agent-zoo/issues/33) | E2E P1 dashboard / P2 proxy 実装 | ✅ [Sprint 003 アーカイブ](docs/dev/sprints/003-e2e-foundation-and-zoo-cli-unification.md) で完了（実装 + `ci.yml` 統合 + PR テンプレ）。GitHub issue は close 可 |
-| [#34](https://github.com/ymdarake/agent-zoo/issues/34) | E2E P3 real agent (token + opt-in CI) | ⏳ #33 完了後の次フェーズ |
-| [#35](https://github.com/ymdarake/agent-zoo/issues/35) | inbox ファイル作成を決定的に実行できるよう agent 用スクリプト提供 | 🆕 新規。agent が HARNESS_RULES で TOML 手書きする現状を `zoo inbox submit` 等のヘルパに置き換える想定。要 grooming |
+| [#32](https://github.com/ymdarake/agent-zoo/issues/32) | README dashboard スクショ追加・更新（Inbox タブ含む） | ⏳ user 環境で実施 (PR I 後の自前 UI 反映) |
+| [#34](https://github.com/ymdarake/agent-zoo/issues/34) | E2E P3 real agent (token + opt-in CI) | ⏳ Sprint 008 後の次フェーズ |
+| [#35](https://github.com/ymdarake/agent-zoo/issues/35) | inbox ファイル作成を決定的に実行できるよう agent 用スクリプト提供 | 🆕 agent が HARNESS_RULES で TOML 手書きする現状を `zoo inbox submit` 等のヘルパに置き換える想定。要 grooming |
 
 ---
 

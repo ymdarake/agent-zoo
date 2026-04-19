@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **dashboard 外部依存ゼロ化** ([ADR 0004](docs/dev/adr/0004-dashboard-external-deps-removal.md)) — pico.css / htmx.org の CDN 経由読込を完全撤去し、自前 HTML/CSS/vanilla JS (CSS ~284 行 + JS ~268 行) に移行。CDN 乗っ取り / unpkg リダイレクト改ざんによる任意 JS 注入経路を消滅 (Sprint 007 PR F〜I、包括レビュー M-1)
+- **dashboard CSP `'self'` only に厳格化** — `'unsafe-inline'` / `https://cdn.jsdelivr.net` / `https://unpkg.com` を全 directive から削除、`form-action 'self'` 追加 (default-src の fallback 対象外、CSP3)。`response.headers["Content-Security-Policy"] = ...` で **強制上書き** に変更し他 layer の弱い CSP 不入を保証 (Sprint 007 PR I)
+- **`Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()`** 追加 — defense-in-depth で不要な Browser API を全 deny (Sprint 007 PR I)
+- **dashboard template から inline `<script>` / `<style>` / `style="..."` / `onclick=` を完全削除** — BS4 ベース test (`tests/test_dashboard_inline_assets.py` 11 件) で全 6 endpoint を assert、`<base>` / dns-prefetch / preconnect to CDN も全部不在を保証。Playwright route で CDN を強制 abort しても dashboard 全機能 PASS (`tests/e2e/test_dashboard_offline.py` 3 件、Sprint 007 PR H + I)
+- **`<body hx-headers='...'>` 削除** — CDN htmx 経由の CSRF header 渡しを排除、自前 JS が `csrf()` helper で都度送出 (Sprint 007 PR H)
+- **inbox.html attribute injection / XSS 完全防御** — `data-json-body="{{ {'record_id': r._id}|tojson|forceescape }}"` パターンで Jinja escape を強制、record_id 内の特殊文字でも JSON / HTML 両方 safe (Sprint 007 PR H、包括レビュー L-6 完全 resolved)
 - **policy.toml の cross-container shared/exclusive lock** (`bundle/addons/_policy_lock.py` 新設) — proxy / dashboard 両方から writable な `/locks` bind mount 経由で `fcntl.flock` を取得し、`PolicyEngine._load` (reader = LOCK_SH) と `policy_edit` (writer = LOCK_EX) の TOCTOU を解決。reader = warn + passthrough、writer = raise の API 分離で ADR 0005 fail-closed と両立。`os.open(O_NOFOLLOW, 0o600)` で symlink 攻撃を抑止。`zoo init` で `.zoo/locks/` を自動生成 (Sprint 006 PR F、包括レビュー M-8)
 - **Docker image SHA pin (4 image)** — `bundle/container/Dockerfile.base` (node:20-slim) / `bundle/dashboard/Dockerfile` (python:3.12-slim) / `bundle/docker-compose.yml` の proxy (mitmproxy/mitmproxy:10) と dns (coredns/coredns:1.11.4) を multi-arch manifest list digest で固定。上流アカウント奪取 / mutable tag 上書き攻撃を防ぐ。Dependabot が週次更新 PR (Sprint 006 PR E、包括レビュー M-3)
 - **GitHub Actions SHA pin (19 uses)** — `actions/checkout` / `astral-sh/setup-uv` / `actions/cache` / `actions/upload-artifact` / `actions/download-artifact` / `pypa/gh-action-pypi-publish` を全 commit SHA で固定。Git tag rewrite による任意 step 実行を防ぐ。`pypa/gh-action-pypi-publish` は branch ref から tag SHA に切替 (Dependabot 自動更新を可能化)。コメントに `# <tag>` 併記 (Sprint 006 PR E、包括レビュー M-4)
@@ -27,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **proxy / dashboard / dns コンテナの container hardening** — `cap_drop: [ALL]` + `security_opt: [no-new-privileges:true]` + 非 root `user` 指定。agent コンテナと同等の最小権限化で、container escape や policy 改変の攻撃面を縮小 (Sprint 005 PR C、包括レビュー H-3)
 
 ### Added
+- **dashboard 自前 CSS/JS 基盤** — `bundle/dashboard/static/app.css` (design tokens 9 + status badge tokens 6 + layout / table / form / button / status badge / tab nav / spinner / utility) + `bundle/dashboard/static/app.js` (declarative data-* API: `data-poll-url` / `data-poll-interval` / `data-swap-target` / `data-trigger-from` / `data-include` / `data-confirm` / `data-json-body` / `data-tab` / `data-bulk-action` / `data-bulk-toggle-all` / `data-suggest-target`)。MutationObserver で partial swap 後の再 attach + cleanup、exponential backoff (base × 2^failures、最大 60s)、aria-* a11y 補強 (Sprint 007 PR G + H)
+- **`ASSET_VERSION` env による cache busting** — `app.config["ASSET_VERSION"]` + `@app.context_processor` 注入で `<link href=".../app.css?v={{ asset_version }}">` を defensive Jinja で出力 (Sprint 007 PR G + H)
 - **Policy Inbox** ([ADR 0001](docs/dev/adr/0001-policy-inbox.md)) — agent が必要な許可 request を `<workspace>/.zoo/inbox/<id>.toml` に submit、dashboard で accept すると `policy.runtime.toml` に自動反映 (Sprint 001)
 - **`bundle/` source / `.zoo/` 配布の命名分離** ([ADR 0002](docs/dev/adr/0002-dot-zoo-workspace-layout.md)) — user workspace が clean に保たれる (Sprint 002)
 - `zoo bash` — コンテナ内に対話 shell
@@ -43,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release workflow に TestPyPI デプロイ対応 — `workflow_dispatch` の `target` 入力で `none` / `testpypi` を選択可能。本番 PyPI へのリリースは `v*.*.*` タグ push 専用とし、手動実行からの本番公開経路は塞いでいる
 
 ### Changed
+- **dashboard template を `hx-*` から `data-*` に全書換** — 全 partial / index.html の HTMX 23 出現 / 9 種類を vanilla JS の declarative data-* API に置換、pico class を自前 class 体系 (`.layout-container` / `.btn-secondary` / `.btn-contrast` / `.btn-outline` 等) に統一 (Sprint 007 PR H、ADR 0004)
 - **dashboard domain validation を strict 化 (behavior change)** — UI 経由で `localhost` / 単一ラベル host / TLD-only wildcard (`*.com`) / 連続 dot / leading-trailing hyphen / 多段 wildcard を追加できなくなる。これらを使いたい場合は base `policy.toml` を直接編集する。詳細は [docs/dev/security-notes.md](docs/dev/security-notes.md) (Sprint 006 PR D、包括レビュー M-5)
 - **log DB の URL 列に query / fragment / userinfo が保存されなくなる** — Sprint 006 PR D 以前に保存された row はそのまま残る。clean したい場合は `zoo logs clear` を実行してください
 - **新 status `URL_SECRET_BLOCKED` / `BODY_TOO_LARGE` を block 集計に追加** — dashboard の "blocked" カウント / whitelist candidate 抽出に反映。新 status の event は `blocks` テーブルにも転記される
@@ -57,6 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Release workflow に `concurrency` グループを追加し、同一 ref での重複実行を直列化
 
 ### Removed
+- **dashboard CDN 依存 (pico.css / htmx.org)** — `https://cdn.jsdelivr.net/npm/@picocss/pico@2/...` と `https://unpkg.com/htmx.org@2.0.4` の `<link>` / `<script>` を削除。CSP 上の CDN ホスト許可も削除し `'self'` only に (Sprint 007 PR I、包括レビュー M-1)
+- **dashboard 全 inline asset** — `<script>showTab/bulkInbox/...</script>` / `<style>...</style>` / `style="..."` 属性 / `onclick=` を全 partial / index.html から完全削除、`static/app.css` + `static/app.js` に集約 (Sprint 007 PR H、CSP `'unsafe-inline'` 撤去の前提条件)
 - `bundle/Makefile` — maintainer 用の Docker compose 操作も `zoo build` / `zoo run` / `zoo reload` 等で代替（ADR 0002 D5 の最終状態）
 - `zoo test smoke` コマンド — Makefile 依存だったため削除。同等の疎通確認は E2E P2 (`tests/e2e/test_proxy_block.py`) でカバー済みのため再実装しない
 - `policy_candidate.toml` 経路（Sprint 002 D8）— inbox に完全移行、互換層も削除

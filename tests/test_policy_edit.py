@@ -303,13 +303,20 @@ class TestFileLock(unittest.TestCase):
         self.assertIn("test.com", rt["domains"]["allow"]["list"])
 
     def test_lock_file_created(self):
+        # Sprint 006 PR F: lock file path は _policy_lock.lock_path_for() の
+        # 解決結果を確認する (POLICY_LOCK_DIR env / 同階層 / tempdir の
+        # 3 段 fallback)。
+        from addons._policy_lock import lock_path_for
         path = _write_policy(BASIC_POLICY)
         self.addCleanup(os.unlink, path)
         self.addCleanup(_cleanup_runtime, path)
         add_to_allow_list(path, "test.com")
         rt_path = _runtime_path(path)
-        lock_path = os.path.abspath(rt_path) + ".lock"
-        self.assertTrue(os.path.exists(lock_path))
+        expected_lock_path = lock_path_for(rt_path)
+        self.assertTrue(
+            os.path.exists(expected_lock_path),
+            f"lock file not created at expected path: {expected_lock_path}",
+        )
 
     def test_concurrent_writes_protected(self):
         import threading

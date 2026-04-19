@@ -4,27 +4,18 @@ Pure logic, no mitmproxy or Flask dependency.
 Used by the dashboard for policy.toml editing and whitelist candidate management.
 """
 
-import fcntl
 import os
 import sqlite3
 import tempfile
 import tomllib
-from contextlib import contextmanager
 from datetime import datetime
 
 import tomli_w
 
-
-@contextmanager
-def policy_lock(policy_path: str):
-    """policy.tomlのload-modify-saveを排他制御するコンテキストマネージャ。"""
-    lock_path = f"{os.path.abspath(policy_path)}.lock"
-    with open(lock_path, "w") as lock_file:
-        fcntl.flock(lock_file, fcntl.LOCK_EX)
-        try:
-            yield
-        finally:
-            fcntl.flock(lock_file, fcntl.LOCK_UN)
+# Sprint 006 PR F (M-8): policy_lock を新 helper に thin alias 化。
+# proxy / dashboard cross-container での協調を可能にし、PR D で defer された
+# ro mount 衝突問題を解決する。詳細: docs/dev/security-notes.md
+from _policy_lock import policy_lock_exclusive as policy_lock
 
 
 def atomic_write(path: str, content: str) -> None:

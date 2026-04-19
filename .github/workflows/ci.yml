@@ -162,19 +162,18 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --extra e2e
 
-      - name: Prepare bind-mount targets (runtime policy + locks + certs dir)
+      - name: Prepare bind-mount targets (runtime policy + locks + certs + data dir)
         run: |
           touch bundle/policy.runtime.toml
-          # Sprint 006 PR F: locks dir 不在だと Docker が file 化するので事前作成
-          mkdir -p bundle/locks
           # Sprint 005 PR C (H-3) hardening: proxy container は user: "1000:1000"
-          # 固定 (mitmproxy image default)。CI runner の bundle/certs/ owner と
-          # 異なるため、mitmproxy が CA cert (/certs/mitmproxy-ca.pem) を書け
-          # ない (Permission denied)。chmod 0777 で proxy non-root user が書込
-          # 可能化する (CA private key の機密性は container 内の mitmproxy
-          # process に閉じる、ホスト dir 自体は test 専用 ephemeral)。
-          mkdir -p bundle/certs
-          chmod 0777 bundle/certs
+          # 固定 (mitmproxy image default)。CI runner Linux では bind mount された
+          # ホスト dir の owner が runner user (1001) のままなので、proxy 1000 が
+          # 書けない (Permission denied)。chmod 0777 で UID 不一致でも書込可能化
+          # (test 専用 ephemeral dir、本番運用 (zoo init で .zoo/) には影響なし)。
+          # macOS Docker Desktop は VirtioFS の UID マッピングが寛容なので
+          # ローカルでは問題が顕在化しない。
+          mkdir -p bundle/certs bundle/locks bundle/data
+          chmod 0777 bundle/certs bundle/locks bundle/data
 
       - name: Build base image
         run: docker build -t agent-zoo-base:latest -f bundle/container/Dockerfile.base bundle/

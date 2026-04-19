@@ -59,6 +59,8 @@ class TestInit:
         assert (target / ".zoo" / "data").is_dir()
         assert (target / ".zoo" / "certs").is_dir()
         assert (target / ".zoo" / "inbox").is_dir()
+        # Sprint 006 PR F: cross-container policy lock 用 dir
+        assert (target / ".zoo" / "locks").is_dir()
         assert (target / ".zoo" / "policy.runtime.toml").exists()
         assert (target / ".gitignore").exists()
         assert ".zoo/" in (target / ".gitignore").read_text()

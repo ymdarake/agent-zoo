@@ -249,6 +249,142 @@ def certs() -> None:
     runner.ensure_certs()
 
 
+# --- certs import / list / remove (issue #64) -------------------------------
+
+_CERT_NAME_PROTECTED = (".gitkeep",)  # 完全一致のみ (`.gitkeep.pem` 等は拡張子 whitelist で別途遮断)
+_CERT_EXTENSIONS = (".pem", ".crt", ".cer")
+_PEM_HEADER = b"-----BEGIN CERTIFICATE-----"
+
+
+def _check_cert_name_path_safety(name: str) -> None:
+    """`extra/` 配下を指す file 名の path-safety check (DRY: import / remove で共有)。"""
+    if not name or not name.strip():
+        raise ValueError("name is empty")
+    if name in (".", ".."):
+        raise ValueError(f"reserved name: {name!r}")
+    if any(c in name for c in ("/", "\\", "\x00")):
+        raise ValueError(f"name contains path separator or NUL: {name!r}")
+    if name in _CERT_NAME_PROTECTED:
+        raise ValueError(f"{name} is protected")
+
+
+def _validate_cert_name(name: str) -> str:
+    """`extra/` 配下に置く file 名の strict 検証 (path-safety + 単一 file 名 + 拡張子 whitelist)。"""
+    _check_cert_name_path_safety(name)
+    if Path(name).parts != (name,):
+        raise ValueError(f"name must be a single file name: {name!r}")
+    if Path(name).suffix.lower() not in _CERT_EXTENSIONS:
+        raise ValueError(
+            f"name must end with .pem / .crt / .cer: {name!r}"
+        )
+    return name
+
+
+def _extra_certs_dir() -> Path:
+    """`<workspace>/.zoo/certs/extra/` を返し、無ければ runtime 生成。
+
+    Raises:
+        ValueError: extra/ が存在するが dir で無い (file / broken symlink) 場合
+    """
+    extra = runner.zoo_dir() / "certs" / "extra"
+    if extra.exists() and not extra.is_dir():
+        raise ValueError(
+            f"{extra} exists but is not a directory; "
+            "remove it manually or run `zoo init --force`"
+        )
+    extra.mkdir(parents=True, exist_ok=True)
+    return extra
+
+
+def certs_import(
+    src_path: str | Path,
+    *,
+    name: str | None = None,
+    force: bool = False,
+) -> Path:
+    """ローカルの PEM cert を `<workspace>/.zoo/certs/extra/` にコピー。
+
+    Args:
+        src_path: コピー元 PEM 形式 cert (symlink は target に resolve)
+        name: コピー先 file 名 (省略時は src の basename)
+        force: 既存 file 上書き許可
+
+    Returns: コピー先 Path
+
+    Raises:
+        FileNotFoundError: src 不在
+        ValueError: src が dir / 不正 PEM / name に path separator 等 / dest が dir / `.gitkeep` 試行
+        FileExistsError: dest が既存 + force=False
+    """
+    src = Path(src_path)
+    try:
+        resolved = src.resolve(strict=True)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"src not found: {src_path}")
+    except (RuntimeError, OSError) as e:
+        # symlink loop (Python 3.10+ で RuntimeError) や ELOOP / 深さ過剰
+        raise ValueError(f"failed to resolve src: {src_path}: {e}")
+    if not resolved.is_file():
+        raise ValueError(f"src is not a file: {resolved}")
+    if _PEM_HEADER not in resolved.read_bytes():
+        raise ValueError(
+            f"src does not look like a PEM CERTIFICATE (header missing): {resolved}"
+        )
+
+    target_name = _validate_cert_name(name if name is not None else src.name)
+    extra = _extra_certs_dir()
+    dest = extra / target_name
+
+    if dest.exists():
+        if dest.is_dir():
+            raise ValueError(f"dest is a directory (not a regular file): {dest}")
+        # 同一 inode (= 既に extra/ にある cert を自分自身で再 import) は no-op
+        try:
+            if dest.resolve() == resolved:
+                return dest
+        except OSError:
+            pass  # resolve 失敗時は通常の force / FileExistsError 経路へ
+        if not force:
+            raise FileExistsError(
+                f"already exists: {dest} (use --force to overwrite)"
+            )
+        # force=True で既存が read-only (chmod 444) の場合、shutil.copy2 は PermissionError
+        # で失敗するため、事前に unlink して clean state にする
+        try:
+            dest.unlink()
+        except OSError as e:
+            raise OSError(f"failed to remove existing {dest}: {e}")
+
+    # CA cert は public 情報のため shutil.copy2 が source mode を継承する挙動を許容。
+    # follow_symlinks=True で symlink target の通常 file をコピー (= dest は symlink にならない)。
+    shutil.copy2(resolved, dest, follow_symlinks=True)
+    return dest
+
+
+def certs_list() -> list[str]:
+    """`extra/` 配下の cert ファイル名を sorted で返す (`.gitkeep` 除外)。"""
+    extra = _extra_certs_dir()
+    return sorted(
+        p.name for p in extra.iterdir()
+        if p.is_file() and p.name not in _CERT_NAME_PROTECTED
+    )
+
+
+def certs_remove(name: str) -> bool:
+    """`extra/` から指定 cert を削除。
+
+    Returns: 存在し削除成功 → True / 不在 → False
+    Raises: ValueError (`.gitkeep` 試行 / path traversal)
+    """
+    _check_cert_name_path_safety(name)
+    extra = _extra_certs_dir()
+    target = extra / name
+    if not target.is_file():
+        return False
+    target.unlink()
+    return True
+
+
 def host_start() -> int:
     """Start host-mode mitmproxy via host/setup.sh."""
     return runner.run_interactive(["./host/setup.sh"])

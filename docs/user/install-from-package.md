@@ -59,3 +59,27 @@ workspace root でもその配下のサブディレクトリでも、どこで `
 import zoo
 zoo.init("~/my-zoo")   # 同じことをプログラムから
 ```
+
+## 企業 proxy / 社内 root CA を信頼させる場合
+
+社内 proxy が独自 root CA で TLS を終端しているような環境では、その CA cert を mitmproxy の信頼ストアに含める必要があります。
+
+```bash
+zoo certs import /etc/ssl/certs/company-ca.pem        # default 名でコピー
+zoo certs import /path/to/ca.pem --name custom.pem    # リネーム
+zoo certs import /path/to/ca.pem --force              # 既存を上書き
+zoo certs list                                        # 現在の extra cert 一覧
+zoo certs remove company-ca.pem                       # 削除
+```
+
+コピー先: `<workspace>/.zoo/certs/extra/`
+
+> **重要**: import した cert を実際に使うには、base image の再構築が必要です:
+>
+> ```bash
+> zoo build --no-cache
+> ```
+>
+> `--no-cache` 無しだと Docker layer cache hit で `COPY certs/extra/` が再評価されず、新 cert が image に取り込まれません。
+
+許容する file 名は `.pem` / `.crt` / `.cer` のみ。`.gitkeep` は保護対象 (削除/上書き不可)。

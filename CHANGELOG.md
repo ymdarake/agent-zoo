@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **proxy / dashboard / dns コンテナの container hardening** — `cap_drop: [ALL]` + `security_opt: [no-new-privileges:true]` + 非 root `user` 指定。agent コンテナと同等の最小権限化で、container escape や policy 改変の攻撃面を縮小 (Sprint 005 PR C、包括レビュー H-3)
 
 ### Added
+- **`zoo certs import / list / remove`** ([#64](https://github.com/ymdarake/agent-zoo/issues/64)) — 企業 root CA cert を `<workspace>/.zoo/certs/extra/` に管理する CLI / Python API。`zoo certs` (no arg) は従来どおり mitmproxy CA 生成 (typer sub-app callback で後方互換維持)。
+  - PEM ヘッダ検証 + 拡張子 whitelist (`.pem` / `.crt` / `.cer`) + path traversal 防御 (`.gitkeep` 保護 / `/`, `\`, `\x00`, `..` reject)
+  - symlink を target に resolve、dest が dir の場合は ValueError、同一 inode の再 import は no-op
+  - 上書きには `--force`、新 cert を image に取り込むには `zoo build --no-cache` 必須 (CLI に yellow 警告)
+  - Python: `zoo.certs_import(src, *, name, force) -> Path` / `zoo.certs_list() -> list[str]` / `zoo.certs_remove(name) -> bool`
+  - 27 unit test (CLI smoke 3 件 + PEM header 整合性 1 件含む)
 - **dashboard 自前 CSS/JS 基盤** — `bundle/dashboard/static/app.css` (design tokens 9 + status badge tokens 6 + layout / table / form / button / status badge / tab nav / spinner / utility) + `bundle/dashboard/static/app.js` (declarative data-* API: `data-poll-url` / `data-poll-interval` / `data-swap-target` / `data-trigger-from` / `data-include` / `data-confirm` / `data-json-body` / `data-tab` / `data-bulk-action` / `data-bulk-toggle-all` / `data-suggest-target`)。MutationObserver で partial swap 後の再 attach + cleanup、exponential backoff (base × 2^failures、最大 60s)、aria-* a11y 補強 (Sprint 007 PR G + H)
 - **`ASSET_VERSION` env による cache busting** — `app.config["ASSET_VERSION"]` + `@app.context_processor` 注入で `<link href=".../app.css?v={{ asset_version }}">` を defensive Jinja で出力 (Sprint 007 PR G + H)
 - **Policy Inbox** ([ADR 0001](docs/dev/adr/0001-policy-inbox.md)) — agent が必要な許可 request を `<workspace>/.zoo/inbox/<id>.toml` に submit、dashboard で accept すると `policy.runtime.toml` に自動反映 (Sprint 001)

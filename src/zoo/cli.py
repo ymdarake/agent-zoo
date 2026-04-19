@@ -106,10 +106,71 @@ def proxy_cmd(
     sys.exit(api.proxy(agent=agent, agent_args=ctx.args))
 
 
-@app.command()
-def certs() -> None:
-    """mitmproxy CA 証明書を生成（既に存在すれば何もしない）。"""
-    api.certs()
+# === certs (mitmproxy CA + extra CA cert 管理、issue #64) ===
+
+certs_app = typer.Typer(
+    help=(
+        "mitmproxy CA 証明書 / 企業 root CA cert の管理。"
+        " (sub-command 無しなら mitmproxy CA を生成)"
+    ),
+    invoke_without_command=True,
+    no_args_is_help=False,
+)
+app.add_typer(certs_app, name="certs")
+
+
+@certs_app.callback()
+def _certs_default(ctx: typer.Context) -> None:
+    """サブコマンド無しなら mitmproxy CA を生成 (後方互換)。"""
+    if ctx.invoked_subcommand is None:
+        api.certs()
+
+
+@certs_app.command("import")
+def certs_import_cmd(
+    src: str = typer.Argument(..., help="ローカルの PEM cert path"),
+    name: str | None = typer.Option(
+        None, "--name", "-n", help="コピー先 file 名 (省略時は src basename)"
+    ),
+    force: bool = typer.Option(False, "--force", "-f", help="既存上書き"),
+) -> None:
+    """ローカルの PEM cert を <workspace>/.zoo/certs/extra/ にコピー。"""
+    try:
+        dest = api.certs_import(src, name=name, force=force)
+    except (FileNotFoundError, ValueError, FileExistsError, OSError) as e:
+        raise SystemExit(str(e))
+    typer.echo(f"Imported: {dest}")
+    typer.secho(
+        "Note: extra cert を image に反映するには `zoo build --no-cache` が必要です。\n"
+        "      (--no-cache 無しだと Docker layer cache hit で COPY 再評価されません)",
+        fg=typer.colors.YELLOW,
+    )
+
+
+@certs_app.command("list")
+def certs_list_cmd() -> None:
+    """extra/ 配下の cert を列挙 (.gitkeep 除外)。"""
+    try:
+        items = api.certs_list()
+    except (ValueError, OSError) as e:
+        raise SystemExit(str(e))
+    if not items:
+        typer.echo("(no extra certs)")
+        return
+    for n in items:
+        typer.echo(n)
+
+
+@certs_app.command("remove")
+def certs_remove_cmd(
+    name: str = typer.Argument(..., help="削除する cert ファイル名"),
+) -> None:
+    """extra/ から cert を削除 (.gitkeep は保護)。"""
+    try:
+        ok = api.certs_remove(name)
+    except (ValueError, OSError) as e:
+        raise SystemExit(str(e))
+    typer.echo(f"Removed: {name}" if ok else f"Not found: {name}")
 
 
 @app.command()

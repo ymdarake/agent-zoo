@@ -91,6 +91,14 @@ if content_length is not None and content_length > _MAX_BODY_BYTES:
 
 Docker bind mount で `/data` が host UID 未満から mount されているケース等で chmod が EPERM を返すことがあります。本実装は `try / except OSError` で包み `ctx.log.error` へ記録して処理を継続します（fail-safe）。権限強制失敗時のユーザー通知は log review に任せる方針。
 
+### symlink follow 抑止 (self-review M-1)
+
+`os.chmod` は default で symlink を follow するため、attacker が `/data/harness.db` を `/etc/something` への symlink に置換できれば外側 path を 600 化される TOCTOU 余地があります。本実装は `os.chmod(path, 0o600, follow_symlinks=False)` を優先し、Linux で AT_SYMLINK_NOFOLLOW が未対応の場合は `os.path.islink(target)` で symlink 検出して chmod を skip し log で通知します。
+
+### WAL/SHM rotation で chmod 600 が剥がれる既知制約 (self-review M-5)
+
+SQLite は `wal_autocheckpoint`（default 1000 pages）で WAL を自動 truncate/recreate します。recreate された WAL/SHM は proxy プロセスの umask に従い、container default では 0o644 になる可能性があります。完全防御には container entrypoint で `umask 0077` を設定するか、bind mount の host 側 ACL でも制限する 2 段防御が必要です。本実装は chmod 600 を `_init_db` で 1 回保証する暫定対応で、完全な権限維持は ROADMAP 行き。
+
 ---
 
 ## domain validation の strict regex（M-5 related）

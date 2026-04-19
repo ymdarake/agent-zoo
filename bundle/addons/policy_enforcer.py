@@ -23,6 +23,7 @@ from _fail_closed import (
     fail_closed_lifecycle,
     fail_closed_ws_message,
 )
+from _status_constants import BLOCK_STATUSES
 from _url_scrub import _MAX_BODY_BYTES, _parse_content_length, scrub_url
 from policy import PolicyEngine
 from sse_parser import (
@@ -113,7 +114,7 @@ class PolicyEnforcer:
                 "VALUES (?, ?, ?, ?, ?)",
                 (host, method, url, status, body_size),
             )
-            if status in ("BLOCKED", "RATE_LIMITED", "PAYLOAD_BLOCKED") and reason:
+            if status in BLOCK_STATUSES and reason:
                 db.execute(
                     "INSERT INTO blocks (host, reason) VALUES (?, ?)",
                     (host, reason),

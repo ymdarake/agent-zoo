@@ -30,8 +30,21 @@ def secure_db_file(db_path: str, log_fn: Optional[LogFn] = None) -> None:
         target = db_path + suffix
         if not os.path.exists(target):
             continue
+        # symlink follow を抑止 (self-review M-1: TOCTOU で /etc/* 等を
+        # chmod 600 化されないように)。lchmod が無い OS / ファイルシステムでは
+        # follow_symlinks=False が NotImplementedError → 明示的に islink チェック。
         try:
-            os.chmod(target, 0o600)
+            try:
+                os.chmod(target, 0o600, follow_symlinks=False)
+            except (NotImplementedError, OSError) as inner:
+                if isinstance(inner, NotImplementedError) or getattr(inner, "errno", None) is None:
+                    if os.path.islink(target):
+                        if log_fn is not None:
+                            log_fn(f"refusing to chmod symlink: {target}")
+                        continue
+                    os.chmod(target, 0o600)
+                else:
+                    raise
         except OSError as e:
             if log_fn is not None:
                 log_fn(f"chmod {target} failed: {e}")

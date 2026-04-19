@@ -50,7 +50,7 @@ class TestSecureDbFile:
         db.write_bytes(b"")
         errors: list[str] = []
 
-        def fake_chmod(path, mode):
+        def fake_chmod(path, mode, *, follow_symlinks=True):
             raise OSError(1, "Operation not permitted")
 
         with patch("os.chmod", side_effect=fake_chmod):
@@ -63,5 +63,20 @@ class TestSecureDbFile:
         """log_fn を省略しても例外を投げない (silent 失敗)"""
         db = tmp_path / "harness.db"
         db.write_bytes(b"")
-        with patch("os.chmod", side_effect=OSError(1, "EPERM")):
+
+        def fake_chmod(path, mode, *, follow_symlinks=True):
+            raise OSError(1, "EPERM")
+
+        with patch("os.chmod", side_effect=fake_chmod):
             secure_db_file(str(db))  # no log_fn, should not raise
+
+    def test_symlink_not_followed(self, tmp_path):
+        """self-review M-1: symlink を chmod 600 で follow しないこと"""
+        target = tmp_path / "outside.conf"
+        target.write_bytes(b"")
+        target.chmod(0o644)
+        db = tmp_path / "harness.db"
+        os.symlink(str(target), str(db))
+        # secure_db_file は symlink を follow しないので outside.conf の mode は変化なし
+        secure_db_file(str(db))
+        assert stat.S_IMODE(target.stat().st_mode) == 0o644

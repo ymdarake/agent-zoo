@@ -191,7 +191,7 @@ def _secure_db_file(db_path: str) -> None:
 
 **呼出**:
 - `_init_db` の schema 作成後（DB file + WAL + SHM が出揃う PRAGMA journal_mode=WAL 直後の INSERT 前後）
-- `_secure_db_file` は冪等で、毎 `_log_request` で呼ぶのは overhead → `_init_db` でのみ 1 回、さらに `done()` 直前にも 1 回 (念のため) 呼ぶ
+- ~~`done()` 直前にも 1 回 (念のため) 呼ぶ~~ → 実装上は `done()` で `db.close()` のため WAL/SHM が消える。close 後の chmod は無意味なので **実装は `_init_db` の 1 回呼出のみ** とした (self-review M-6 対応)。WAL truncate / rotation で chmod 600 が剥がれる既知制約は `docs/dev/security-notes.md` に明記
 
 **代案比較 (umask 方式)**:
 - proxy container entrypoint で `umask 0077` 設定すれば新規 file が自動で 600

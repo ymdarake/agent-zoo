@@ -40,6 +40,22 @@ class TestParseContentLength:
     def test_with_whitespace_stripped(self):
         assert _parse_content_length(" 512 ") == 512
 
+    # --- self-review M-4: RFC 7230 §3.3.2 違反値の reject ---
+
+    def test_plus_prefix_rejected(self):
+        # `+10` は int() で受理されるが RFC 7230 違反
+        assert _parse_content_length("+10") is None
+
+    def test_underscore_separator_rejected(self):
+        # Python 3.6+ の `1_000` 形式も RFC 違反
+        assert _parse_content_length("1_000") is None
+
+    def test_decimal_rejected(self):
+        assert _parse_content_length("10.5") is None
+
+    def test_with_unit_rejected(self):
+        assert _parse_content_length("1024 bytes") is None
+
 
 class TestMaxBodyBytes:
     def test_default_is_one_megabyte(self):

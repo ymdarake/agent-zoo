@@ -68,3 +68,35 @@ class TestScrubUrl:
         result = scrub_url("https://example.com/path?k=v")
         assert "?[redacted]" in result
         assert "k=v" not in result
+
+    # --- self-review H-2: log injection / smuggling 防御 ---
+
+    def test_url_with_newline_returns_invalid(self):
+        assert scrub_url("https://example.com\nEvil") == "[invalid-url]"
+
+    def test_url_with_carriage_return_returns_invalid(self):
+        assert scrub_url("https://example.com\r\nX-Inject: 1") == "[invalid-url]"
+
+    def test_url_with_null_byte_returns_invalid(self):
+        assert scrub_url("https://example.com\x00/path") == "[invalid-url]"
+
+    def test_url_with_tab_returns_invalid(self):
+        assert scrub_url("https://example.com\t/path") == "[invalid-url]"
+
+    # --- self-review M-2: host normalization ---
+
+    def test_uppercase_host_normalized_to_lowercase(self):
+        assert scrub_url("https://EXAMPLE.COM/PATH") == "https://example.com/PATH"
+
+    def test_mixed_case_host_normalized(self):
+        assert scrub_url("https://Example.Com/path") == "https://example.com/path"
+
+    def test_userinfo_host_lowercased_too(self):
+        assert (
+            scrub_url("https://user:pass@EXAMPLE.com/path")
+            == "https://[redacted]@example.com/path"
+        )
+
+    def test_path_case_preserved(self):
+        # path は case-sensitive (RFC 3986)、host のみ lowercase
+        assert scrub_url("https://example.com/Path/Case") == "https://example.com/Path/Case"

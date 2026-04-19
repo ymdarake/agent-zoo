@@ -181,8 +181,11 @@ ensure_head_matches_origin_main() {
     # tag を取りこぼす恐れがあるため。ただし offline maintenance で fetch
     # 不能なケースは warn で許容 (local HEAD == cached origin/main が成立
     # していれば後続 check が意味を持つ)。
-    if ! git fetch -q origin main 2>/dev/null; then
-        warn "git fetch origin main failed (network?). Using cached origin/main for comparison."
+    # fetch error を stderr 握り潰さず warn に同梱 (network 断 / rejected /
+    # remote gone の区別を診断できるように)
+    local fetch_err
+    if ! fetch_err="$(git fetch -q origin main 2>&1)"; then
+        warn "git fetch origin main failed: ${fetch_err:-(no stderr)}. Using cached origin/main for comparison."
     fi
     local local_head remote_head
     local_head="$(git rev-parse HEAD)"
@@ -229,6 +232,9 @@ run_no_tag() {
     bump_pyproject
     commit_release_anchor
 
+    # commit が成立した時点で rollback 対象は reset --hard が必要な state に
+    # 進む。以降の失敗 (print_next_steps 内の git 呼び出し等) は rollback
+    # 対象外とし、user には echo 済の "To undo" 手順に委ねる。
     trap - EXIT ERR INT TERM
 
     print_next_steps_no_tag

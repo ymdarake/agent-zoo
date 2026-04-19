@@ -150,6 +150,7 @@ services:
       - ./policy.toml:/config/policy.toml:ro
       - ./policy.runtime.toml:/config/policy.runtime.toml:ro
       - ./data:/data
+      - ./locks:/locks  # Sprint 006 PR F: cross-container policy lock (M-8)
 
   dashboard:
     build: ./dashboard
@@ -175,6 +176,7 @@ services:
       - ./policy.runtime.toml:/config/policy.runtime.toml
       - ./inbox:/inbox  # ADR 0001 (A-3) — .zoo/inbox writeable
       - ./addons:/app/addons:ro
+      - ./locks:/locks  # Sprint 006 PR F: cross-container policy lock (M-8)
     networks: [extnet]
 
   dns:

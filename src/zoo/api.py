@@ -125,8 +125,14 @@ def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
     # Runtime dirs/files（.zoo/ 配下）
     # Sprint 006 PR F: locks/ は cross-container policy lock 用 (M-8)。proxy /
     # dashboard 両方から bind mount される。
-    for d in ("data", "certs", "inbox", "locks"):
-        (zoo_target / d).mkdir(exist_ok=True)
+    # certs/extra: Dockerfile.base が `COPY certs/extra/ ...` で取り込むため
+    # 空でも dir 自体が必須 (D-1 ユーザー追加 CA、`.gitkeep` 配置で空 dir 維持)
+    for d in ("data", "certs", "certs/extra", "inbox", "locks"):
+        (zoo_target / d).mkdir(parents=True, exist_ok=True)
+    # certs/extra/.gitkeep: docker build が空 dir を skip しないよう placeholder
+    extra_gitkeep = zoo_target / "certs" / "extra" / ".gitkeep"
+    if not extra_gitkeep.exists():
+        extra_gitkeep.touch()
     (zoo_target / "policy.runtime.toml").touch(exist_ok=True)
 
     return target

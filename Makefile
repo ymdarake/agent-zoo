@@ -41,19 +41,10 @@ e2e-all:  ## E2E 全実行 (P2 は Docker daemon 必要)
 test: unit e2e  ## unit + E2E P1
 
 # --- リリース用 (issue #68) -----------------------------------------------
-
-.PHONY: release
-release:  ## 全部入り: pyproject bump + commit + tag (branch protection 無い repo 用の legacy)
-	@[ -n "$(RELEASE_ARG)" ] || { echo "Usage: make release <VERSION>  (例: make release 0.1.0b1)" >&2; exit 1; }
-	@./scripts/release-prepare.sh "$(RELEASE_ARG)"
-
-.PHONY: release-dry-run
-release-dry-run:  ## release の dry-run
-	@[ -n "$(RELEASE_ARG)" ] || { echo "Usage: make release-dry-run <VERSION>" >&2; exit 1; }
-	@./scripts/release-prepare.sh --dry-run "$(RELEASE_ARG)"
+# branch-protected main (PR 必須) 向けの 2-phase flow。
 
 .PHONY: release-commit
-release-commit:  ## phase 1: pyproject bump + commit のみ (release branch → PR 用、tag は打たない)
+release-commit:  ## phase 1: pyproject bump + commit (release branch 用、例: make release-commit 0.1.1b1)
 	@[ -n "$(RELEASE_ARG)" ] || { echo "Usage: make release-commit <VERSION>  (例: make release-commit 0.1.1b1)" >&2; exit 1; }
 	@./scripts/release-prepare.sh --no-tag "$(RELEASE_ARG)"
 
@@ -63,7 +54,7 @@ release-commit-dry-run:  ## phase 1 の dry-run
 	@./scripts/release-prepare.sh --dry-run --no-tag "$(RELEASE_ARG)"
 
 .PHONY: release-tag
-release-tag:  ## phase 2: merge 後の main 上で HEAD に annotated tag を打つ (commit は作らない)
+release-tag:  ## phase 2: merge 後の main 上で HEAD に annotated tag を打つ (例: make release-tag 0.1.1b1)
 	@[ -n "$(RELEASE_ARG)" ] || { echo "Usage: make release-tag <VERSION>  (例: make release-tag 0.1.1b1)" >&2; exit 1; }
 	@./scripts/release-prepare.sh --tag-only "$(RELEASE_ARG)"
 
@@ -72,10 +63,10 @@ release-tag-dry-run:  ## phase 2 の dry-run
 	@[ -n "$(RELEASE_ARG)" ] || { echo "Usage: make release-tag-dry-run <VERSION>" >&2; exit 1; }
 	@./scripts/release-prepare.sh --dry-run --tag-only "$(RELEASE_ARG)"
 
-# `make release <VERSION>` の 2 つ目の word (`0.1.0b1`) を positional arg として拾う。
-# wildcard rule `%:` は他 typo target も silent no-op にしてしまう副作用があるため、
-# release 系 target を叩いた時だけ有効化する ifneq guard 付き。
-ifneq ($(filter release release-dry-run release-commit release-commit-dry-run release-tag release-tag-dry-run,$(firstword $(MAKECMDGOALS))),)
+# `make release-commit 0.1.1b1` の 2 つ目の word (`0.1.1b1`) を positional arg
+# として拾う。wildcard rule `%:` は他 typo target も silent no-op にしてしまう
+# 副作用があるため、release 系 target を叩いた時だけ有効化する ifneq guard 付き。
+ifneq ($(filter release-commit release-commit-dry-run release-tag release-tag-dry-run,$(firstword $(MAKECMDGOALS))),)
     RELEASE_ARG := $(word 2,$(MAKECMDGOALS))
     # 偽 target (VERSION 文字列) を no-op で受ける
     $(eval $(RELEASE_ARG):;@:)

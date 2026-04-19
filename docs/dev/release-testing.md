@@ -81,16 +81,20 @@ GitHub Release は skip される。
 
 ### beta release フロー (stable 前の疎通確認)
 
-**推奨**: `make release <VERSION>` で一括実行 (後述 "make release コマンド" セクション)。
-以下は素の git 手順:
+**推奨**: `make release-commit <VERSION>` + PR + `make release-tag <VERSION>` の 2-phase (後述 "make release-* コマンド" セクション)。以下は素の git 手順 (dogfood / 緊急時向け):
 
 ```bash
-# 1. pyproject.toml の version を pre-release に bump (`0.1.0b1`)
+# 1. release branch で pyproject bump + commit
+git checkout -b release/v0.1.0b1
 vim pyproject.toml                            # version = "0.1.0b1"
-
-# 2. 同じ version で tag を切って push
 git commit -am ":bookmark: release: v0.1.0b1"
-git tag v0.1.0b1
+git push -u origin release/v0.1.0b1
+gh pr create --title ":bookmark: release: v0.1.0b1" --template release.md
+# ... PR を squash merge ...
+
+# 2. main に pull → annotated tag push
+git checkout main && git pull
+git tag -a v0.1.0b1 -m "Release v0.1.0b1"
 git push origin v0.1.0b1
 
 # 3. TestPyPI に自動 publish される。wheel install で疎通確認
@@ -163,8 +167,10 @@ git checkout -b release/v0.1.1b1
 make release-commit-dry-run 0.1.1b1       # 副作用なしで事前検証
 make release-commit 0.1.1b1               # pyproject bump + :bookmark: commit
 git push -u origin release/v0.1.1b1
-gh pr create --title ":bookmark: release: v0.1.1b1" --body "..."
-# ... PR を squash merge ...
+gh pr create --title ":bookmark: release: v0.1.1b1" --template release.md
+# ↑ .github/PULL_REQUEST_TEMPLATE/release.md に CHANGELOG / pyproject /
+#   TestPyPI / PyPI / Trusted Publisher / yank 手順 checklist が入っている
+# ... PR 上で checklist を確認 → squash merge ...
 
 # phase 2: merge 後の main で HEAD に annotated tag を打って push
 git checkout main && git pull
@@ -181,23 +187,15 @@ git push origin v0.1.1b1                  # tag push → release workflow 発火
 
 いずれか失敗すれば fail-fast。
 
-#### legacy フロー (protection 無い repo 用)
-
-```bash
-make release-dry-run 0.1.0b1
-make release 0.1.0b1                      # bump + commit + tag を一気
-git push origin main --follow-tags        # branch + tag atomic push
-```
-
 #### 内部処理 (`scripts/release-prepare.sh`)
 
-1. VERSION format check — PEP 440 native public version (release.yml classify と同一 regex)
-2. working tree clean 確認
-3. branch 確認 — `main` 以外なら TTY prompt (non-TTY / CI env は abort)、ただし `--no-tag` モードは release branch 前提で main 以外でも warn 無しで通す
-4. tag `v<VERSION>` が local / remote の origin で未存在であること
-5. `--tag-only`: HEAD の整合性 check (上記 precondition) → annotated tag のみ作成
-6. `--no-tag`: `pyproject.toml` の `[project].version` を section-aware に書き換え (Python re.sub、他の `version = "..."` は誤爆しない) → tomllib read-back verify → `:bookmark: release: v<VERSION>` commit (tag は打たない)
-7. default (全部入り): 上記 commit に加えて annotated tag 作成
+1. `--no-tag` / `--tag-only` のいずれか必須 (flag 無しは usage error)
+2. VERSION format check — PEP 440 native public version (release.yml classify と同一 regex)
+3. working tree clean 確認
+4. branch 確認 — `--tag-only` は main 必須 (non-TTY / CI env で main 以外は abort)、`--no-tag` は release branch 前提で main 以外も warn 無しで通す
+5. tag `v<VERSION>` が local / remote origin で未存在であること
+6. `--tag-only`: pyproject.version == VERSION + HEAD subject `release: v<VERSION>` + HEAD == origin/main の 3 precondition check → annotated tag 作成
+7. `--no-tag`: `pyproject.toml` の `[project].version` を section-aware に書き換え (Python re.sub、他の `version = "..."` は誤爆しない) → tomllib read-back verify → `:bookmark: release: v<VERSION>` commit (tag は打たない)
 8. 失敗 / SIGINT で `git checkout HEAD -- ./pyproject.toml` rollback
 9. 次手順 (push コマンド) と undo 手順を echo
 

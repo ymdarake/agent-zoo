@@ -1,0 +1,103 @@
+# Dependabot v2 設定 (Sprint 006 PR E)
+# 目的: 包括レビュー M-3 / M-4 で SHA pin した外部依存を週次で更新検出する。
+#
+# - github-actions: ci.yml / release.yml の uses 行 19 個 + 将来追加分
+# - docker: Dockerfile.* + docker-compose.yml の image: 行
+#   ※ docker-compose.yml は package-ecosystem: docker でもパースされる
+#     (公式 supported list に docker-compose 単独 ecosystem は無い)
+# - pip: pyproject.toml + bundle/dashboard/requirements.txt
+#
+# groups で 1 ecosystem 内の同週更新を 1 PR にまとめてレビュー負荷削減。
+# commit-message prefix は :arrow_up: で本リポジトリの gitmoji 規約に整合。
+version: 2
+updates:
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":arrow_up:"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    groups:
+      gh-actions:
+        patterns:
+          - "*"
+
+  # Dockerfile in bundle/container/ (Dockerfile.base / Dockerfile.codex /
+  # Dockerfile.gemini / Dockerfile.unified の FROM 行)
+  - package-ecosystem: "docker"
+    directory: "/bundle/container"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":arrow_up:"
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker-container:
+        patterns:
+          - "*"
+
+  # Dockerfile in bundle/dashboard/
+  - package-ecosystem: "docker"
+    directory: "/bundle/dashboard"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":arrow_up:"
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker-dashboard:
+        patterns:
+          - "*"
+
+  # docker-compose.yml の image: 行 (proxy = mitmproxy, dns = coredns)
+  - package-ecosystem: "docker"
+    directory: "/bundle"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":arrow_up:"
+    labels:
+      - "dependencies"
+      - "docker"
+    groups:
+      docker-compose:
+        patterns:
+          - "*"
+
+  # Python (root pyproject.toml = dev / e2e extras)
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":arrow_up:"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      python-root:
+        patterns:
+          - "*"
+
+  # Python (bundle/dashboard/requirements.txt = flask / gunicorn / flask-wtf)
+  - package-ecosystem: "pip"
+    directory: "/bundle/dashboard"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: ":arrow_up:"
+    labels:
+      - "dependencies"
+      - "python"
+    groups:
+      python-dashboard:
+        patterns:
+          - "*"

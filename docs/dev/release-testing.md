@@ -81,12 +81,15 @@ GitHub Release は skip される。
 
 ### beta release フロー (stable 前の疎通確認)
 
+**推奨**: `make release <VERSION>` で一括実行 (後述 "make release コマンド" セクション)。
+以下は素の git 手順:
+
 ```bash
 # 1. pyproject.toml の version を pre-release に bump (`0.1.0b1`)
 vim pyproject.toml                            # version = "0.1.0b1"
 
 # 2. 同じ version で tag を切って push
-git commit -am "bump version: 0.1.0b1"
+git commit -am ":bookmark: release: v0.1.0b1"
 git tag v0.1.0b1
 git push origin v0.1.0b1
 
@@ -145,7 +148,37 @@ step が認証エラーで fail する (ただし build 自体は通っている
 - **`v*.*.*` glob に偶然マッチする tag (例 `v2026.04.19`)**: 同上、Classify で明示
   reject される。workflow を通したい場合は `on.push.tags` pattern を見直す。
 
-## 関連
+### `make release` コマンド (自動化)
+
+手動 git 手順の代替として、リポジトリ root の Makefile が `release` target を提供する:
+
+```bash
+# 副作用なしの事前検証 (format / working tree / tag 未存在 / pyproject 整合)
+make release-dry-run 0.1.0b1
+
+# 本実行: pyproject.toml を bump + :bookmark: commit + v0.1.0b1 tag を local に作る
+make release 0.1.0b1
+
+# 出力に従って push (コマンドは echo される)
+git push origin main --follow-tags
+```
+
+**内部処理** (`scripts/release-prepare.sh`):
+
+1. VERSION format check — PEP 440 native public version (release.yml classify と同一 regex)
+2. working tree clean 確認
+3. branch 確認 — `main` 以外なら TTY prompt で confirm、非 TTY / `CI=*` 環境は abort
+4. tag `v<VERSION>` 未存在確認
+5. `pyproject.toml` の `[project].version` を Python で section-aware に書き換え (sed より安全)
+6. `tomllib` で read-back verify (一致しなければ rollback + exit)
+7. `:bookmark: release: v<VERSION>` で commit + `v<VERSION>` tag 作成 (失敗 / SIGINT で rollback)
+8. 次手順 (push) と undo コマンドを echo
+
+**commit prefix `:bookmark:`** は [gitmoji](https://gitmoji.dev/) の release 慣例で、本 repo の release commit 専用 prefix。他の gitmoji (`:sparkles:` / `:memo:` / `:arrow_up:` 等) と意味が衝突しないため release workflow の自動化で区別しやすい。
+
+**push は意図的に自動化していない** — tag を公開する destructive action は maintainer の明示確認に委ねる (script の echo 通りのコマンドを手で実行)。
+
+### 想定外 tag が push された時の挙動
 
 - `pyproject.toml` の hatchling 設定 (`force-include` / sdist include)
 - `src/zoo/api.py::_asset_source()` の installed/source 分岐

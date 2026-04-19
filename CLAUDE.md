@@ -70,6 +70,16 @@ zoo logs analyze / summarize / alerts   # ホスト側 claude CLI で AI 分析
 
 配布物には Makefile を含めない（zoo CLI 一本化）。
 
+### Maintainer 向け補助スクリプト（`scripts/`）
+
+```bash
+./scripts/dogfood-dashboard.sh                # /tmp/zoo-trial で隔離 venv → init/build/up + 自動検証
+./scripts/dogfood-dashboard.sh --no-build     # build skip (image 再利用)
+./scripts/dogfood-dashboard.sh --cleanup-only # zoo down + workspace 削除
+```
+
+詳細: [scripts/README.md](scripts/README.md)
+
 ## テスト・dev タスク（repo root の `Makefile`）
 
 repo root の `Makefile` は **dev 専用**。`PLAYWRIGHT_BROWSERS_PATH` を `.venv/playwright-browsers/` へ強制 export し、system の `~/Library/Caches/ms-playwright/` を汚さない仕組み。配布物の Docker compose 操作は `zoo` CLI に一本化（Makefile は source repo にも配布物にも含めない）。

@@ -67,6 +67,13 @@ app.config["WTF_CSRF_HEADERS"] = ["X-CSRFToken", "X-CSRF-Token"]
 # default で Jinja UndefinedError を回避。PR I で git short sha 等の注入を検討。
 # `?v={{ asset_version }}` を template 側で defensive に出すパターンが Plan G review G3。
 app.config["ASSET_VERSION"] = os.environ.get("ASSET_VERSION", "")
+
+
+# Sprint 007 PR H (self-review H-1): app.config だけでは Jinja `asset_version` 変数は
+# 参照できない。context_processor で全 render_template に inject する。
+@app.context_processor
+def _inject_asset_version() -> dict:
+    return {"asset_version": app.config.get("ASSET_VERSION", "")}
 # Flask-WTF 1.2.x は TESTING=True でも CSRF を自動無効化しない。既存 test は setUp で
 # `app.config["WTF_CSRF_ENABLED"] = False` を明示指定している。CSRF 動作検証は
 # test_dashboard_csrf.py で WTF_CSRF_ENABLED=True にして実施。

@@ -93,19 +93,40 @@
     nodes.forEach((el) => {
       if (_pollTimers.has(el)) return;
       let baseInterval = parseInt(el.dataset.pollInterval || '5000', 10);
-      if (isNaN(baseInterval) || baseInterval <= 0) baseInterval = 5000;
+      // baseInterval = 0 → 「load only」(HTMX hx-trigger="load" 互換)
+      // 負値 / NaN → 5000 ms に fallback
+      if (isNaN(baseInterval) || baseInterval < 0) baseInterval = 5000;
       _pollTimers.set(el, { intervalId: 0, failures: 0, baseInterval });
       pollOnce(el); // 即時
-      _scheduleInterval(el, baseInterval);
+      if (baseInterval > 0) {
+        _scheduleInterval(el, baseInterval);
+      }
 
       if (el.dataset.triggerFrom) {
+        // Plan H レビュー M5: 同 selector + event の listener を 1 度だけ attach。
+        // 重複 attach すると MutationObserver で setupPolls 再呼出時に
+        // listener 数が N→2N→4N と倍増する。
         const [sel, ev] = el.dataset.triggerFrom.split(':');
-        document.body.addEventListener(ev || 'change', (e) => {
-          if (e.target.closest && e.target.closest(sel)) pollOnce(el);
-        });
+        const evName = ev || 'change';
+        const key = evName + ':' + sel;
+        let bucket = _triggerListenersByTarget.get(key);
+        if (!bucket) {
+          bucket = new Set();
+          _triggerListenersByTarget.set(key, bucket);
+          document.body.addEventListener(evName, (e) => {
+            if (!(e.target.closest && e.target.closest(sel))) return;
+            // bucket 内の全 polling element に通知 (多対 1 trigger をサポート)
+            bucket.forEach((targetEl) => pollOnce(targetEl));
+          });
+        }
+        bucket.add(el);
       }
     });
   }
+
+  // Plan H レビュー M5: triggerFrom の重複 attach 防止用 registry。
+  // key = "{event}:{selector}", value = Set<polling element>
+  const _triggerListenersByTarget = new Map();
 
   // === Form submit (data-swap-target) ===
   document.body.addEventListener('submit', async (ev) => {
@@ -145,10 +166,28 @@
     });
     const target = document.getElementById('tab-' + name);
     if (target) target.classList.remove('hidden');
-    document
-      .querySelectorAll('[data-tab]')
-      .forEach((a) => a.classList.remove('active'));
+    // Plan H L8: a11y、aria-selected を更新
+    document.querySelectorAll('[data-tab]').forEach((a) => {
+      a.classList.remove('active');
+      a.setAttribute('aria-selected', 'false');
+    });
     tab.classList.add('active');
+    tab.setAttribute('aria-selected', 'true');
+  });
+
+  // === Bulk toggle-all (data-bulk-toggle-all): 全選択 checkbox の delegation ===
+  // Plan H H2: PR G では実装漏れだった toggleAllInbox 代替。
+  // change event で [data-bulk-toggle-all] の checked 状態を
+  // data-bulk-toggle-scope (selector) 内の [data-bulk-select] に伝播する。
+  document.body.addEventListener('change', (ev) => {
+    const master = ev.target.closest && ev.target.closest('[data-bulk-toggle-all]');
+    if (!master) return;
+    const scopeSel = master.dataset.bulkToggleScope;
+    const scope = scopeSel ? document.querySelector(scopeSel) : document;
+    if (!scope) return;
+    scope
+      .querySelectorAll('[data-bulk-select]')
+      .forEach((cb) => { cb.checked = master.checked; });
   });
 
   // === Bulk action (data-bulk-action) ===

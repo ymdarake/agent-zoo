@@ -3,41 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- CSRF token (H-1): HTMX と fetch() でヘッダ送出、bulk 等の inline JS は meta から読む -->
+    {# CSRF token (H-1): app.js の csrf() helper が毎 fetch ごとに meta から読む。
+       PR H 以降は <meta> を head から削除しないこと (Plan F G1 / Plan H 受入基準)。 #}
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Agent Harness Dashboard</title>
+    {# CDN pico/htmx は Sprint 007 PR I で削除予定。本 PR (H) では並存させ、
+       自前 CSS が後勝ちで上書きする (link 順序が後)。 #}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+    {# 自前 CSS / JS。{% if asset_version %} で空時 query 省略 (Plan G G3 defensive)。 #}
+    <link rel="stylesheet" href="/static/app.css{% if asset_version %}?v={{ asset_version }}{% endif %}">
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-    <style>
-        :root { --pico-font-size: 14px; }
-        .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
-        .stat-card { text-align: center; padding: 1rem; }
-        .stat-card h2 { margin: 0; font-size: 2rem; }
-        .stat-card small { color: var(--pico-muted-color); }
-        .status-badge { padding: 2px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
-        .status-ALLOWED { background: #d4edda; color: #155724; }
-        .status-BLOCKED, .status-PAYLOAD_BLOCKED { background: #f8d7da; color: #721c24; }
-        .status-RATE_LIMITED { background: #fff3cd; color: #856404; }
-        table { font-size: 0.85rem; }
-        nav h1 { margin: 0; }
-        .btn-sm { padding: 0.25rem 0.5rem !important; font-size: 0.75rem !important; margin: 0 0.15rem !important; cursor: pointer; width: auto !important; display: inline-block !important; }
-        table form { display: inline !important; margin: 0 !important; width: auto !important; }
-        table input[type="text"] { width: 120px !important; margin: 0 !important; padding: 0.2rem 0.4rem !important; font-size: 0.75rem !important; display: inline-block !important; }
-        .tab-nav { display: flex; gap: 0; margin-bottom: 1.5rem; }
-        .tab-nav a { padding: 0.5rem 1.5rem; border-bottom: 2px solid transparent; text-decoration: none; color: var(--pico-muted-color); }
-        .tab-nav a.active { border-bottom-color: var(--pico-primary); color: var(--pico-color); }
-        .badge { background: var(--pico-del-color); color: white; padding: 0.1rem 0.4rem; border-radius: 4px; font-size: 0.7rem; margin-left: 0.3rem; }
-    </style>
+    <script defer src="/static/app.js{% if asset_version %}?v={{ asset_version }}{% endif %}"></script>
 </head>
-<body hx-headers='{"X-CSRFToken": "{{ csrf_token() }}"}'>
-    <nav class="container">
-        <ul><li><h1>Agent Zoo</h1></li></ul>
-        <ul><li><small>Dashboard</small></li></ul>
+<body>
+    <nav class="layout-container app-nav">
+        <h1>Agent Zoo</h1>
+        <small>Dashboard</small>
     </nav>
 
-    <main class="container">
+    <main class="layout-container">
         <!-- Stats -->
-        <div hx-get="/partials/stats" hx-trigger="load, every 5s" hx-swap="innerHTML">
+        <div data-poll-url="/partials/stats" data-poll-interval="5000" aria-live="polite">
             <div class="stat-grid">
                 <article class="stat-card"><h2>-</h2><small>Total</small></article>
                 <article class="stat-card"><h2>-</h2><small>Blocked</small></article>
@@ -47,61 +33,55 @@
         </div>
 
         <!-- Tabs -->
-        <div class="tab-nav" id="tabs">
-            <a href="#" class="active" onclick="showTab('requests', this)">Requests</a>
-            <a href="#" onclick="showTab('tool-uses', this)">Tool Uses</a>
-            <a href="#" onclick="showTab('inbox', this)">Inbox</a>
-            <a href="#" onclick="showTab('whitelist', this)">Whitelist</a>
+        <div class="tab-nav" role="tablist" id="tabs">
+            <a href="#" id="tabnav-requests" class="active" role="tab" aria-selected="true" aria-controls="tab-requests" data-tab="requests">Requests</a>
+            <a href="#" id="tabnav-tool-uses" role="tab" aria-selected="false" aria-controls="tab-tool-uses" data-tab="tool-uses">Tool Uses</a>
+            <a href="#" id="tabnav-inbox" role="tab" aria-selected="false" aria-controls="tab-inbox" data-tab="inbox">Inbox</a>
+            <a href="#" id="tabnav-whitelist" role="tab" aria-selected="false" aria-controls="tab-whitelist" data-tab="whitelist">Whitelist</a>
         </div>
 
         <!-- Requests Tab -->
-        <div id="tab-requests">
-            <form id="requests-filter-form" style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center"
-                hx-get="/partials/requests" hx-target="#requests-container" hx-swap="innerHTML"
-                hx-trigger="change from:#status-filter, load, every 5s" hx-include="#status-filter">
+        <div id="tab-requests" role="tabpanel" aria-labelledby="tabnav-requests">
+            <div class="flex gap-2 items-center mb-2">
                 <small>Filter:</small>
-                <select id="status-filter" name="status" style="padding:0.2rem 0.5rem;font-size:0.8rem;width:auto;margin:0">
+                <select id="status-filter" name="status">
                     <option value="">All</option>
                     <option value="ALLOWED">ALLOWED</option>
                     <option value="BLOCKED">BLOCKED</option>
                     <option value="RATE_LIMITED">RATE_LIMITED</option>
                     <option value="PAYLOAD_BLOCKED">PAYLOAD_BLOCKED</option>
                 </select>
-            </form>
-            <div id="requests-container">
-                <p aria-busy="true">Loading...</p>
+            </div>
+            <div id="requests-container"
+                data-poll-url="/partials/requests"
+                data-poll-interval="5000"
+                data-trigger-from="#status-filter:change"
+                data-include="#status-filter"
+                aria-live="polite">
+                <p>Loading...</p>
             </div>
         </div>
 
         <!-- Tool Uses Tab -->
-        <div id="tab-tool-uses" style="display:none">
-            <div hx-get="/partials/tool-uses" hx-trigger="load, every 5s" hx-swap="innerHTML">
-                <p aria-busy="true">Loading...</p>
+        <div id="tab-tool-uses" role="tabpanel" aria-labelledby="tabnav-tool-uses" class="hidden">
+            <div data-poll-url="/partials/tool-uses" data-poll-interval="5000" aria-live="polite">
+                <p>Loading...</p>
             </div>
         </div>
 
         <!-- Inbox Tab (ADR 0001 A-6) -->
-        <div id="tab-inbox" style="display:none">
-            <div hx-get="/partials/inbox" hx-trigger="load" hx-swap="innerHTML">
-                <p aria-busy="true">Loading...</p>
+        <div id="tab-inbox" role="tabpanel" aria-labelledby="tabnav-inbox" class="hidden">
+            <div data-poll-url="/partials/inbox" data-poll-interval="0" aria-live="polite">
+                <p>Loading...</p>
             </div>
         </div>
 
         <!-- Whitelist Tab -->
-        <div id="tab-whitelist" style="display:none">
-            <div hx-get="/partials/whitelist" hx-trigger="load" hx-swap="innerHTML">
-                <p aria-busy="true">Loading...</p>
+        <div id="tab-whitelist" role="tabpanel" aria-labelledby="tabnav-whitelist" class="hidden">
+            <div data-poll-url="/partials/whitelist" data-poll-interval="0" aria-live="polite">
+                <p>Loading...</p>
             </div>
         </div>
     </main>
-
-    <script>
-    function showTab(name, el) {
-        document.querySelectorAll('[id^="tab-"]').forEach(t => t.style.display = 'none');
-        document.getElementById('tab-' + name).style.display = '';
-        document.querySelectorAll('.tab-nav a').forEach(a => a.classList.remove('active'));
-        el.classList.add('active');
-    }
-    </script>
 </body>
 </html>

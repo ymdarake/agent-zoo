@@ -1,20 +1,22 @@
 <!-- 現在のポリシー設定 -->
 <h4>Current Policy</h4>
 
-<h5 style="margin-bottom:0.5rem">Domain Rules</h5>
-<table style="font-size:0.85rem">
+<h5 class="mb-2">Domain Rules</h5>
+<table>
     <thead><tr><th>Type</th><th>Domains</th><th></th></tr></thead>
     <tbody>
         <tr>
-            <td><span style="color:var(--pico-ins-color)">Allow</span></td>
+            <td><span class="text-success">Allow</span></td>
             <td>
                 {% for d in current_policy.base_allow_domains %}<code>{{ d }}</code> {% endfor %}
                 {% for d in current_policy.runtime_allow_domains %}
-                <code style="border:1px solid var(--pico-primary)">{{ d }}</code>
-                <form style="display:inline;margin:0" hx-post="/api/whitelist/revoke-domain" hx-target="#tab-whitelist" hx-swap="innerHTML"
-                    hx-confirm="{{ d }} の許可を取り消しますか？">
+                <code class="runtime-marker">{{ d }}</code>
+                <form action="/api/whitelist/revoke-domain" method="POST"
+                    data-swap-target="#tab-whitelist"
+                    data-confirm="{{ d }} の許可を取り消しますか？"
+                    class="form-inline">
                     <input type="hidden" name="domain" value="{{ d }}">
-                    <button type="submit" class="btn-sm" style="color:var(--pico-del-color);font-size:0.65rem;padding:1px 4px">✕</button>
+                    <button type="submit" class="btn-sm btn-danger-text">✕</button>
                 </form>
                 {% endfor %}
                 {% if not current_policy.base_allow_domains and not current_policy.runtime_allow_domains %}<small>なし</small>{% endif %}
@@ -22,24 +24,24 @@
             <td></td>
         </tr>
         <tr>
-            <td><span style="color:var(--pico-del-color)">Deny</span></td>
+            <td><span class="text-danger">Deny</span></td>
             <td>{% for d in current_policy.deny_domains %}<code>{{ d }}</code> {% endfor %}{% if not current_policy.deny_domains %}<small>なし</small>{% endif %}</td>
             <td></td>
         </tr>
     </tbody>
 </table>
 
-<h5 style="margin-bottom:0.5rem">Path Rules</h5>
+<h5 class="mb-2">Path Rules</h5>
 {% set has_paths = current_policy.base_paths_allow or current_policy.runtime_paths_allow %}
 {% if has_paths %}
-<table style="font-size:0.8rem">
-    <thead><tr><th>Domain</th><th style="color:var(--pico-ins-color)">Allowed Paths</th><th></th></tr></thead>
+<table>
+    <thead><tr><th>Domain</th><th class="text-success">Allowed Paths</th><th></th></tr></thead>
     <tbody>
     {% for domain, patterns in current_policy.base_paths_allow.items() %}
     <tr>
         <td>{{ domain }}</td>
         <td>{% for p in patterns %}<code>{{ p }}</code> {% endfor %}</td>
-        <td><small style="color:var(--pico-muted-color)">base</small></td>
+        <td><small class="text-base-policy">base</small></td>
     </tr>
     {% endfor %}
     {% for domain, patterns in current_policy.runtime_paths_allow.items() %}
@@ -47,16 +49,18 @@
         <td>{{ domain }}</td>
         <td>
             {% for p in patterns %}
-            <code style="border:1px solid var(--pico-primary)">{{ p }}</code>
-            <form style="display:inline-block;margin:0;width:auto" hx-post="/api/whitelist/revoke-path" hx-target="#tab-whitelist" hx-swap="innerHTML"
-                hx-confirm="パスルールを削除しますか？">
+            <code class="runtime-marker">{{ p }}</code>
+            <form action="/api/whitelist/revoke-path" method="POST"
+                data-swap-target="#tab-whitelist"
+                data-confirm="パスルールを削除しますか？"
+                class="form-inline">
                 <input type="hidden" name="domain" value="{{ domain }}">
                 <input type="hidden" name="path_pattern" value="{{ p }}">
-                <button type="submit" class="btn-sm" style="color:var(--pico-del-color);font-size:0.65rem;padding:1px 4px;margin:0;width:auto">✕</button>
+                <button type="submit" class="btn-sm btn-danger-text">✕</button>
             </form>
             {% endfor %}
         </td>
-        <td><small style="color:var(--pico-primary)">runtime</small></td>
+        <td><small class="text-runtime">runtime</small></td>
     </tr>
     {% endfor %}
     </tbody>
@@ -65,8 +69,8 @@
 <p><small>パスルールなし</small></p>
 {% endif %}
 {% if current_policy.paths_deny %}
-<table style="font-size:0.8rem">
-    <thead><tr><th>Domain</th><th style="color:var(--pico-del-color)">Denied Paths</th></tr></thead>
+<table>
+    <thead><tr><th>Domain</th><th class="text-danger">Denied Paths</th></tr></thead>
     <tbody>
     {% for domain, patterns in current_policy.paths_deny.items() %}
     <tr>
@@ -85,7 +89,7 @@
 <p><small>ブロックされたドメイン。アクションを選んでください。</small></p>
 
 {% if candidates %}
-<table style="font-size:0.85rem">
+<table>
     <thead>
         <tr>
             <th>Action</th>
@@ -98,63 +102,48 @@
     <tbody>
     {% for c in candidates %}
     <tr>
-        <td style="white-space:nowrap">
-            <form style="display:inline;margin:0" hx-post="/api/whitelist/allow" hx-target="#tab-whitelist" hx-swap="innerHTML"
-                hx-confirm="{{ c.host }} をドメインごと許可しますか？">
+        <td class="nowrap">
+            <form action="/api/whitelist/allow" method="POST"
+                data-swap-target="#tab-whitelist"
+                data-confirm="{{ c.host }} をドメインごと許可しますか？"
+                class="form-inline">
                 <input type="hidden" name="domain" value="{{ c.host }}">
                 <button type="submit" class="btn-sm">許可</button>
             </form>
-            <form style="display:inline;margin:0" hx-post="/api/whitelist/dismiss" hx-target="#tab-whitelist" hx-swap="innerHTML">
+            <form action="/api/whitelist/dismiss" method="POST"
+                data-swap-target="#tab-whitelist"
+                class="form-inline">
                 <input type="hidden" name="domain" value="{{ c.host }}">
                 <input type="hidden" name="reason" value="dashboard dismiss">
-                <button type="submit" class="btn-sm secondary">無視</button>
+                <button type="submit" class="btn-sm btn-secondary">無視</button>
             </form>
         </td>
         <td><strong>{{ c.host }}</strong></td>
         <td><span class="badge">{{ c.count }}</span></td>
-        <td style="font-size:0.75rem;max-width:250px">
+        <td class="path-cell">
             {% if c.paths %}
-            <ul style="margin:0;padding-left:1rem" class="url-suggest-list">
+            <ul class="url-suggest-list">
                 {% for url in c.paths %}
-                <li style="cursor:pointer;text-decoration:underline;word-break:break-all"
-                    data-url="{{ url }}"
-                    data-target="path-{{ c.host|replace('.', '-') }}"
+                <li data-url="{{ url }}"
+                    data-suggest-target="#path-{{ c.host|replace('.', '-') }}"
                     title="クリックでパスパターン入力">{{ url }}</li>
                 {% endfor %}
             </ul>
             {% endif %}
         </td>
-        <td style="white-space:nowrap">
-            <form style="display:flex;gap:0.2rem;align-items:center;margin:0"
-                hx-post="/api/whitelist/allow-path" hx-target="#tab-whitelist" hx-swap="innerHTML">
+        <td class="nowrap">
+            <form action="/api/whitelist/allow-path" method="POST"
+                data-swap-target="#tab-whitelist"
+                class="form-inline">
                 <input type="hidden" name="domain" value="{{ c.host }}">
-                <input type="text" name="path_pattern" id="path-{{ c.host|replace('.', '-') }}" placeholder="/path/*" value="/*"
-                    style="padding:0.2rem 0.4rem;font-size:0.75rem;width:120px;margin:0">
-                <button type="submit" class="btn-sm outline" style="white-space:nowrap">許可</button>
+                <input type="text" name="path_pattern" id="path-{{ c.host|replace('.', '-') }}" placeholder="/path/*" value="/*">
+                <button type="submit" class="btn-sm btn-outline">許可</button>
             </form>
         </td>
     </tr>
     {% endfor %}
     </tbody>
 </table>
-<script>
-(function() {
-    var items = document.querySelectorAll('.url-suggest-list li[data-url]');
-    items.forEach(function(li) {
-        li.addEventListener('click', function(e) {
-            e.stopPropagation();
-            e.preventDefault();
-            try {
-                var u = new URL(this.dataset.url);
-                var p = u.pathname;
-                var v = p.lastIndexOf('/') > 0 ? p.substring(0, p.lastIndexOf('/')) + '/*' : p + '*';
-                document.getElementById(this.dataset.target).value = v;
-                this.style.color = 'var(--pico-primary)';
-            } catch(ex) {}
-        });
-    });
-})();
-</script>
 {% else %}
 <p><small>候補なし</small></p>
 {% endif %}
@@ -176,9 +165,11 @@
             <td>{{ info.reason }}</td>
             <td>{{ info.date }}</td>
             <td>
-                <form style="display:inline;margin:0" hx-post="/api/whitelist/restore" hx-target="#tab-whitelist" hx-swap="innerHTML">
+                <form action="/api/whitelist/restore" method="POST"
+                    data-swap-target="#tab-whitelist"
+                    class="form-inline">
                     <input type="hidden" name="domain" value="{{ domain }}">
-                    <button type="submit" class="btn-sm contrast">Restore</button>
+                    <button type="submit" class="btn-sm btn-contrast">Restore</button>
                 </form>
             </td>
         </tr>

@@ -12,7 +12,7 @@
         <tr>
             <td>{{ row.ts }}</td>
             <td><strong>{{ row.tool_name }}</strong></td>
-            <td style="max-width:400px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="{{ row.input }}">{{ row.input }}</td>
+            <td class="path-cell" title="{{ row.input }}">{{ row.input }}</td>
             <td>{{ row.input_size }}</td>
         </tr>
         {% endfor %}

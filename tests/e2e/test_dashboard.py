@@ -46,7 +46,7 @@ def test_inbox_accept_writes_to_runtime(
     # confirm dialog を accept
     page.once("dialog", lambda d: d.accept())
     # form[hx-post=".../accept"] 内の button に絞る（bulk button と区別）
-    page.click('form[hx-post*="accept"] button:has-text("許可")')
+    page.click('form[action*="/accept"] button:has-text("許可")')
     # HTMX swap 完了を待ち、runtime ファイル更新まで余裕
     page.wait_for_selector("text=未承認のリクエストはありません")
 
@@ -64,7 +64,7 @@ def test_inbox_reject_marks_status_only(
     page.goto(dashboard)
     page.click("text=Inbox")
     page.wait_for_selector("text=reject.example.com")
-    page.click('form[hx-post*="reject"] button:has-text("却下")')
+    page.click('form[action*="/reject"] button:has-text("却下")')
     page.wait_for_selector("text=未承認のリクエストはありません")
 
     rt_path = workspace / ".zoo" / "policy.runtime.toml"
@@ -95,7 +95,7 @@ def test_inbox_path_accept_writes_to_paths_allow(
     page.wait_for_selector("text=api.example.com")
     page.once("dialog", lambda d: d.accept())
     # form[hx-post=".../accept"] 内の button に絞る（bulk button と区別）
-    page.click('form[hx-post*="accept"] button:has-text("許可")')
+    page.click('form[action*="/accept"] button:has-text("許可")')
     page.wait_for_selector("text=未承認のリクエストはありません")
 
     rt = tomllib.loads((workspace / ".zoo" / "policy.runtime.toml").read_text())

@@ -43,6 +43,7 @@ dev = [
     "flask-wtf>=1.2",  # dashboard CSRF 対策 (Sprint 005 PR B / 包括レビュー H-1)
     "tomli_w>=1.0",
     "pyyaml>=6.0",  # tests/test_dependabot_config.py で .github/dependabot.yml をパース
+    "beautifulsoup4>=4.12",  # Sprint 007 PR H: tests/test_dashboard_inline_assets.py で render 後 HTML を parse
 ]
 e2e = [
     "playwright>=1.40",

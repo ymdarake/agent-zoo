@@ -16,6 +16,8 @@
   --color-primary: #1a73e8;
   --color-text: #1f2937;
   --color-bg: #ffffff;
+  --color-surface: #f9fafb;        /* table th / code 等の薄い背景 */
+  --color-code-bg: #f3f4f6;
   --color-border: #e5e7eb;
   --color-danger: #d11a2a;
   --color-success: #188038;
@@ -33,6 +35,33 @@
   --space-2: 0.5rem;
   --space-3: 1rem;
   --space-4: 1.5rem;
+}
+
+/* === dark theme (Sprint 007 follow-up): OS の prefers-color-scheme に追従 ===
+ * フラット :root 変数の同名上書きで実現 (ADR 0004 設計通り)。
+ * badge 系は背景も文字も同一の semantics を保ったまま、暗背景で読めるよう
+ * 彩度を上げ、明度を下げる。
+ */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-muted: #9ca3af;
+    --color-primary: #60a5fa;
+    --color-text: #e5e7eb;
+    --color-bg: #111827;
+    --color-surface: #1f2937;
+    --color-code-bg: #374151;
+    --color-border: #374151;
+    --color-danger: #f87171;
+    --color-success: #34d399;
+
+    /* badge: 暗背景で読みやすい彩度 */
+    --badge-allowed-bg: #14532d;
+    --badge-allowed-fg: #bbf7d0;
+    --badge-blocked-bg: #7f1d1d;
+    --badge-blocked-fg: #fecaca;
+    --badge-rate-limited-bg: #78350f;
+    --badge-rate-limited-fg: #fde68a;
+  }
 }
 
 /* === base reset === */
@@ -71,7 +100,7 @@ h5 { font-size: 0.875rem; }
 p { margin: 0 0 var(--space-2) 0; }
 small { color: var(--color-muted); font-size: 0.85em; }
 code {
-  background: #f3f4f6;
+  background: var(--color-code-bg);
   padding: 1px 4px;
   border-radius: var(--radius-sm);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -126,7 +155,7 @@ th, td {
   text-align: left;
   vertical-align: top;
 }
-th { font-weight: 600; background: #f9fafb; }
+th { font-weight: 600; background: var(--color-surface); }
 
 /* === form / input / button === */
 form { margin: 0; }
@@ -136,6 +165,8 @@ input[type="text"], input[type="search"], select {
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   font-family: inherit;
+  background: var(--color-bg);
+  color: var(--color-text);
 }
 input[type="text"]:focus, select:focus { outline: 2px solid var(--color-primary); outline-offset: 1px; }
 

@@ -63,6 +63,15 @@ class TestStaticAssets(unittest.TestCase):
         # `csrf` 関数 + `meta[name="csrf-token"]` の参照が source に存在
         self.assertIn(b'meta[name="csrf-token"]', rv.data)
 
+    def test_app_css_dark_mode_present(self) -> None:
+        """Sprint 007 follow-up: prefers-color-scheme: dark で :root 上書き対応。"""
+        rv = self.client.get("/static/app.css")
+        self.assertIn(b"prefers-color-scheme: dark", rv.data)
+        # dark theme で必須の上書き変数 (色 token) が含まれる
+        for var_name in (b"--color-bg", b"--color-text", b"--color-surface",
+                         b"--badge-blocked-bg"):
+            self.assertIn(var_name, rv.data, f"missing token: {var_name!r}")
+
 
 if __name__ == "__main__":
     unittest.main()

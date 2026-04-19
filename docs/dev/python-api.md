@@ -39,6 +39,7 @@ if zoo.logs_clear():
 
 | 関数 | 戻り値 | 備考 |
 |---|---|---|
+| `zoo.init(target, *, force, policy)` | `Path` | `policy` は `PolicyProfile` Enum or str (default `"minimal"`); issue #66 |
 | `zoo.run(*, agent, workspace, dangerous)` | `int` (exit code) | TTY attach |
 | `zoo.task(*, prompt, agent, workspace)` | `int` | 環境変数による認証必須 |
 | `zoo.up(*, agent, workspace, dashboard_only, strict)` | `None` | |
@@ -53,6 +54,10 @@ if zoo.logs_clear():
 | `zoo.logs_clear()` | `bool` | 削除した場合 True |
 | `zoo.logs_analyze()` / `summarize()` / `alerts()` | `int` | ホスト側 `claude` CLI 必須 |
 | `zoo.test_unit()` | `int` | |
+
+### Enum
+
+- `zoo.PolicyProfile` — `init(policy=)` に渡せる `str, enum.Enum` サブクラス。メンバーは `minimal` / `claude` / `codex` / `gemini` / `all`。typer native choice 対応で CLI では `--policy` flag として公開される (issue #66)
 
 ## 設計メモ
 

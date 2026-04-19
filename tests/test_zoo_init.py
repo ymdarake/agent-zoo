@@ -15,6 +15,7 @@ def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     - `tmp_path/.zoo/` を workspace_root 検出用に作成
     - `tmp_path/_src/` を bundled source として用意し、`_asset_source()` を monkeypatch
+    - issue #66: bundle/policy.toml → bundle/policy/*.toml 5 profile
     """
     zoo = tmp_path / ".zoo"
     zoo.mkdir()
@@ -23,8 +24,14 @@ def repo_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     src = tmp_path / "_src"
     src.mkdir()
     (src / "docker-compose.yml").write_text("compose-source")
-    (src / "policy.toml").write_text("policy-source")
     (src / "docker-compose.strict.yml").write_text("strict-source")
+    policy_dir = src / "policy"
+    policy_dir.mkdir()
+    # profile 名を content に埋め込み copy テストで内容照合できるようにする
+    for name in ("minimal", "claude", "codex", "gemini", "all"):
+        (policy_dir / f"{name}.toml").write_text(
+            f'# fake {name} profile\n[domains.allow]\nlist = []\n'
+        )
     (src / "addons").mkdir()
     (src / "addons" / "policy.py").write_text("# addon")
     (src / "container").mkdir()
@@ -52,7 +59,9 @@ class TestInit:
         assert result == target.resolve()
         # 新 layout: 全 bundled は target/.zoo/ 配下
         assert (target / ".zoo" / "docker-compose.yml").read_text() == "compose-source"
-        assert (target / ".zoo" / "policy.toml").read_text() == "policy-source"
+        # issue #66: default profile = minimal（内容は選択された profile を引き継ぐ）
+        policy_body = (target / ".zoo" / "policy.toml").read_text()
+        assert "fake minimal profile" in policy_body
         assert (target / ".zoo" / "addons" / "policy.py").read_text() == "# addon"
         assert (target / ".zoo" / "container" / "Dockerfile").read_text() == "FROM scratch"
         # runtime dirs
@@ -113,7 +122,8 @@ class TestInit:
         (target / ".zoo").mkdir(parents=True)
         (target / ".zoo" / "policy.toml").write_text("old")
         api.init(target_dir=target, force=True)
-        assert (target / ".zoo" / "policy.toml").read_text() == "policy-source"
+        # force + default(minimal) → minimal profile 内容で上書き
+        assert "fake minimal profile" in (target / ".zoo" / "policy.toml").read_text()
 
     def test_force_overwrites_existing_directory(
         self, repo_root: Path, tmp_path: Path
@@ -140,3 +150,197 @@ class TestInit:
         target = tmp_path / "ws"
         api.init(target_dir=target)
         assert not (target / ".zoo" / "dashboard").exists()
+
+
+class TestInitPolicyProfile:
+    """issue #66: `zoo init --policy <profile>` で初期ポリシー選択."""
+
+    def test_default_policy_is_minimal(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        target = tmp_path / "ws"
+        api.init(target_dir=target)
+        assert "fake minimal profile" in (target / ".zoo" / "policy.toml").read_text()
+
+    @pytest.mark.parametrize(
+        "profile", ["minimal", "claude", "codex", "gemini", "all"]
+    )
+    def test_each_profile_copies_expected_source(
+        self, repo_root: Path, tmp_path: Path, profile: str
+    ) -> None:
+        target = tmp_path / "ws"
+        api.init(target_dir=target, policy=profile)
+        body = (target / ".zoo" / "policy.toml").read_text()
+        assert f"fake {profile} profile" in body
+
+    def test_accepts_enum_member(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        target = tmp_path / "ws"
+        api.init(target_dir=target, policy=api.PolicyProfile.claude)
+        assert "fake claude profile" in (target / ".zoo" / "policy.toml").read_text()
+
+    def test_rejects_invalid_policy_name(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        target = tmp_path / "ws"
+        with pytest.raises(ValueError, match="unknown"):
+            api.init(target_dir=target, policy="unknown")
+
+    def test_error_message_lists_valid_profiles(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        target = tmp_path / "ws"
+        with pytest.raises(ValueError) as exc_info:
+            api.init(target_dir=target, policy="foo")
+        msg = str(exc_info.value)
+        # 候補一覧が hint されること
+        for name in ("minimal", "claude", "codex", "gemini", "all"):
+            assert name in msg
+
+    def test_policy_is_keyword_only(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """positional 渡しは禁止（force と同じ哲学）."""
+        target = tmp_path / "ws"
+        with pytest.raises(TypeError):
+            api.init(target, False, "claude")  # type: ignore[misc]
+
+    def test_force_with_policy_overwrites(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        target = tmp_path / "ws"
+        (target / ".zoo").mkdir(parents=True)
+        (target / ".zoo" / "policy.toml").write_text("user-customized")
+        api.init(target_dir=target, force=True, policy="codex")
+        assert "fake codex profile" in (target / ".zoo" / "policy.toml").read_text()
+
+    def test_existing_policy_toml_preserved_without_force(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """既存 policy.toml は --policy 指定でも force=False なら維持."""
+        target = tmp_path / "ws"
+        (target / ".zoo").mkdir(parents=True)
+        (target / ".zoo" / "policy.toml").write_text("user-customized")
+        api.init(target_dir=target, policy="claude")
+        assert (target / ".zoo" / "policy.toml").read_text() == "user-customized"
+
+    def test_generated_output_has_profile_metadata_comment(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """debuggability: 生成後の policy.toml に active profile が分かるコメント付与."""
+        target = tmp_path / "ws"
+        api.init(target_dir=target, policy="claude")
+        body = (target / ".zoo" / "policy.toml").read_text()
+        # 先頭に profile 名を含むコメント行
+        assert body.startswith("# Generated by")
+        assert "--policy claude" in body.splitlines()[0]
+
+    def test_policy_profile_enum_exported_from_api(self) -> None:
+        assert hasattr(api, "PolicyProfile")
+        assert api.PolicyProfile.minimal.value == "minimal"
+
+    def test_policy_profile_reexported_from_zoo(self) -> None:
+        assert hasattr(zoo, "PolicyProfile")
+        assert zoo.PolicyProfile is api.PolicyProfile
+
+    def test_missing_policy_source_raises(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """production で profile file が欠落 (wheel 破損等) なら FileNotFoundError.
+
+        Claude self-review #2 指摘: silent skip は原因不明エラーの温床。
+        """
+        # fixture の source dir から policy/claude.toml を消す
+        (repo_root / "policy" / "claude.toml").unlink()
+        target = tmp_path / "ws"
+        with pytest.raises(FileNotFoundError, match="claude.toml"):
+            api.init(target_dir=target, policy="claude")
+
+    def test_invalid_policy_no_chained_exception(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """Claude self-review #1: user 向けエラーは enum 内部 ValueError を chain しない."""
+        target = tmp_path / "ws"
+        with pytest.raises(ValueError) as exc_info:
+            api.init(target_dir=target, policy="foo")
+        # __cause__ / __context__ を suppressed (from None 効果の回帰テスト)
+        assert exc_info.value.__cause__ is None
+        assert exc_info.value.__suppress_context__ is True
+
+
+class TestInitCliPolicyFlag:
+    """CLI 層 (`zoo init --policy ...`) 挙動."""
+
+    def setup_method(self) -> None:
+        from typer.testing import CliRunner
+        self.runner = CliRunner()
+
+    def test_help_lists_all_profiles(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        from zoo import cli
+        result = self.runner.invoke(cli.app, ["init", "--help"])
+        assert result.exit_code == 0
+        # typer が Enum native choice として展開する想定
+        stdout = result.stdout
+        for name in ("minimal", "claude", "codex", "gemini", "all"):
+            assert name in stdout, f"--help に profile {name!r} が含まれない"
+
+    def test_policy_flag_applies_to_init(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        from zoo import cli
+        target = tmp_path / "ws_cli"
+        result = self.runner.invoke(
+            cli.app, ["init", str(target), "--policy", "codex"]
+        )
+        assert result.exit_code == 0, result.stdout
+        assert "fake codex profile" in (target / ".zoo" / "policy.toml").read_text()
+
+    def test_policy_invalid_value_exits_nonzero(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        from zoo import cli
+        target = tmp_path / "ws_cli_invalid"
+        result = self.runner.invoke(
+            cli.app, ["init", str(target), "--policy", "unknown"]
+        )
+        # typer が Enum 値不一致を自動で reject（exit code 2 相当）
+        assert result.exit_code != 0
+
+    def test_default_policy_via_cli_is_minimal(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        from zoo import cli
+        target = tmp_path / "ws_default"
+        result = self.runner.invoke(cli.app, ["init", str(target)])
+        assert result.exit_code == 0, result.stdout
+        assert "fake minimal profile" in (target / ".zoo" / "policy.toml").read_text()
+
+    def test_preserved_existing_policy_emits_hint(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """Claude self-review #4: 既存 policy.toml が preserve された時、
+        CLI 表示と実態の乖離を防ぐ hint を出す."""
+        from zoo import cli
+        target = tmp_path / "ws_preserved"
+        (target / ".zoo").mkdir(parents=True)
+        (target / ".zoo" / "policy.toml").write_text("user-custom")
+        result = self.runner.invoke(cli.app, ["init", str(target), "--policy", "claude"])
+        assert result.exit_code == 0, result.stdout
+        # 既存維持 hint が出る
+        assert "既存" in result.stdout or "preserved" in result.stdout.lower() or "--force" in result.stdout
+        # 実ファイルは変わっていない
+        assert (target / ".zoo" / "policy.toml").read_text() == "user-custom"
+
+    def test_minimal_default_emits_hint_on_fresh_init(
+        self, repo_root: Path, tmp_path: Path
+    ) -> None:
+        """minimal profile 選択時 (既存ファイル無し) に Inbox 承認の hint を出す."""
+        from zoo import cli
+        target = tmp_path / "ws_fresh_minimal"
+        result = self.runner.invoke(cli.app, ["init", str(target)])
+        assert result.exit_code == 0, result.stdout
+        # Inbox hint が含まれる
+        assert "Inbox" in result.stdout or "minimal" in result.stdout.lower()

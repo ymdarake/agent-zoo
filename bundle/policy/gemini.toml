@@ -1,0 +1,73 @@
+# Agent Zoo policy profile: gemini (Google AI 系のみ allow)
+# issue #66: Gemini CLI 利用時の最小 allow list。
+# ホストモードではファイル保存で即反映（ホットリロード）
+# コンテナモードでは docker compose restart proxy が必要
+
+[general]
+log_db = "/data/harness.db"
+max_tool_input_store = 1000
+log_retention_days = 30
+
+[domains.allow]
+# Gemini CLI（B-3）に必要な Google AI 関連ドメイン
+list = [
+    "generativelanguage.googleapis.com",
+    "oauth2.googleapis.com",
+    "accounts.google.com",
+]
+
+[domains.deny]
+list = ["*.evil.com"]
+
+[domains.dismissed]
+"http-intake.logs.us5.datadoghq.com" = { reason = "Datadogテレメトリ。エージェント動作に不要", date = "2026-03-31" }
+
+[paths.allow]
+# gemini profile: 空。
+
+[paths.deny]
+
+[rate_limits]
+# gemini profile: 空（現行 rate_limits は anthropic/openai 固有）。
+
+[payload_rules]
+block_patterns = []
+
+secret_patterns = [
+    "AWS_SECRET_ACCESS_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "-----BEGIN.*PRIVATE KEY-----",
+]
+
+[tool_use_rules]
+block_tools = []
+
+block_args = [
+    "rm -rf /",
+    "chmod 777",
+    "printenv",
+    "/proc/",
+    "/etc/shadow",
+    "/etc/passwd",
+]
+
+[[tool_use_rules.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[alerts]
+suspicious_tools = []
+
+suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[[alerts.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env"]
+
+[[alerts.rules]]
+name = "Large file operation"
+tools = ["Write", "Edit"]
+min_size = 50000

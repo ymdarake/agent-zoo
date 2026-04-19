@@ -6,6 +6,22 @@
 
 ダッシュボードからの操作は`policy.runtime.toml`に書き込まれ、base設定のコメントは保持される。
 
+## 初期プロファイル (`zoo init --policy`)
+
+`zoo init` の時点で選択される初期ポリシー。default = `minimal` (secure by default、空 allow list)。
+
+| profile | 想定 |
+|---|---|
+| `minimal` (default) | 空 allow list。全通信が Inbox 経由で都度承認 |
+| `claude` | Anthropic / Claude 系のみ許可 (Claude Code 用) |
+| `codex` | OpenAI / ChatGPT 系のみ許可 (Codex CLI 用) |
+| `gemini` | Google AI 系のみ許可 (Gemini CLI 用) |
+| `all` | 全 provider 許可 (0.1 以前の default 相当) |
+
+profile 間で差分があるのは `domains.allow.list` / `paths.allow` / `rate_limits` の 3 セクションのみ。`payload_rules` / `tool_use_rules` / `alerts` / `domains.deny` / `general` は全 profile で完全一致。
+
+切替: `zoo init --policy <profile> --force` で `.zoo/policy.toml` を再生成。
+
 ---
 
 ## [general]

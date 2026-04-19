@@ -123,7 +123,7 @@ source repo の `bundle/` ディレクトリを配布時には `zoo/_assets/.zoo
 [tool.hatch.build.targets.wheel.force-include]
 "bundle/docker-compose.yml" = "zoo/_assets/.zoo/docker-compose.yml"
 "bundle/docker-compose.strict.yml" = "zoo/_assets/.zoo/docker-compose.strict.yml"
-"bundle/policy.toml" = "zoo/_assets/.zoo/policy.toml"
+"bundle/policy" = "zoo/_assets/.zoo/policy"  # issue #66: profile dir (旧 policy.toml)
 "bundle/container" = "zoo/_assets/.zoo/container"
 "bundle/addons" = "zoo/_assets/.zoo/addons"
 "bundle/dashboard" = "zoo/_assets/.zoo/dashboard"

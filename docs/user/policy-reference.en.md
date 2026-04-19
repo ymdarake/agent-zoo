@@ -6,6 +6,22 @@ All settings in `policy.toml`. In host mode, file save is reflected immediately.
 
 Operations from the dashboard are written to `policy.runtime.toml`; comments in the base config are preserved.
 
+## Init profiles (`zoo init --policy`)
+
+The initial policy is selected at `zoo init` time. Default = `minimal` (secure by default, empty allow list).
+
+| profile | intent |
+|---|---|
+| `minimal` (default) | Empty allow list. All traffic goes through Inbox for per-request approval |
+| `claude` | Anthropic / Claude domains only (for Claude Code) |
+| `codex` | OpenAI / ChatGPT domains only (for Codex CLI) |
+| `gemini` | Google AI domains only (for Gemini CLI) |
+| `all` | All providers (equivalent to pre-0.1 default) |
+
+Profiles differ only in `domains.allow.list` / `paths.allow` / `rate_limits`. The sections `payload_rules` / `tool_use_rules` / `alerts` / `domains.deny` / `general` are identical across profiles (verified by drift-detection tests).
+
+Switch with `zoo init --policy <profile> --force` to regenerate `.zoo/policy.toml`.
+
 ---
 
 ## [general]

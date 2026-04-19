@@ -177,10 +177,39 @@ def certs_remove_cmd(
 def init(
     target: str = typer.Argument(".", help="ワークスペースを展開するディレクトリ"),
     force: bool = typer.Option(False, "--force", "-f", help="既存ファイルを上書き"),
+    policy: api.PolicyProfile = typer.Option(
+        api.PolicyProfile.minimal,
+        "--policy",
+        help=(
+            "初期ポリシープロファイル。minimal=空 allow list (secure by default、"
+            "全通信を Inbox 経由で都度承認) / claude=Anthropic 系のみ / "
+            "codex=OpenAI 系のみ / gemini=Google AI のみ / all=全 provider (旧 default)"
+        ),
+    ),
 ) -> None:
     """パッケージ同梱のアセットから agent-zoo ワークスペースを展開。"""
-    resolved = api.init(target_dir=target, force=force)
+    # 既存 policy.toml が preserve される場合、CLI 側で hint を出すため init 前に検知
+    # (Claude self-review #4 指摘: 表示 "Policy: minimal" と実態の乖離回避)
+    from pathlib import Path as _Path
+    existing_policy = _Path(target).expanduser().resolve() / ".zoo" / "policy.toml"
+    preserved = existing_policy.exists() and not force
+
+    resolved = api.init(target_dir=target, force=force, policy=policy)
     typer.echo(f"Workspace ready: {resolved}")
+    typer.echo(f"Policy: {policy.value}")
+    if preserved:
+        typer.secho(
+            "Note: 既存の .zoo/policy.toml を保持しました (上書きするには --force)。",
+            fg=typer.colors.YELLOW,
+        )
+    elif policy is api.PolicyProfile.minimal:
+        typer.secho(
+            "Note: policy 'minimal' は allow list が空のため、最初の通信は "
+            "すべてブロックされ Inbox に pending として積まれます。\n"
+            "      dashboard (http://127.0.0.1:8080) で承認するか、"
+            "`zoo init --policy claude|codex|gemini|all --force` で切り替えてください。",
+            fg=typer.colors.YELLOW,
+        )
     typer.echo("")
     typer.echo("Next steps:")
     typer.echo(f"  cd {resolved}")

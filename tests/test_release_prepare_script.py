@@ -28,6 +28,25 @@ SCRIPT = pathlib.Path("scripts/release-prepare.sh").resolve()
 WORKFLOW = pathlib.Path(".github/workflows/release.yml")
 
 
+def _isolated_git_env() -> dict[str, str]:
+    """test subprocess 用 env。
+
+    GIT_CONFIG_GLOBAL / GIT_CONFIG_SYSTEM を /dev/null に向け、maintainer の
+    ~/.gitconfig (commit.gpgsign / tag.gpgsign 等) による test 挙動変化を
+    遮断する (test isolation)。例: tag.gpgsign=true が有効だと lightweight
+    tag 作成すら "no tag message" で fail する。
+    """
+    return {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "test",
+        "GIT_AUTHOR_EMAIL": "test@test",
+        "GIT_COMMITTER_NAME": "test",
+        "GIT_COMMITTER_EMAIL": "test@test",
+        "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_CONFIG_SYSTEM": "/dev/null",
+    }
+
+
 def _init_mini_repo(root: pathlib.Path, version: str = "0.1.0") -> None:
     """tmp_path に git repo + minimal pyproject.toml を用意する。"""
     (root / "pyproject.toml").write_text(
@@ -45,13 +64,7 @@ def _init_mini_repo(root: pathlib.Path, version: str = "0.1.0") -> None:
         ).strip()
         + "\n"
     )
-    env = {
-        **os.environ,
-        "GIT_AUTHOR_NAME": "test",
-        "GIT_AUTHOR_EMAIL": "test@test",
-        "GIT_COMMITTER_NAME": "test",
-        "GIT_COMMITTER_EMAIL": "test@test",
-    }
+    env = _isolated_git_env()
     for cmd in [
         ["git", "init", "-q", "-b", "main"],
         ["git", "add", "pyproject.toml"],
@@ -65,17 +78,10 @@ def _run_script(
     *args: str,
     stdin: str | None = None,
 ) -> subprocess.CompletedProcess:
-    env = {
-        **os.environ,
-        "GIT_AUTHOR_NAME": "test",
-        "GIT_AUTHOR_EMAIL": "test@test",
-        "GIT_COMMITTER_NAME": "test",
-        "GIT_COMMITTER_EMAIL": "test@test",
-    }
     return subprocess.run(
         [str(SCRIPT), *args],
         cwd=root,
-        env=env,
+        env=_isolated_git_env(),
         capture_output=True,
         text=True,
         input=stdin,
@@ -330,7 +336,14 @@ def test_rejects_shell_injection_via_version_arg(tmp_path):
 
 def test_rejects_existing_tag(tmp_path):
     _init_mini_repo(tmp_path, version="0.1.0")
-    subprocess.run(["git", "tag", "v0.1.0"], cwd=tmp_path, check=True)
+    # isolated env で tag 作成 (maintainer の global tag.gpgsign=true が
+    # "no tag message" を強制するのを回避)
+    subprocess.run(
+        ["git", "tag", "v0.1.0"],
+        cwd=tmp_path,
+        check=True,
+        env=_isolated_git_env(),
+    )
     r = _run_script(tmp_path, "0.1.0")
     assert r.returncode != 0
     assert "exist" in r.stderr.lower() or "already" in r.stderr.lower()
@@ -357,13 +370,7 @@ def test_does_not_replace_unrelated_version_when_project_urls_precedes(tmp_path)
         ).strip()
         + "\n"
     )
-    env = {
-        **os.environ,
-        "GIT_AUTHOR_NAME": "test",
-        "GIT_AUTHOR_EMAIL": "test@test",
-        "GIT_COMMITTER_NAME": "test",
-        "GIT_COMMITTER_EMAIL": "test@test",
-    }
+    env = _isolated_git_env()
     for cmd in [
         ["git", "init", "-q", "-b", "main"],
         ["git", "add", "pyproject.toml"],
@@ -404,13 +411,7 @@ def test_does_not_replace_unrelated_version_keys(tmp_path):
         ["git", "commit", "-am", "add tool.foo"],
         cwd=tmp_path,
         check=True,
-        env={
-            **os.environ,
-            "GIT_AUTHOR_NAME": "test",
-            "GIT_AUTHOR_EMAIL": "test@test",
-            "GIT_COMMITTER_NAME": "test",
-            "GIT_COMMITTER_EMAIL": "test@test",
-        },
+        env=_isolated_git_env(),
     )
     r = _run_script(tmp_path, "0.2.0")
     assert r.returncode == 0, f"stderr={r.stderr}"

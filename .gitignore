@@ -5,6 +5,13 @@
 # Runtime policy (dashboard writes here, base policy.toml is preserved)
 *.runtime.toml
 
+# issue #66 で bundle/policy.toml は bundle/policy/*.toml 5 profile に分離された。
+# E2E P2 fixture (tests/e2e/test_proxy_block.py::proxy_up) が一時的に
+# bundle/policy/all.toml を bundle/policy.toml として copy する (source bundle
+# で直接 docker compose する時の互換層)。teardown で削除されるが、途中で Ctrl-C
+# された場合のゴミ commit を safety net で防ぐ。
+bundle/policy.toml
+
 # Runtime artifacts under bundle/ (ADR 0002): DB / certs は git 管理外
 bundle/data/*.db
 bundle/data/*.db-wal

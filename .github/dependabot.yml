@@ -8,6 +8,9 @@
 # - pip: pyproject.toml + bundle/dashboard/requirements.txt
 #
 # groups で 1 ecosystem 内の同週更新を 1 PR にまとめてレビュー負荷削減。
+# 注: groups は default で applies-to: version-updates のみ。security
+# updates は別 PR として個別即時対応する設計 (本プロジェクトはセキュリティ
+# 製品なので security update のノイズ削減より個別レビュー優先)。
 # commit-message prefix は :arrow_up: で本リポジトリの gitmoji 規約に整合。
 version: 2
 updates:
@@ -28,6 +31,9 @@ updates:
 
   # Dockerfile in bundle/container/ (Dockerfile.base / Dockerfile.codex /
   # Dockerfile.gemini / Dockerfile.unified の FROM 行)
+  # ignore で agent-zoo-base:latest を除外: zoo build がローカル生成する
+  # internal image で registry に存在しないため Dependabot が更新できない
+  # (self-review H4)。
   - package-ecosystem: "docker"
     directory: "/bundle/container"
     schedule:
@@ -37,6 +43,8 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+    ignore:
+      - dependency-name: "agent-zoo-base"
     groups:
       docker-container:
         patterns:

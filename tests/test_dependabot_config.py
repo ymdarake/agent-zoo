@@ -91,3 +91,71 @@ def test_weekly_schedule_for_all():
         assert interval == "weekly", (
             f"schedule.interval が weekly でない: {u['directory']} → {interval!r}"
         )
+
+
+# ---------- self-review H1: SHA pin 形式の回帰防止テスト ----------
+# 後続 PR で誰かが `FROM node:20-slim@sha256:...` を `FROM node:20-slim` に
+# 戻したり、`uses: actions/checkout@<40-hex>` を `@v5` に戻すケースを CI で
+# fail-fast 検出する。本テストが pass するためには SHA pin が壊されていない
+# ことが必要。
+
+import re
+
+_SHA_DIGEST_RE = re.compile(r"@sha256:[0-9a-f]{64}")
+_COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+# 内部参照 image (FROM agent-zoo-base:latest 等) は registry に無いので除外
+_INTERNAL_IMAGE_PATTERNS = ("agent-zoo-base:",)
+
+
+def _is_external_from(line: str) -> bool:
+    line = line.strip()
+    if not line.startswith("FROM "):
+        return False
+    return not any(p in line for p in _INTERNAL_IMAGE_PATTERNS)
+
+
+def test_external_dockerfile_from_uses_sha_pin():
+    """external image を引く全 Dockerfile の FROM 行が @sha256: で pin されていること。"""
+    targets = [
+        pathlib.Path("bundle/container/Dockerfile.base"),
+        pathlib.Path("bundle/dashboard/Dockerfile"),
+    ]
+    for path in targets:
+        for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+            if _is_external_from(line):
+                assert _SHA_DIGEST_RE.search(line), (
+                    f"{path}:{lineno} の FROM 行が SHA pin されていない: {line!r}"
+                )
+
+
+def test_docker_compose_image_uses_sha_pin():
+    """docker-compose.yml の image: 行 (Dependabot 対象) が SHA pin されていること。"""
+    path = pathlib.Path("bundle/docker-compose.yml")
+    for lineno, line in enumerate(path.read_text().splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.startswith("image:") and "agent-zoo-base" not in stripped:
+            assert _SHA_DIGEST_RE.search(stripped), (
+                f"{path}:{lineno} の image: 行が SHA pin されていない: {stripped!r}"
+            )
+
+
+def test_workflow_uses_pinned_to_commit_sha():
+    """ci.yml / release.yml の uses: 行が必ず 40 文字 hex commit SHA で pin。
+
+    `@v5` のような mutable tag や branch ref を reject する。
+    """
+    workflow_dir = pathlib.Path(".github/workflows")
+    for wf in workflow_dir.glob("*.yml"):
+        for lineno, line in enumerate(wf.read_text().splitlines(), start=1):
+            stripped = line.strip()
+            # `- uses: foo/bar@<ref>` または `uses: foo/bar@<ref>` を抽出
+            m = re.search(r"\buses:\s*([^\s#]+)", stripped)
+            if not m:
+                continue
+            action_ref = m.group(1)
+            if "@" not in action_ref:
+                continue
+            ref = action_ref.split("@", 1)[1]
+            assert _COMMIT_SHA_RE.match(ref), (
+                f"{wf}:{lineno} uses が commit SHA pin でない: {action_ref!r} (ref={ref!r})"
+            )

@@ -143,9 +143,25 @@ curl -sH "Authorization: Bearer $TOKEN" \
 
 PyPI publish action は `release/v1` という **branch ref** で配布されています。SHA pin する際は同じ commit を指す **tag (`v1.14.0` 等)** の SHA を使うこと。コメントを `# v1.14.0` にすることで Dependabot が tag based で新版検出できます。`# release/v1` のままだと Dependabot は branch HEAD を追跡できず更新 PR が来ない（branch ref には SemVer が無い）。
 
+### tag rewrite (force tag) 検出時の判定
+
+Dependabot PR で **同じ tag (`v1.14.0`) なのに SHA が変わっている** ケースは、上流 maintainer が tag を別 commit に force-update した可能性があります。これは git tag の信頼性に関わる事象なので、安易に accept せず:
+
+1. 上流リポジトリ (`pypa/gh-action-pypi-publish`) の releases / CHANGELOG / commits ページで該当 tag の歴史を確認
+2. tag rewrite の理由 (typo 修正 / 緊急 hotfix 再リリース等) が release notes に記載されているか確認
+3. 不審な場合は **古い SHA を維持** し、上流 issue / discussion で理由を確認するまで Dependabot PR は merge しない
+
+SHA pin 時点での合意「この commit を信頼する」が壊れるイベントなので、blind merge は避けます。
+
 ### `pip-audit` の運用
 
 CI では `uv tool run pip-audit --vulnerability-service osv` で project 全体、`uv tool run pip-audit -r bundle/dashboard/requirements.txt --vulnerability-service osv` で dashboard 別 audit を走らせています。
+
+**`--ignore-vuln` のガードレール**: 安易な ignore は hardening の意味を失います。**ignore を追加するとき**は:
+
+- security 担当 reviewer の approval を必須にする (PR review コメントで明示)
+- `<GHSA-id> | 理由 | 受容期限 (例: 2026-07-01)` を本ファイルに記録
+- 受容期限切れは BACKLOG に追跡項目として上げ、再評価する
 
 **false positive 対応**: 既知だが受容するケースは `--ignore-vuln <GHSA-id>` で除外。例:
 ```yaml

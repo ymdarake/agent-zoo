@@ -61,19 +61,33 @@ jobs:
       - name: Run unit tests
         run: uv run python -m pytest tests/ -v
 
-      # 包括レビュー: 既知 CVE のサプライチェーン検査 (Sprint 006 PR E)。
-      # pip-audit は uv tool で別 venv に install して tool.uv.exclude-newer の
-      # 影響を回避し最新版を使う。--vulnerability-service osv で OSV.dev も併用
-      # して PyPI advisory との両建てカバレッジ。
-      - name: Audit Python dependencies (project)
+  # Sprint 006 PR E (self-review H3): pip-audit を unit matrix から切り出して
+  # Python 3 versions x 2 audit = 6 重実行を排除。lock file は Python version
+  # に依存せずに audit できる。
+  # --vulnerability-service osv で OSV.dev (GitHub Advisory Database 含む) を
+  # 参照、PyPI 公式 advisory を包含して広いカバレッジ。
+  # uv tool run で別 venv install し tool.uv.exclude-newer の影響を回避。
+  pip-audit:
+    name: Audit Python dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78  # v7
+
+      - name: Set up Python 3.13
+        run: uv python install 3.13
+
+      - name: Audit project dependencies
         run: uv tool run pip-audit --vulnerability-service osv
 
-      - name: Audit Python dependencies (dashboard requirements)
+      - name: Audit dashboard requirements.txt
         run: uv tool run pip-audit -r bundle/dashboard/requirements.txt --vulnerability-service osv
 
-  # Sprint 006 PR E: docker-compose.yml の image: 行 SHA pin が syntactically
-  # 正しく resolve できることを PR 段階で fail-fast 検証する。Docker daemon は
-  # 不要 (config の parse + digest 構文チェックのみ)。
+  # Sprint 006 PR E: docker-compose.yml の image: 行 SHA pin が registry で
+  # 解決できることを PR 段階で fail-fast 検証する。Docker daemon は不要だが
+  # registry への network 通信が発生する (digest 解決のため)。
   compose-config:
     name: Verify docker-compose digest pins
     runs-on: ubuntu-latest

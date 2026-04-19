@@ -130,6 +130,17 @@ def _hold_exclusive_lock(policy_path: str, hold_time: float, ready: object) -> N
         time.sleep(hold_time)
 
 
+def _hold_shared_lock(policy_path: str, hold_time: float, ready: object) -> None:
+    """別プロセスで shared lock を hold して通知する。
+
+    Gemini self-review #5: nested function は spawn context で pickle 不可
+    なため、module-level に置く。Python 3.14 で fork default 廃止後も動作する。
+    """
+    with policy_lock_shared(policy_path):
+        ready.set()
+        time.sleep(hold_time)
+
+
 def test_exclusive_blocks_shared_in_subprocess(tmp_path, monkeypatch):
     """exclusive lock 中は別プロセスからの shared lock が待つこと。
 
@@ -179,12 +190,7 @@ def test_concurrent_shared_locks_dont_block(tmp_path, monkeypatch):
     ctx = multiprocessing.get_context("fork")
     ready = ctx.Event()
 
-    def _hold_shared(policy_path: str, hold: float, evt: object) -> None:
-        with policy_lock_shared(policy_path):
-            evt.set()
-            time.sleep(hold)
-
-    proc = ctx.Process(target=_hold_shared, args=(str(policy_path), 0.5, ready))
+    proc = ctx.Process(target=_hold_shared_lock, args=(str(policy_path), 0.5, ready))
     proc.start()
     try:
         assert ready.wait(timeout=3.0)

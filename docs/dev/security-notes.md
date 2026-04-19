@@ -224,3 +224,40 @@ Docker Desktop on macOS は VirtioFS / gRPC FUSE 経由で host ↔ Linux VM 間
 3. tempdir → `<tmp>/agent_zoo_<basename>.lock` (last resort)
 
 各候補で `O_NOFOLLOW` + `0o600` を強制し、symlink preplant 攻撃を抑止。
+
+### basename 衝突の既知制約 (Gemini self-review #1, deferred)
+
+`lock_path_for` は basename で lock file 名を決定するため、異なるディレクトリに
+同名 policy file (`/path/a/policy.runtime.toml` と `/path/b/policy.runtime.toml`)
+があると同一 lock (`/locks/policy.runtime.toml.lock`) を共有し、不要な mutual
+blocking が発生する。本ハーネスの設計上 proxy / dashboard が共有するのは唯一の
+`policy.runtime.toml` 1 件のみで、複数 policy file を扱う運用は想定外のため
+現実の影響無し。将来 multi-policy 対応 (例: per-agent policy) を入れる場合は
+`hashlib.sha256(abspath).hexdigest()[:16]` 等で path hash 化する。
+
+### reader best-effort (warn + passthrough) の rationale (Gemini self-review #3)
+
+`policy_lock_shared` を fail-closed (raise) ではなく fail-open (warn + passthrough)
+にしている設計判断:
+
+- ADR 0005 fail-closed 原則は「mitmproxy addon 内で flow を pass しない」=
+  「セキュリティ enforcement を skip しない」が本質。**reader が lock 取得
+  に失敗して `_load` が exception を投げると `PolicyEngine` 自体が起動不能で
+  enforcer 全体が止まる**。これは「addon 例外で流量がそのまま流れる」のと
+  同等以上に危険 (起動失敗で proxy が落ちたら network isolation も無効化)
+- writer (`policy_lock_exclusive`) は raise = ADR 0005 fail-closed と整合。
+  「ユーザー操作 (whitelist accept) が無音失敗」を防ぎ UI で 503 retry できる
+- reader 失敗時は `logger.warning` で観測可能化、運用で監視可能 (M-8 mitigation
+  は best-effort、完全な fail-closed は別 PR で実装する場合 `policy_lock_strict`
+  env で opt-in 可能化を検討)
+
+### symlink hit 時の reader / writer 非対称 (Gemini self-review #4)
+
+`O_NOFOLLOW` で symlink 検出した際の挙動:
+- `policy_lock_shared`: warn + passthrough (上記 rationale と同じ best-effort)
+- `policy_lock_exclusive`: OSError raise (fail-closed)
+
+これは attacker が `/locks/*.lock` を symlink 化した場合、reader は読み取りを
+継続するが、**writer は raise → dashboard 側で観測可能** という設計。symlink
+preplant 攻撃の検出経路は確保している。完全な防御 (lock dir parent も含めた
+ownership/perm 検証) は ROADMAP 行き。

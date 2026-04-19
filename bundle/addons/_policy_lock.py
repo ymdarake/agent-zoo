@@ -32,6 +32,10 @@ logger = logging.getLogger(__name__)
 # host-mode (zoo proxy claude 等) では /locks が無いので fallback path に流れる。
 _DEFAULT_LOCK_DIR = "/locks"
 
+# self-review #3 (Low): fallback が選ばれた lock path を 1 回だけ warn log する
+# ための memo set。container-mode で `/locks` mount 忘れ等の構成不備を観測可能化。
+_warned_fallbacks: set[str] = set()
+
 
 def _resolve_lock_dir() -> str:
     """`POLICY_LOCK_DIR` env を返す。未設定なら `_DEFAULT_LOCK_DIR`。"""
@@ -49,16 +53,30 @@ def lock_path_for(policy_path: str) -> str:
     1. POLICY_LOCK_DIR (default /locks) が writable → `<dir>/<basename>.lock`
     2. policy_path と同じ dir が writable → `<policy_path>.lock` (host-mode 互換)
     3. tempdir → `<tmp>/agent_zoo_<basename>.lock`
+
+    self-review #3 (Low): 候補 1 (env-resolved dir) が選ばれなかった場合は
+    1 回だけ warn log を出す (構成不備の observability)。
     """
     base = os.path.basename(policy_path)
+    primary = os.path.join(_resolve_lock_dir(), f"{base}.lock")
     candidates = [
-        os.path.join(_resolve_lock_dir(), f"{base}.lock"),
+        primary,
         f"{os.path.abspath(policy_path)}.lock",
         os.path.join(tempfile.gettempdir(), f"agent_zoo_{base}.lock"),
     ]
     for path in candidates:
         parent = os.path.dirname(path) or "."
         if _is_dir_writable(parent):
+            if path != primary and policy_path not in _warned_fallbacks:
+                _warned_fallbacks.add(policy_path)
+                logger.warning(
+                    "policy_lock: primary lock dir %r not writable for %r, "
+                    "fell back to %r. cross-container coordination may be lost. "
+                    "Check POLICY_LOCK_DIR env / docker-compose.yml `./locks:/locks` mount.",
+                    os.path.dirname(primary),
+                    policy_path,
+                    path,
+                )
             return path
     # fallback の last resort (tempdir は通常 writable)
     return candidates[-1]

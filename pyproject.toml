@@ -84,6 +84,7 @@ include = [
     "bundle",
     "tests",
     "README.md",
+    "README.ja.md",
     "CHANGELOG.md",
     "LICENSE",
     "docs",

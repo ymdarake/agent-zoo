@@ -4,52 +4,55 @@
 
 # Agent Zoo
 
-> 日本語 | [English](README.en.md)
+> [日本語](README.ja.md) | English
 
 [![CI](https://github.com/ymdarake/agent-zoo/actions/workflows/ci.yml/badge.svg)](https://github.com/ymdarake/agent-zoo/actions/workflows/ci.yml)
 
-AI コーディングエージェント (Claude Code / Codex CLI / Gemini CLI) を
-**Docker コンテナで隔離**し、外部通信を mitmproxy 経由のみに制限する
-セキュリティハーネス。ペイロード検査 + TOML ポリシー制御で
-情報持ち出し / 危険コマンド実行を、エージェントの信頼性に依存せず
-物理的に制限する。
+A security harness that **isolates AI coding agents** (Claude Code / Codex CLI /
+Gemini CLI) **inside Docker containers** and forces all outbound traffic
+through mitmproxy. Payload inspection plus TOML policy control physically
+prevent data exfiltration and dangerous command execution, without relying on
+the agent's own trustworthiness.
 
-## クイックスタート
+## Quickstart
 
 ```bash
-uv tool install agent-zoo            # PyPI からインストール
+uv tool install agent-zoo            # install from PyPI
 mkdir my-zoo && cd my-zoo
-zoo init                             # ./.zoo/ にハーネス一式を展開
-zoo build                            # claude イメージをビルド (5〜10 分)
-zoo run                              # 対話モードで起動 (初回 /login)
+zoo init                             # lay out harness assets under ./.zoo/
+zoo build                            # build the claude image (5-10 min)
+zoo run                              # interactive mode (first run prompts /login)
 ```
 
-`zoo run` 中にエージェントが外部 URL に通信すると、`policy.toml` の
-許可リストに無いドメインは 403 で遮断される。ダッシュボード
-(`zoo up --dashboard-only`、http://localhost:8080) でリアルタイムに監視できる。
+When the agent makes an outbound request during `zoo run`, any domain absent
+from `policy.toml`'s allow-list is rejected with 403. Live audit is available
+through the dashboard (`zoo up --dashboard-only`, http://localhost:8080).
 
-## 特徴
+## Features
 
-- **Docker 隔離**: エージェントコンテナを `internal: true` のネットワーク上に置き、
-  ホスト OS / 他コンテナから分離。外部通信は mitmproxy サイドカー 1 本に強制
-- **ドメイン許可リスト**: 通信先を `policy.toml` で明示制限、動的リロード可
-- **ペイロード検査**: リクエスト / レスポンスのボディを検査
-  (Base64 復号 + 秘密情報パターン + URL 内シークレット)
-- **tool_use 検知**: SSE ストリームを解析、危険な tool 実行をリクエストフックで遮断
-- **ダッシュボード監査**: リクエスト / tool_use / 遮断ログをリアルタイム表示、
-  ホワイトリスト育成 + Inbox (エージェントから人への許可申請) 対応
-- **エージェント非依存**: Claude Code / Codex CLI / Gemini CLI に共通で適用、
-  unified イメージでエージェント横断呼び出しも可
+- **Docker isolation**: agent containers run on an `internal: true` network,
+  cut off from the host OS and other containers; the only egress is the
+  mitmproxy sidecar
+- **Domain allow-list**: outbound destinations are explicitly enumerated in
+  `policy.toml`, with hot reload support
+- **Payload inspection**: request and response bodies are inspected (Base64
+  decoding, secret patterns, URL-embedded secrets)
+- **tool_use detection**: SSE streams are parsed and dangerous tool invocations
+  are blocked at the request hook
+- **Dashboard auditing**: requests / tool_uses / blocks shown live, with
+  whitelist nurturing and Inbox (agent-to-human approval requests)
+- **Agent-agnostic**: same harness covers Claude Code / Codex CLI / Gemini CLI;
+  the unified image enables cross-agent invocation
 
-## ドキュメント
+## Documentation
 
-| ドキュメント | 内容 |
+| Doc | Contents |
 |---|---|
-| [インストールとセットアップ](docs/user/install-from-package.md) | `uv tool install` → `zoo init` → `zoo run` の詳細手順、全コマンド一覧、unified プロファイル |
-| [Inbox の使い方](docs/user/inbox.md) | エージェントからの許可リクエストをダッシュボードで承認する流れ |
-| [セキュリティモデル](docs/user/security.md) | 多層防御、既知の制約、運用原則 |
-| [ポリシーリファレンス](docs/user/policy-reference.md) | `policy.toml` の全設定項目 |
+| [Install & Setup](docs/user/install-from-package.md) | Detailed `uv tool install` → `zoo init` → `zoo run` flow, full command reference, unified profile |
+| [Inbox guide (JP)](docs/user/inbox.md) | Approving agent-issued allow-list requests through the dashboard |
+| [Security model](docs/user/security.md) | Defense in depth, known limitations, operating principles |
+| [Policy reference](docs/user/policy-reference.md) | Every setting in `policy.toml` |
 
-## ライセンス
+## License
 
 MIT

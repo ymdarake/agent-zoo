@@ -1,13 +1,24 @@
 """Policy engine for agent-harness. Pure logic, no mitmproxy dependency."""
 
 import logging
+import os
 import re
+import sys
 import time
 import tomllib
 from collections import deque
 from dataclasses import dataclass
 from fnmatch import fnmatch
 from pathlib import Path
+
+# Sprint 006 PR F: _policy_lock を sibling module としても package import としても
+# 動かすため、両 import path を試す (mitmproxy は -s で flat load、pytest は
+# `from addons.policy` で package import)。
+try:
+    from _policy_lock import policy_lock_shared
+except ImportError:
+    sys.path.insert(0, os.path.dirname(__file__))
+    from _policy_lock import policy_lock_shared
 
 logger = logging.getLogger(__name__)
 
@@ -55,9 +66,19 @@ class PolicyEngine:
         runtime = {}
         if runtime_path.exists():
             try:
-                with open(runtime_path, "rb") as f:
-                    runtime = tomllib.load(f)
-                self._runtime_mtime = runtime_path.stat().st_mtime
+                # Sprint 006 PR F (M-8): cross-container shared lock を取り
+                # writer (dashboard) との TOCTOU を回避。lock 取得失敗時は
+                # warn + passthrough (reader best-effort、ADR 0005 と両立)。
+                #
+                # Gemini self-review #2: mtime stat() を lock 内で実行する。
+                # lock 解放後に dashboard が runtime を更新すると「内容は旧版だが
+                # mtime は新版」の不整合が生じ、次回 maybe_reload() で reload が
+                # skip されるリスクがあるため、必ず lock 内で内容と mtime を pair
+                # で取得する。
+                with policy_lock_shared(str(runtime_path)):
+                    with open(runtime_path, "rb") as f:
+                        runtime = tomllib.load(f)
+                    self._runtime_mtime = runtime_path.stat().st_mtime
             except Exception as e:
                 logger.warning(f"Failed to load runtime policy: {e}")
         self._runtime_path = runtime_path

@@ -162,8 +162,11 @@ jobs:
       - name: Install dependencies
         run: uv sync --extra dev --extra e2e
 
-      - name: Prepare runtime policy (bind-mount target)
-        run: touch bundle/policy.runtime.toml
+      - name: Prepare bind-mount targets (runtime policy + locks dir)
+        run: |
+          touch bundle/policy.runtime.toml
+          # Sprint 006 PR F: locks dir 不在だと Docker が file 化するので事前作成
+          mkdir -p bundle/locks
 
       - name: Build base image
         run: docker build -t agent-zoo-base:latest -f bundle/container/Dockerfile.base bundle/

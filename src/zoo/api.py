@@ -123,7 +123,9 @@ def init(target_dir: str | Path = ".", *, force: bool = False) -> Path:
         shutil.copy2(ws_gi_src, ws_gi_dst)
 
     # Runtime dirs/files（.zoo/ 配下）
-    for d in ("data", "certs", "inbox"):
+    # Sprint 006 PR F: locks/ は cross-container policy lock 用 (M-8)。proxy /
+    # dashboard 両方から bind mount される。
+    for d in ("data", "certs", "inbox", "locks"):
         (zoo_target / d).mkdir(exist_ok=True)
     (zoo_target / "policy.runtime.toml").touch(exist_ok=True)
 

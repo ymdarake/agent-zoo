@@ -51,6 +51,9 @@ def proxy_up():
     env = {**os.environ, "HOST_UID": str(os.getuid())}
     # CI / 初回起動で bind-mount 対象ファイルが無いと Docker が dir 化してしまうため事前 touch
     (BUNDLE / "policy.runtime.toml").touch(exist_ok=True)
+    # Sprint 006 PR F: locks dir を bind mount 用に確保 (mount source 不在で
+    # Docker が file を作る誤検知を防ぐ)
+    (BUNDLE / "locks").mkdir(exist_ok=True)
     try:
         subprocess.run(
             ["docker", "compose", "up", "-d", "proxy"],

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **policy.toml の cross-container shared/exclusive lock** (`bundle/addons/_policy_lock.py` 新設) — proxy / dashboard 両方から writable な `/locks` bind mount 経由で `fcntl.flock` を取得し、`PolicyEngine._load` (reader = LOCK_SH) と `policy_edit` (writer = LOCK_EX) の TOCTOU を解決。reader = warn + passthrough、writer = raise の API 分離で ADR 0005 fail-closed と両立。`os.open(O_NOFOLLOW, 0o600)` で symlink 攻撃を抑止。`zoo init` で `.zoo/locks/` を自動生成 (Sprint 006 PR F、包括レビュー M-8)
 - **Docker image SHA pin (4 image)** — `bundle/container/Dockerfile.base` (node:20-slim) / `bundle/dashboard/Dockerfile` (python:3.12-slim) / `bundle/docker-compose.yml` の proxy (mitmproxy/mitmproxy:10) と dns (coredns/coredns:1.11.4) を multi-arch manifest list digest で固定。上流アカウント奪取 / mutable tag 上書き攻撃を防ぐ。Dependabot が週次更新 PR (Sprint 006 PR E、包括レビュー M-3)
 - **GitHub Actions SHA pin (19 uses)** — `actions/checkout` / `astral-sh/setup-uv` / `actions/cache` / `actions/upload-artifact` / `actions/download-artifact` / `pypa/gh-action-pypi-publish` を全 commit SHA で固定。Git tag rewrite による任意 step 実行を防ぐ。`pypa/gh-action-pypi-publish` は branch ref から tag SHA に切替 (Dependabot 自動更新を可能化)。コメントに `# <tag>` 併記 (Sprint 006 PR E、包括レビュー M-4)
 - **Dependabot 設定 (`.github/dependabot.yml`)** — github-actions / docker x3 / pip x2 を週次更新、`groups` で 1 ecosystem あたり 1 PR に集約してレビュー負荷削減。`docs/dev/security-notes.md` に PR 受け入れ前の manifest list 検証ガイド (Sprint 006 PR E)

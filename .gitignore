@@ -14,6 +14,10 @@ bundle/certs/*
 !bundle/certs/extra
 bundle/certs/extra/*
 !bundle/certs/extra/.gitkeep
+# Sprint 006 PR F: cross-container policy lock 用 dir。lock file 本体は ignore、
+# .gitkeep だけ track して空 dir を保持
+bundle/locks/*
+!bundle/locks/.gitkeep
 
 # safety net: 過去 layout で root に作られた data/ や certs/ も無視
 data/*.db

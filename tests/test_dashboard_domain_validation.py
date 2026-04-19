@@ -81,15 +81,17 @@ class TestValidateDomainRejects(unittest.TestCase):
 
 
 class TestValidateDomainExistingPolicy(unittest.TestCase):
-    """既存 `bundle/policy.toml` の全 domain entries が新 regex を通過することを保証。
+    """既存 `bundle/policy/all.toml` の全 domain entries が新 regex を通過することを保証。
 
     strict 化で既存設定が壊れないことの回帰テスト。
+    issue #66: bundle/policy.toml は bundle/policy/*.toml に分離。
+    all profile が旧 bundle/policy.toml と等価。
     """
 
     @classmethod
     def setUpClass(cls):
         repo_root = Path(__file__).parent.parent
-        with open(repo_root / "bundle" / "policy.toml", "rb") as f:
+        with open(repo_root / "bundle" / "policy" / "all.toml", "rb") as f:
             cls.policy = tomllib.load(f)
 
     def test_domains_allow_list_all_valid(self):

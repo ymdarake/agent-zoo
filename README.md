@@ -17,16 +17,21 @@ the agent's own trustworthiness.
 ## Quickstart
 
 ```bash
-uv tool install agent-zoo            # install from PyPI
+uv tool install agent-zoo                      # install from PyPI
 mkdir my-zoo && cd my-zoo
-zoo init                             # lay out harness assets under ./.zoo/
-zoo build                            # build the claude image (5-10 min)
-zoo run                              # interactive mode (first run prompts /login)
+zoo init                                       # secure by default: empty allow list (Inbox approval required)
+# or: zoo init --policy claude                 # allow Anthropic/Claude only
+# or: zoo init --policy {codex,gemini,all}     # see `zoo init --help`
+zoo build                                      # build the claude image (5-10 min)
+zoo run                                        # interactive mode (first run prompts /login)
 ```
 
-When the agent makes an outbound request during `zoo run`, any domain absent
-from `policy.toml`'s allow-list is rejected with 403. Live audit is available
-through the dashboard (`zoo up --dashboard-only`, http://localhost:8080).
+`zoo init` now defaults to `--policy minimal` (empty `domains.allow.list`) so
+that the first outbound request is rejected and surfaced to the Inbox for
+per-request approval. Pick another profile (`claude` / `codex` / `gemini` /
+`all`) to preseed the allow-list, or edit `.zoo/policy.toml` directly. Live
+audit is available through the dashboard (`zoo up --dashboard-only`,
+http://localhost:8080).
 
 ## Features
 

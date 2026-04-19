@@ -1,0 +1,87 @@
+# Agent Zoo policy profile: minimal (secure by default)
+# issue #66: 新規通信は全て Inbox 経由で都度承認。allow list / paths.allow /
+# rate_limits は空。必要な provider domain は dashboard Inbox で accept するか
+# `zoo init --policy {claude|codex|gemini|all}` で再初期化。
+#
+# ホストモードではファイル保存で即反映（ホットリロード）
+# コンテナモードでは docker compose restart proxy が必要
+
+[general]
+log_db = "/data/harness.db"
+max_tool_input_store = 1000
+log_retention_days = 30
+
+[domains.allow]
+# minimal profile: 空。全外向き通信が policy_enforcer で BLOCKED → Inbox に submit。
+list = []
+
+[domains.deny]
+# allow より優先して拒否するドメイン。デフォルトは全拒否なので通常は空でよい。
+list = ["*.evil.com"]
+
+[domains.dismissed]
+# ダッシュボードで「無視」したドメイン。ホワイトリスト育成の候補から除外される。
+"http-intake.logs.us5.datadoghq.com" = { reason = "Datadogテレメトリ。エージェント動作に不要", date = "2026-03-31" }
+
+[paths.allow]
+# minimal profile: 空。必要になれば Inbox 経由で追加。
+
+[paths.deny]
+# ドメインが domains.allow にあっても特定パスはブロック（例示、通常空）。
+
+[rate_limits]
+# minimal profile: 空。allow されない domain に rate_limit を置く意味はない。
+
+[payload_rules]
+# エージェント → LLM API へのリクエスト本文を検査する
+# 会話履歴にエージェントが読んだファイル内容やコマンド出力が含まれるため、
+# ここで機密情報が外部LLMに送信されるのを防止する
+
+block_patterns = []
+
+secret_patterns = [
+    "AWS_SECRET_ACCESS_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "-----BEGIN.*PRIVATE KEY-----",
+]
+
+[tool_use_rules]
+# LLM API → エージェントへのレスポンス内の tool_use を検査する
+# 危険な tool 実行を SSE ストリーム切断で阻止する（方式B: 事後キル）
+
+block_tools = []
+
+# 注: block_args はワード境界マッチで完全な危険パターン検知は困難。
+#     最終防御は domains.allow の厳格化によるネットワーク隔離であり、
+#     block_args は補助的な早期検知として使う。詳細: docs/user/policy-reference.md
+block_args = [
+    "rm -rf /",
+    "chmod 777",
+    "printenv",
+    "/proc/",
+    "/etc/shadow",
+    "/etc/passwd",
+]
+
+[[tool_use_rules.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[alerts]
+# tool_use 検出時にアラートを生成する条件（ログのみ、ブロックしない）
+
+suspicious_tools = []
+
+suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[[alerts.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env"]
+
+[[alerts.rules]]
+name = "Large file operation"
+tools = ["Write", "Edit"]
+min_size = 50000

@@ -83,7 +83,9 @@ def workspace(tmp_path: Path) -> Path:
     """ADR 0002 layout の minimal workspace を tmp に生成。"""
     zoo = tmp_path / ".zoo"
     zoo.mkdir()
-    shutil.copy(BUNDLE / "policy.toml", zoo / "policy.toml")
+    # issue #66: bundle/policy.toml → bundle/policy/*.toml に分離。
+    # e2e は allow list 非空を前提に assertion するため all profile を使う。
+    shutil.copy(BUNDLE / "policy" / "all.toml", zoo / "policy.toml")
     (zoo / "policy.runtime.toml").write_text("")
     (zoo / "inbox").mkdir()
     (zoo / "data").mkdir()

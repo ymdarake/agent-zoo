@@ -68,9 +68,10 @@ packages = ["src/zoo"]
 
 [tool.hatch.build.targets.wheel.force-include]
 # ADR 0002: source の bundle/ を _assets/.zoo/ として配布 (Makefile は除外)
+# issue #66: policy.toml → policy/*.toml 5 profile (minimal/claude/codex/gemini/all)
 "bundle/docker-compose.yml" = "zoo/_assets/.zoo/docker-compose.yml"
 "bundle/docker-compose.strict.yml" = "zoo/_assets/.zoo/docker-compose.strict.yml"
-"bundle/policy.toml" = "zoo/_assets/.zoo/policy.toml"
+"bundle/policy" = "zoo/_assets/.zoo/policy"
 "bundle/container" = "zoo/_assets/.zoo/container"
 "bundle/addons" = "zoo/_assets/.zoo/addons"
 "bundle/dashboard" = "zoo/_assets/.zoo/dashboard"

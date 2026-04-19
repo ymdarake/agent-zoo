@@ -1,0 +1,99 @@
+# Agent Zoo policy profile: all (全 provider allow — 旧 bundle/policy.toml 互換)
+# issue #66: Claude + Codex + Gemini の全 LLM provider に接続する場合。
+# ホストモードではファイル保存で即反映（ホットリロード）
+# コンテナモードでは docker compose restart proxy が必要
+
+[general]
+log_db = "/data/harness.db"
+max_tool_input_store = 1000
+log_retention_days = 30
+
+[domains.allow]
+# 通信を許可するドメイン。ここにないドメインは全てブロックされる。
+# ワイルドカード対応: "*.example.com" は example.com 自体とサブドメインの両方にマッチ。
+# Anthropic公式の必須ドメイン（https://code.claude.com/docs/en/claude-code-on-the-web）
+# api.anthropic.com: API通信
+# statsig.anthropic.com: フィーチャーフラグ
+# platform.claude.com: OAuth認証
+# code.claude.com: Claude Code Web
+# claude.ai: Claude Web
+# api.openai.com: OpenAI / Codex API通信
+# auth0.openai.com + *.auth.openai.com: OpenAI認証フロー
+# *.chatgpt.com: Codex の ChatGPT サインイン導線
+list = [
+    "api.anthropic.com",
+    "statsig.anthropic.com",
+    "platform.claude.com",
+    "code.claude.com",
+    "claude.ai",
+    "mcp-proxy.anthropic.com",
+    "api.openai.com",
+    "auth0.openai.com",
+    "*.auth.openai.com",
+    "*.chatgpt.com",
+    # Gemini CLI（B-3）
+    "generativelanguage.googleapis.com",
+    "oauth2.googleapis.com",
+    "accounts.google.com",
+]
+
+[domains.deny]
+list = ["*.evil.com"]
+
+[domains.dismissed]
+"http-intake.logs.us5.datadoghq.com" = { reason = "Datadogテレメトリ。エージェント動作に不要", date = "2026-03-31" }
+
+[paths.allow]
+# ドメインが domains.allow になくても、特定パスは許可
+"raw.githubusercontent.com" = ["/anthropics/*"]
+"registry.npmjs.org" = ["/@anthropic-ai/*", "/@playwright/*", "/npm", "/playwright", "/playwright/*", "/playwright-core", "/playwright-core/*", "/-/npm/v1/security/advisories/*", "/-/npm/v1/security/audits/*"]
+"downloads.claude.ai" = ["/claude-code-releases/*"]
+"github.com" = ["/anthropics/*"]
+
+[paths.deny]
+
+[rate_limits]
+"api.anthropic.com" = { rpm = 120, burst = 50 }
+"api.openai.com" = { rpm = 120, burst = 50 }
+
+[payload_rules]
+block_patterns = []
+
+secret_patterns = [
+    "AWS_SECRET_ACCESS_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "-----BEGIN.*PRIVATE KEY-----",
+]
+
+[tool_use_rules]
+block_tools = []
+
+block_args = [
+    "rm -rf /",
+    "chmod 777",
+    "printenv",
+    "/proc/",
+    "/etc/shadow",
+    "/etc/passwd",
+]
+
+[[tool_use_rules.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[alerts]
+suspicious_tools = []
+
+suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[[alerts.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env"]
+
+[[alerts.rules]]
+name = "Large file operation"
+tools = ["Write", "Edit"]
+min_size = 50000

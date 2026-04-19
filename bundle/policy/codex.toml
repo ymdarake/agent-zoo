@@ -1,0 +1,76 @@
+# Agent Zoo policy profile: codex (OpenAI / ChatGPT 系のみ allow)
+# issue #66: Codex CLI / OpenAI API 利用時の最小 allow list。
+# ホストモードではファイル保存で即反映（ホットリロード）
+# コンテナモードでは docker compose restart proxy が必要
+
+[general]
+log_db = "/data/harness.db"
+max_tool_input_store = 1000
+log_retention_days = 30
+
+[domains.allow]
+# api.openai.com: OpenAI / Codex API 通信
+# auth0.openai.com + *.auth.openai.com: OpenAI 認証フロー
+# *.chatgpt.com: Codex の ChatGPT サインイン導線
+list = [
+    "api.openai.com",
+    "auth0.openai.com",
+    "*.auth.openai.com",
+    "*.chatgpt.com",
+]
+
+[domains.deny]
+list = ["*.evil.com"]
+
+[domains.dismissed]
+"http-intake.logs.us5.datadoghq.com" = { reason = "Datadogテレメトリ。エージェント動作に不要", date = "2026-03-31" }
+
+[paths.allow]
+# codex profile: 空（現行 paths.allow は Anthropic 固有のため）
+
+[paths.deny]
+
+[rate_limits]
+"api.openai.com" = { rpm = 120, burst = 50 }
+
+[payload_rules]
+block_patterns = []
+
+secret_patterns = [
+    "AWS_SECRET_ACCESS_KEY",
+    "ANTHROPIC_API_KEY",
+    "OPENAI_API_KEY",
+    "-----BEGIN.*PRIVATE KEY-----",
+]
+
+[tool_use_rules]
+block_tools = []
+
+block_args = [
+    "rm -rf /",
+    "chmod 777",
+    "printenv",
+    "/proc/",
+    "/etc/shadow",
+    "/etc/passwd",
+]
+
+[[tool_use_rules.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[alerts]
+suspicious_tools = []
+
+suspicious_args = ["~/.ssh", "~/.aws", ".env", "id_rsa"]
+
+[[alerts.rules]]
+name = "Bash accessing secrets"
+tools = ["Bash"]
+args = ["~/.ssh", "~/.aws", ".env"]
+
+[[alerts.rules]]
+name = "Large file operation"
+tools = ["Write", "Edit"]
+min_size = 50000

@@ -438,6 +438,187 @@ def test_makefile_has_release_dry_run_target():
     assert "release-dry-run" in text
 
 
+# ---------- --no-tag / --tag-only (branch-protected main 2-phase flow) ----------
+
+
+def test_no_tag_creates_commit_but_no_tag(tmp_path):
+    """--no-tag: pyproject bump + commit は行うが tag 作成しない (release branch → PR 用)。"""
+    _init_mini_repo(tmp_path, version="0.1.0")
+    r = _run_script(tmp_path, "--no-tag", "0.1.1b1")
+    assert r.returncode == 0, f"stderr={r.stderr}"
+
+    # bump commit が作られている
+    log = subprocess.run(
+        ["git", "log", "-1", "--pretty=%s"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=_isolated_git_env(),
+    )
+    assert "release: v0.1.1b1" in log.stdout
+
+    # tag は作られていない
+    tags = subprocess.run(
+        ["git", "tag"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=_isolated_git_env(),
+    )
+    assert "v0.1.1b1" not in tags.stdout, (
+        f"--no-tag なのに tag が作られた: {tags.stdout}"
+    )
+
+    # next step echo に release branch → PR → merge → make release-tag 手順が含まれる
+    assert "release-tag" in r.stdout or "--tag-only" in r.stdout, (
+        f"next step 案内に tag-only 手順が無い: {r.stdout}"
+    )
+
+
+def test_tag_only_creates_tag_but_no_commit(tmp_path):
+    """--tag-only: HEAD に annotated tag を打つだけ (commit 作らない、merge 後の main 用)。
+
+    pyproject.version == VERSION であり、かつ HEAD commit subject が
+    ``release: v<VERSION>`` を含むことを precondition として確認。
+    """
+    _init_mini_repo(tmp_path, version="0.1.1b1")  # 既に bump 済
+    # bump commit を想定した subject で 1 commit 追加
+    (tmp_path / "pyproject.toml").write_text(
+        (tmp_path / "pyproject.toml").read_text() + "\n# bump\n"
+    )
+    subprocess.run(
+        ["git", "commit", "-am", ":bookmark: release: v0.1.1b1"],
+        cwd=tmp_path,
+        check=True,
+        env=_isolated_git_env(),
+    )
+    commits_before = subprocess.run(
+        ["git", "rev-list", "--count", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=_isolated_git_env(),
+    ).stdout.strip()
+
+    r = _run_script(tmp_path, "--tag-only", "0.1.1b1")
+    assert r.returncode == 0, f"stderr={r.stderr}"
+
+    # tag が作られている (annotated)
+    obj_type = subprocess.run(
+        ["git", "cat-file", "-t", "refs/tags/v0.1.1b1"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=_isolated_git_env(),
+    )
+    assert obj_type.stdout.strip() == "tag", (
+        f"tag が annotated でない: {obj_type.stdout!r}"
+    )
+
+    # 新規 commit は作られていない (commit 数が増えていない)
+    commits_after = subprocess.run(
+        ["git", "rev-list", "--count", "HEAD"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=_isolated_git_env(),
+    ).stdout.strip()
+    assert commits_before == commits_after, (
+        f"--tag-only なのに commit が増えた: before={commits_before} after={commits_after}"
+    )
+
+
+def test_tag_only_rejects_when_pyproject_version_mismatches(tmp_path):
+    """--tag-only: pyproject.version が VERSION と一致していない (= bump 前の commit に
+    誤って tag しようとしている) 場合は reject (HIGH: silent な誤 tag 防止)。"""
+    _init_mini_repo(tmp_path, version="0.1.0")  # bump 前
+    r = _run_script(tmp_path, "--tag-only", "0.1.1b1")
+    assert r.returncode != 0, (
+        f"pyproject mismatch を tag-only が reject しなかった: stdout={r.stdout}"
+    )
+
+
+def test_tag_only_rejects_when_head_subject_does_not_match(tmp_path):
+    """--tag-only: HEAD commit subject が ``release: v<VERSION>`` を含まない場合 reject。
+
+    maintainer が間違って別 commit 上で `make release-tag` を叩いた事故を防ぐ (HIGH)。
+    """
+    _init_mini_repo(tmp_path, version="0.1.1b1")
+    # bump 済 pyproject だが、HEAD subject は "initial" (release ではない)
+    r = _run_script(tmp_path, "--tag-only", "0.1.1b1")
+    assert r.returncode != 0, (
+        f"HEAD subject mismatch を tag-only が reject しなかった: stdout={r.stdout}"
+    )
+    assert "subject" in r.stderr.lower() or "release:" in r.stderr.lower(), (
+        f"subject mismatch の error message が不明瞭: {r.stderr}"
+    )
+
+
+def test_tag_only_rejects_when_tag_already_exists_locally(tmp_path):
+    _init_mini_repo(tmp_path, version="0.1.1b1")
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", ":bookmark: release: v0.1.1b1"],
+        cwd=tmp_path,
+        check=True,
+        env=_isolated_git_env(),
+    )
+    subprocess.run(
+        ["git", "tag", "-a", "v0.1.1b1", "-m", "preexisting"],
+        cwd=tmp_path,
+        check=True,
+        env=_isolated_git_env(),
+    )
+    r = _run_script(tmp_path, "--tag-only", "0.1.1b1")
+    assert r.returncode != 0
+    assert "exist" in r.stderr.lower() or "already" in r.stderr.lower()
+
+
+def test_no_tag_and_tag_only_mutually_exclusive(tmp_path):
+    _init_mini_repo(tmp_path, version="0.1.0")
+    r = _run_script(tmp_path, "--no-tag", "--tag-only", "0.1.1b1")
+    assert r.returncode != 0
+    assert "exclusive" in r.stderr.lower() or "排他" in r.stderr or "mutually" in r.stderr.lower(), (
+        f"mutex error message が不明瞭: {r.stderr}"
+    )
+
+
+def test_tag_only_dry_run_no_side_effects(tmp_path):
+    _init_mini_repo(tmp_path, version="0.1.1b1")
+    subprocess.run(
+        ["git", "commit", "--allow-empty", "-m", ":bookmark: release: v0.1.1b1"],
+        cwd=tmp_path,
+        check=True,
+        env=_isolated_git_env(),
+    )
+    r = _run_script(tmp_path, "--dry-run", "--tag-only", "0.1.1b1")
+    assert r.returncode == 0, r.stderr
+    tags = subprocess.run(
+        ["git", "tag"],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        env=_isolated_git_env(),
+    )
+    assert "v0.1.1b1" not in tags.stdout, "dry-run で tag が作られた"
+
+
+# ---------- Makefile の新 target ----------
+
+
+def test_makefile_has_release_commit_target():
+    text = MAKEFILE.read_text()
+    assert re.search(r"^release-commit:", text, re.MULTILINE), (
+        "Makefile に release-commit target が無い"
+    )
+
+
+def test_makefile_has_release_tag_target():
+    text = MAKEFILE.read_text()
+    assert re.search(r"^release-tag:", text, re.MULTILINE), (
+        "Makefile に release-tag target が無い"
+    )
+
+
 def test_makefile_positional_arg_rule_guarded_by_release_cmd():
     """positional VERSION を吸収する dummy rule が release / release-dry-run
     target の時だけ有効で、他の typo target を silent no-op にしないこと

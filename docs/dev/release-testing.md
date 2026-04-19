@@ -148,33 +148,60 @@ step が認証エラーで fail する (ただし build 自体は通っている
 - **`v*.*.*` glob に偶然マッチする tag (例 `v2026.04.19`)**: 同上、Classify で明示
   reject される。workflow を通したい場合は `on.push.tags` pattern を見直す。
 
-### `make release` コマンド (自動化)
+### `make release-*` コマンド (自動化)
 
-手動 git 手順の代替として、リポジトリ root の Makefile が `release` target を提供する:
+手動 git 手順の代替として、リポジトリ root の Makefile が 2 種類の release target を提供する:
+
+- **branch-protected main (推奨)**: `release-commit` + `release-tag` の 2-phase (PR 経由)
+- **legacy (protection 無し)**: `release` 全部入り (bump + commit + tag を一気に)
+
+#### Phase flow (branch-protected main、PR 必須環境)
 
 ```bash
-# 副作用なしの事前検証 (format / working tree / tag 未存在 / pyproject 整合)
-make release-dry-run 0.1.0b1
+# phase 1: release branch で bump commit を作る (tag は打たない)
+git checkout -b release/v0.1.1b1
+make release-commit-dry-run 0.1.1b1       # 副作用なしで事前検証
+make release-commit 0.1.1b1               # pyproject bump + :bookmark: commit
+git push -u origin release/v0.1.1b1
+gh pr create --title ":bookmark: release: v0.1.1b1" --body "..."
+# ... PR を squash merge ...
 
-# 本実行: pyproject.toml を bump + :bookmark: commit + v0.1.0b1 tag を local に作る
-make release 0.1.0b1
-
-# 出力に従って push (コマンドは echo される)
-git push origin main --follow-tags
+# phase 2: merge 後の main で HEAD に annotated tag を打って push
+git checkout main && git pull
+make release-tag-dry-run 0.1.1b1          # 事前検証
+make release-tag 0.1.1b1                  # HEAD に annotated tag
+git push origin v0.1.1b1                  # tag push → release workflow 発火
 ```
 
-**内部処理** (`scripts/release-prepare.sh`):
+**`release-tag` の precondition** (script が自動 check):
+- `pyproject.toml` project.version == VERSION (phase 1 の bump が merge 済であること)
+- HEAD commit subject に `release: v<VERSION>` が含まれる (誤 commit に tag する事故を防止)
+- HEAD == `origin/main` (orphan tag が workflow 発火 → 本番 PyPI 暴発を防止)
+- local / remote に `v<VERSION>` tag が既存でない
+
+いずれか失敗すれば fail-fast。
+
+#### legacy フロー (protection 無い repo 用)
+
+```bash
+make release-dry-run 0.1.0b1
+make release 0.1.0b1                      # bump + commit + tag を一気
+git push origin main --follow-tags        # branch + tag atomic push
+```
+
+#### 内部処理 (`scripts/release-prepare.sh`)
 
 1. VERSION format check — PEP 440 native public version (release.yml classify と同一 regex)
 2. working tree clean 確認
-3. branch 確認 — `main` 以外なら TTY prompt で confirm、非 TTY / `CI=*` 環境は abort
-4. tag `v<VERSION>` 未存在確認
-5. `pyproject.toml` の `[project].version` を Python で section-aware に書き換え (sed より安全)
-6. `tomllib` で read-back verify (一致しなければ rollback + exit)
-7. `:bookmark: release: v<VERSION>` で commit + `v<VERSION>` tag 作成 (失敗 / SIGINT で rollback)
-8. 次手順 (push) と undo コマンドを echo
+3. branch 確認 — `main` 以外なら TTY prompt (non-TTY / CI env は abort)、ただし `--no-tag` モードは release branch 前提で main 以外でも warn 無しで通す
+4. tag `v<VERSION>` が local / remote の origin で未存在であること
+5. `--tag-only`: HEAD の整合性 check (上記 precondition) → annotated tag のみ作成
+6. `--no-tag`: `pyproject.toml` の `[project].version` を section-aware に書き換え (Python re.sub、他の `version = "..."` は誤爆しない) → tomllib read-back verify → `:bookmark: release: v<VERSION>` commit (tag は打たない)
+7. default (全部入り): 上記 commit に加えて annotated tag 作成
+8. 失敗 / SIGINT で `git checkout HEAD -- ./pyproject.toml` rollback
+9. 次手順 (push コマンド) と undo 手順を echo
 
-**commit prefix `:bookmark:`** は [gitmoji](https://gitmoji.dev/) の release 慣例で、本 repo の release commit 専用 prefix。他の gitmoji (`:sparkles:` / `:memo:` / `:arrow_up:` 等) と意味が衝突しないため release workflow の自動化で区別しやすい。
+**commit prefix `:bookmark:`** は [gitmoji](https://gitmoji.dev/) の release 慣例で、本 repo の release commit 専用 prefix。`release-tag` の HEAD subject check も `release:\s*v?<VERSION>` pattern でこれを前提としている。
 
 **push は意図的に自動化していない** — tag を公開する destructive action は maintainer の明示確認に委ねる (script の echo 通りのコマンドを手で実行)。
 

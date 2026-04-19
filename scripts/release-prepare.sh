@@ -2,41 +2,53 @@
 # scripts/release-prepare.sh — バージョンアップ作業の自動化 (issue #68 補助ツール)
 #
 # Usage:
-#   ./scripts/release-prepare.sh <VERSION>             # 本実行
-#   ./scripts/release-prepare.sh --dry-run <VERSION>   # 副作用なしで事前検証
+#   ./scripts/release-prepare.sh <VERSION>                # 全部入り (bump + commit + tag)
+#   ./scripts/release-prepare.sh --no-tag <VERSION>       # bump + commit のみ (release branch → PR 用)
+#   ./scripts/release-prepare.sh --tag-only <VERSION>     # HEAD に annotated tag のみ (merge 後 main 用)
+#   ./scripts/release-prepare.sh --dry-run <VERSION>      # 副作用ゼロで事前検証 (各 mode と組合せ可)
 #
-# 例: ./scripts/release-prepare.sh 0.1.0b1
-#     ./scripts/release-prepare.sh --dry-run 0.2.0
+# 例:
+#   ./scripts/release-prepare.sh 0.1.0b1                      # 全部入り
+#   ./scripts/release-prepare.sh --no-tag 0.1.1b1             # phase 1 (release branch)
+#   ./scripts/release-prepare.sh --tag-only 0.1.1b1           # phase 2 (main 上)
+#   ./scripts/release-prepare.sh --dry-run --tag-only 0.1.1b1 # phase 2 の事前検証
 #
-# 実施内容 (本実行):
-#   1. VERSION が PEP 440 native public version であることを regex で検証
-#      (.github/workflows/release.yml の classify step と同一 spec。
-#       leading zero / dash 形 / dot 形 は reject)
-#   2. working tree clean 確認
-#   3. 現 branch が main であることを確認 (非 main は TTY 時のみ confirm、
-#      非 TTY は abort — CI / pipe での意図せぬ誤発火を防ぐ)
-#   4. tag `v<VERSION>` が未存在であることを確認
-#   5. pyproject.toml の [project].version を VERSION に書き換え
-#      (Python re.sub で section-aware、他の `version = "..."` は触らない)
-#   6. tomllib で read-back verify (書き換え結果が期待値と一致)
-#   7. commit (`:bookmark: release: v<VERSION>`) + tag `v<VERSION>`
-#      失敗時は pyproject.toml を rollback
-#   8. 次に実行すべき push コマンドと recovery 手順を echo
+# branch-protected main 運用 (PR 必須):
+#
+#   # phase 1: release branch で bump commit を作る
+#   git checkout -b release/v0.1.1b1
+#   ./scripts/release-prepare.sh --no-tag 0.1.1b1
+#   git push -u origin release/v0.1.1b1
+#   # PR を作成 → squash merge
+#
+#   # phase 2: main で tag 打って push
+#   git checkout main && git pull
+#   ./scripts/release-prepare.sh --tag-only 0.1.1b1
+#   git push origin v0.1.1b1
 #
 # push は意図的に行わない (destructive action を user 明示確認に委ねる)。
-# release workflow の実際の発火は tag push (`git push --follow-tags`) 後。
 
 set -euo pipefail
 
 # ---------- 引数 parse ----------
 
 DRY_RUN=false
+NO_TAG=false
+TAG_ONLY=false
 VERSION=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --dry-run)
             DRY_RUN=true
+            shift
+            ;;
+        --no-tag)
+            NO_TAG=true
+            shift
+            ;;
+        --tag-only)
+            TAG_ONLY=true
             shift
             ;;
         -h|--help)
@@ -58,14 +70,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if $NO_TAG && $TAG_ONLY; then
+    echo "::error::--no-tag and --tag-only are mutually exclusive (排他です)" >&2
+    exit 1
+fi
+
 if [[ -z "$VERSION" ]]; then
     cat >&2 <<EOF
-Usage: $0 [--dry-run] <VERSION>
+Usage: $0 [--dry-run] [--no-tag | --tag-only] <VERSION>
 
-例:
-  $0 0.1.0           # stable (prd PyPI + GitHub Release)
-  $0 0.1.0b1         # pre-release (TestPyPI only)
-  $0 --dry-run 0.2.0 # 副作用なしで事前検証
+Modes:
+  $0 0.1.0                    # 全部入り: bump + commit + tag (legacy、branch protection 無い repo 用)
+  $0 --no-tag 0.1.1b1         # phase 1: pyproject bump + commit のみ (release branch → PR)
+  $0 --tag-only 0.1.1b1       # phase 2: HEAD に annotated tag のみ (merge 後 main)
+  $0 --dry-run [mode] <V>     # 副作用ゼロで事前検証
 
 VERSION は PEP 440 native public version:
   stable:       X.Y.Z
@@ -75,8 +93,7 @@ EOF
 fi
 
 # ---------- 1. VERSION format check ----------
-# release.yml の classify step と同じ spec (prefix `v` は script 側で剥く)。
-# (0|[1-9][0-9]*) で leading zero を reject (PyPI 正規化衝突対策)。
+# release.yml の classify step と同じ spec。leading zero reject。
 if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)(0|[1-9][0-9]*))?$ ]]; then
     cat >&2 <<EOF
 ::error::VERSION '$VERSION' is not a PEP 440 native public version.
@@ -88,7 +105,7 @@ EOF
     exit 1
 fi
 
-# pre-release / stable 分類 (echo 用、logic には使わない)
+# pre-release / stable 分類 (echo 用)
 if [[ "$VERSION" =~ (a|b|rc)[0-9]+$ ]]; then
     KIND="pre-release (TestPyPI only)"
 else
@@ -104,8 +121,8 @@ fi
 
 # ---------- 3. branch check ----------
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
-if [[ "$BRANCH" != "main" ]]; then
-    # 非 TTY + CI env は confirm 無効化 → abort (CI / pipe で誤発火しない belt-and-suspenders)
+# --no-tag は release branch 想定なので main 以外でも warn 無しで許可
+if [[ "$BRANCH" != "main" ]] && ! $NO_TAG; then
     if [[ ! -t 0 ]] || [[ -n "${CI:-}" ]]; then
         echo "::error::current branch is '$BRANCH' (not main) and non-interactive environment (stdin=non-TTY or CI=${CI:-unset})." >&2
         echo "非対話環境では main 以外からの release を自動 abort します (事故防止)。" >&2
@@ -117,21 +134,104 @@ if [[ "$BRANCH" != "main" ]]; then
 fi
 
 # ---------- 4. tag 未存在確認 ----------
+# tag-only では "既存の HEAD にだけ tag を打つ" 運用なので同じ check が必要。
+# その他 mode も new tag を打つので共通。
 if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null 2>&1; then
-    echo "::error::tag 'v$VERSION' already exists. Delete it first (git tag -d v$VERSION) or bump VERSION." >&2
+    echo "::error::tag 'v$VERSION' already exists locally. Delete it first (git tag -d v$VERSION) or bump VERSION." >&2
     exit 1
 fi
 
-# ---------- (dry-run 限定) pyproject との整合 ----------
-# 本実行は後段で pyproject を書き換えるので事前整合は不要だが、dry-run は
-# 書き換えない前提で「現 pyproject == VERSION」か確認して整合を知らせる。
-if $DRY_RUN; then
-    CURRENT=$(python3 -c 'import tomllib,pathlib,sys; \
-data=tomllib.loads(pathlib.Path("pyproject.toml").read_text()); \
-print(data.get("project",{}).get("version",""))')
+# remote tag 既存 check (origin 設定がある場合のみ、test 互換性)
+if git remote get-url origin >/dev/null 2>&1; then
+    if git ls-remote --tags origin "v$VERSION" 2>/dev/null | grep -q .; then
+        echo "::error::tag 'v$VERSION' already exists on origin. Choose a higher VERSION." >&2
+        exit 1
+    fi
+fi
+
+# ============================================================================
+# --tag-only path: pyproject 触らず、既存 HEAD に annotated tag を打つだけ
+# ============================================================================
+if $TAG_ONLY; then
+    # pyproject.version == VERSION (= bump commit がすでに main に merge 済)
+    CURRENT=$(python3 -c 'import tomllib,pathlib; \
+print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")).get("project",{}).get("version",""))')
     if [[ -z "$CURRENT" ]]; then
         echo "::error::pyproject.toml has no static project.version (dynamic version は未対応)" >&2
         exit 1
+    fi
+    if [[ "$CURRENT" != "$VERSION" ]]; then
+        cat >&2 <<EOF
+::error::--tag-only: pyproject.toml project.version = '$CURRENT' but VERSION='$VERSION'.
+bump 済の main に対して tag を打つ運用です。VERSION と pyproject が一致する
+commit 上で実行してください (phase 1 の commit が main に merge 済か確認)。
+EOF
+        exit 1
+    fi
+
+    # HEAD commit subject が `release: v<VERSION>` を含むこと (誤 tag 防止、HIGH)
+    SUBJECT=$(git log -1 --format=%s HEAD)
+    if ! echo "$SUBJECT" | grep -qE "release:[[:space:]]*v?${VERSION//./\\.}([[:space:]]|$)"; then
+        cat >&2 <<EOF
+::error::--tag-only: HEAD commit subject does not reference 'release: v$VERSION'.
+  HEAD subject: $SUBJECT
+bump commit を main に merge した直後の HEAD でのみ tag を打ってください。
+EOF
+        exit 1
+    fi
+
+    # HEAD が origin/main と一致 (orphan tag による本番 publish 暴発を防ぐ、HIGH)。
+    # origin/main ref が取れない test 環境では skip (warning のみ)。
+    if git rev-parse --verify origin/main >/dev/null 2>&1; then
+        git fetch -q origin main 2>/dev/null || true
+        LOCAL_HEAD=$(git rev-parse HEAD)
+        REMOTE_HEAD=$(git rev-parse origin/main)
+        if [[ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]]; then
+            cat >&2 <<EOF
+::error::--tag-only: HEAD ($LOCAL_HEAD) != origin/main ($REMOTE_HEAD).
+phase 1 の PR が merge された後、 git checkout main && git pull してから再実行してください。
+EOF
+            exit 1
+        fi
+    else
+        echo "warning: origin/main ref not found, skipping HEAD == origin/main check (test env?)" >&2
+    fi
+
+    if $DRY_RUN; then
+        echo "dry-run OK (--tag-only): v$VERSION ($KIND), HEAD subject / pyproject / remote 全整合。"
+        exit 0
+    fi
+
+    git tag -a "v$VERSION" -m "Release v$VERSION"
+
+    cat <<EOF
+
+Created annotated tag locally: v$VERSION ($KIND)
+
+Next step — push the tag to trigger GitHub Actions release workflow:
+  git push origin v$VERSION
+
+To undo (local only, push 前なら安全):
+  git tag -d v$VERSION
+EOF
+    exit 0
+fi
+
+# ============================================================================
+# dry-run (default / --no-tag 共通): 副作用ゼロの事前検証
+# ============================================================================
+if $DRY_RUN; then
+    CURRENT=$(python3 -c 'import tomllib,pathlib; \
+print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")).get("project",{}).get("version",""))')
+    if [[ -z "$CURRENT" ]]; then
+        echo "::error::pyproject.toml has no static project.version (dynamic version は未対応)" >&2
+        exit 1
+    fi
+    if $NO_TAG; then
+        # --no-tag は pyproject を書き換える前提なので「整合」は要求しない。
+        # format と working tree / tag 未存在だけ確認。
+        echo "dry-run OK (--no-tag): v$VERSION ($KIND), working tree clean, tag not yet exists. pyproject will be bumped from '$CURRENT' to '$VERSION'."
+        exit 0
     fi
     if [[ "$CURRENT" != "$VERSION" ]]; then
         cat >&2 <<EOF
@@ -145,11 +245,11 @@ EOF
     exit 0
 fi
 
+# ============================================================================
+# 本実行 (default / --no-tag): pyproject bump + commit + (optional tag)
+# ============================================================================
+
 # ---------- 5. pyproject.toml の [project].version を書き換え ----------
-# sed は TOML の section-aware 書き換えに弱い ([tool.foo] section 内の
-# `version = "..."` を誤爆する恐れ) ので Python で [project] section の
-# 範囲を明示的に切り出し、その中の最初の `^version = "..."` を置換する。
-# encoding を明示し CRLF→LF 等の silent 書き換えを避ける。
 python3 - "$VERSION" <<'PY'
 import pathlib
 import re
@@ -157,27 +257,22 @@ import sys
 
 new_version = sys.argv[1]
 path = pathlib.Path("pyproject.toml")
-# UTF-8 + newline="" で改行そのまま保持 (CRLF repo で LF 強制書換を避ける)
 src = path.read_text(encoding="utf-8")
 
-# [project] section の range を先に見つける:
-#   開始: ^\[project\]\s*$
-#   終了: 次の ^\[...\] section header の直前、または EOF
+# [project] section の range を先に見つける
 lines = src.splitlines(keepends=True)
 start = None
 end = len(lines)
 section_header = re.compile(r"^\[[^\]]+\]\s*$")
 for i, line in enumerate(lines):
     if line.rstrip("\r\n") == "[project]":
-        start = i + 1  # [project] の次行から
+        start = i + 1
     elif start is not None and section_header.match(line):
         end = i
         break
 if start is None:
     sys.exit("::error::pyproject.toml: [project] section が見つからない")
 
-# [project] section 内の最初の `version = "..."` を置換。
-# lambda 化して new_version 内の `\1` 等の後方参照 escape を無効化。
 version_re = re.compile(r'^(version\s*=\s*")([^"]*)(")')
 for i in range(start, end):
     m = version_re.match(lines[i])
@@ -206,11 +301,7 @@ if [[ "$ACTUAL" != "$VERSION" ]]; then
     exit 1
 fi
 
-# ---------- 7. commit + tag (rollback guard) ----------
-# commit 失敗 (pre-commit hook 等) や SIGINT / SIGTERM で pyproject.toml /
-# index を HEAD に戻して半端な state を残さない。
-# `git checkout HEAD -- ./` で index + worktree 両方を復元、
-# `./` prefix で branch 名との曖昧さ回避。
+# ---------- 7. commit (+ optional tag) with rollback guard ----------
 _rollback() {
     git checkout HEAD -- ./pyproject.toml 2>/dev/null || true
 }
@@ -218,10 +309,6 @@ trap _rollback ERR INT TERM
 
 git add ./pyproject.toml
 
-# pyproject.toml が既に VERSION だった場合 (本実行 VERSION と pyproject 初期値が
-# 一致しているケース) は staged diff が空になる → 通常 commit は失敗する。
-# --allow-empty で「release アンカー」commit として扱う (maintainer 意図:
-# pyproject が既に bump 済 + tag だけ打ちたい / 再現可能な release 点)。
 if git diff --cached --quiet; then
     echo "note: pyproject.toml already at v$VERSION, creating empty release-anchor commit" >&2
     git commit --allow-empty -q -m ":bookmark: release: v$VERSION"
@@ -229,15 +316,32 @@ else
     git commit -q -m ":bookmark: release: v$VERSION"
 fi
 
-# annotated tag (`-a -m`) で作る。lightweight tag は `git push --follow-tags`
-# の対象外で、docs で案内している 1 発 push フロー (branch + tag atomic push)
-# が silent に動かなくなる (commit のみ push され release workflow 非発火)。
-git tag -a "v$VERSION" -m "Release v$VERSION"
+if ! $NO_TAG; then
+    # annotated tag で `git push --follow-tags` に乗せる。
+    git tag -a "v$VERSION" -m "Release v$VERSION"
+fi
 
 trap - ERR INT TERM
 
 # ---------- 8. 次手順の案内 ----------
-cat <<EOF
+if $NO_TAG; then
+    cat <<EOF
+
+Created bump commit locally (no tag): v$VERSION ($KIND)
+
+Next step — release branch フローで main に merge 後、別途 tag を打つ:
+  git push -u origin $BRANCH
+  gh pr create --title ":bookmark: release: v$VERSION" --body "..."
+  # ... PR を squash merge ...
+  git checkout main && git pull
+  ./scripts/release-prepare.sh --tag-only $VERSION
+  git push origin v$VERSION
+
+To undo (local only, push 前なら安全):
+  git reset --hard HEAD^
+EOF
+else
+    cat <<EOF
 
 Created commit + tag locally: v$VERSION ($KIND)
 
@@ -247,3 +351,4 @@ Next step — push to trigger GitHub Actions release workflow:
 To undo (local only, push 前なら安全):
   git tag -d v$VERSION && git reset --hard HEAD^
 EOF
+fi

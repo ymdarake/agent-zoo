@@ -126,22 +126,29 @@ def _enforce_strict_host() -> None:
 
 @app.after_request
 def _add_security_headers(response):
-    """包括レビュー H-4 / G-2: 最低限の Content-Security-Policy を全レスポンスに付与。
+    """包括レビュー H-4 / G-2 / M-1 / L-6: Content-Security-Policy + 周辺ヘッダ。
 
-    Sprint 007 で pico.css / htmx.org を自前実装化したら CDN host を削除し `'self'` のみに。
+    Sprint 007 PR I (ADR 0004): pico.css / htmx.org の自前実装化完了に伴い、CDN host
+    と 'unsafe-inline' を全 directive から削除。`'self'` only に厳格化。
+    review H-1: setdefault → `=` 強制上書きで他 layer の弱い CSP に上書きされないよう保証。
     """
-    response.headers.setdefault(
-        "Content-Security-Policy",
+    # CSP (Sprint 007 PR I 厳格化)
+    response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
-        "script-src 'self' https://unpkg.com 'unsafe-inline'; "
+        "style-src 'self'; "
+        "script-src 'self'; "
         "img-src 'self' data:; "
         "connect-src 'self'; "
         "frame-ancestors 'none'; "
         "base-uri 'none'; "
-        "object-src 'none'",
+        "object-src 'none'; "
+        "form-action 'self'"  # default-src の fallback 対象外、明示必須 (CSP3)
     )
-    # 関連 hardening (本 PR のスコープ内で追加コストがほぼ 0)
+    # Permissions-Policy (Sprint 007 PR I 追加): defense-in-depth で不要機能を全 deny
+    response.headers["Permissions-Policy"] = (
+        "camera=(), microphone=(), geolocation=(), payment=()"
+    )
+    # 関連 hardening (Sprint 005 PR B から維持)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("X-Frame-Options", "DENY")
     response.headers.setdefault("Referrer-Policy", "no-referrer")

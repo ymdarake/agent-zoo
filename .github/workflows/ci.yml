@@ -61,6 +61,29 @@ jobs:
       - name: Run unit tests
         run: uv run python -m pytest tests/ -v
 
+      # 包括レビュー: 既知 CVE のサプライチェーン検査 (Sprint 006 PR E)。
+      # pip-audit は uv tool で別 venv に install して tool.uv.exclude-newer の
+      # 影響を回避し最新版を使う。--vulnerability-service osv で OSV.dev も併用
+      # して PyPI advisory との両建てカバレッジ。
+      - name: Audit Python dependencies (project)
+        run: uv tool run pip-audit --vulnerability-service osv
+
+      - name: Audit Python dependencies (dashboard requirements)
+        run: uv tool run pip-audit -r bundle/dashboard/requirements.txt --vulnerability-service osv
+
+  # Sprint 006 PR E: docker-compose.yml の image: 行 SHA pin が syntactically
+  # 正しく resolve できることを PR 段階で fail-fast 検証する。Docker daemon は
+  # 不要 (config の parse + digest 構文チェックのみ)。
+  compose-config:
+    name: Verify docker-compose digest pins
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd  # v5
+
+      - name: Verify docker-compose config resolves
+        working-directory: bundle
+        run: docker compose config --resolve-image-digests > /dev/null
+
   e2e-dashboard:
     name: E2E P1 dashboard
     runs-on: ubuntu-latest

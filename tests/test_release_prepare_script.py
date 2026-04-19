@@ -1,22 +1,19 @@
-"""Tests for ``scripts/release-prepare.sh`` (issue #68 補助ツール).
+"""Integration tests for ``scripts/release-prepare.sh`` (issue #68 補助ツール).
 
-`make release-commit <V>` / `make release-tag <V>` の中身。tmp_path に
-mini-repo を作って subprocess で script を実行し、sed の誤 replace /
-rollback 抜け / non-TTY hang / orphan tag などの silent failure を検知する。
+bash script の orchestration 部分を subprocess で検証する。Python logic
+(validate / classify / bump / get-version) は ``release_prepare_lib`` に
+切り出し済みで、それらの fine-grained unit test は
+:mod:`tests.test_release_prepare_lib` に分離している。
 
-2-phase flow (branch-protected main 想定):
-- ``--no-tag``:    phase 1、release branch で pyproject bump + commit (tag 作らない)
-- ``--tag-only``:  phase 2、merge 後の main で HEAD に annotated tag のみ
+本 file は bash script 固有の以下を verify する:
 
-設計観点:
-- pyproject 書き換えは sed ではなく Python re.sub (section-aware)
-- commit 失敗時に pyproject を rollback
-- recovery 手順を echo
-- Makefile の positional arg 吸収は ``release-commit`` / ``release-tag`` 時のみ
-- 非 TTY 環境では confirm prompt をスキップして abort
-- release.yml の regex と script の regex が同一 PEP 440 cases を判定 (drift 防止)
-- ``--tag-only`` は pyproject / HEAD subject / HEAD==origin/main の 3 precondition
-  を fail-fast で verify (orphan tag による本番 PyPI 暴発防止)
+- flag parse / mutex / mode 必須
+- git ops (working tree clean / branch check / tag 未存在 / remote tag check)
+- ``--no-tag`` phase 1: bump + :bookmark: commit の作成、tag は作らない
+- ``--tag-only`` phase 2: pyproject / HEAD subject / HEAD==origin/main の
+  3 precondition を fail-fast で verify、annotated tag 作成 (lightweight reject)
+- rollback (trap) / dry-run 副作用なし / shell injection defense-in-depth
+- Makefile target の存在と positional arg 吸収 (``ifneq MAKECMDGOALS``)
 """
 
 from __future__ import annotations
@@ -192,20 +189,15 @@ def test_accepts_valid_version_format_in_dry_run(version, tmp_path):
     assert r.returncode == 0, f"valid {version!r} rejected: {r.stderr}"
 
 
-def test_regex_matches_release_yml_classify_spec():
-    """script の bash regex が release.yml classify の python regex と同じ
-    PEP 440 case を judgement することを guarantee する (drift 防止)。"""
+def test_script_delegates_version_validate_to_lib():
+    """bash script が VERSION 検証を lib CLI (``python3 $LIB validate``) に
+    委譲しており、重複 regex を持っていないこと (single source of truth)。"""
     script_text = SCRIPT.read_text()
-    m = re.search(r'"\$VERSION"\s*=~\s*([^\s]+)', script_text)
-    assert m, "script 内の `[[ \"$VERSION\" =~ ... ]]` regex が見つからない"
-
-    py_regex = re.compile(
-        r"^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)(0|[1-9][0-9]*))?$"
+    assert "python3 \"$LIB\" validate" in script_text
+    # bash 側で生の regex を持っていない (lib 委譲に統一)
+    assert "[[ \"$VERSION\" =~" not in script_text, (
+        "bash に VERSION regex が残っている (lib に単一化すべき)"
     )
-    for v in _VALID_VERSIONS:
-        assert py_regex.match(v), f"spec regex が valid {v!r} を reject"
-    for v in _INVALID_VERSIONS:
-        assert not py_regex.match(v), f"spec regex が invalid {v!r} を accept"
 
 
 # ============================================================================

@@ -2,10 +2,12 @@
 # scripts/release-prepare.sh — バージョンアップ作業の自動化 (issue #68 補助ツール)
 #
 # branch-protected main (PR 必須) 運用向けの 2-phase flow。直接 push はしない。
+# Python logic は scripts/release_prepare_lib.py に切り出しており、本 script は
+# flag parse / git ops / orchestration に専念する。
 #
 # Usage:
-#   ./scripts/release-prepare.sh --no-tag <VERSION>       # phase 1: bump + commit (release branch 用)
-#   ./scripts/release-prepare.sh --tag-only <VERSION>     # phase 2: HEAD に annotated tag (merge 後 main 用)
+#   ./scripts/release-prepare.sh --no-tag <VERSION>       # phase 1: bump + commit
+#   ./scripts/release-prepare.sh --tag-only <VERSION>     # phase 2: HEAD に annotated tag
 #   ./scripts/release-prepare.sh --dry-run --no-tag <V>   # phase 1 の事前検証
 #   ./scripts/release-prepare.sh --dry-run --tag-only <V> # phase 2 の事前検証
 #
@@ -15,16 +17,18 @@
 #   git checkout -b release/v0.1.1b1
 #   ./scripts/release-prepare.sh --no-tag 0.1.1b1
 #   git push -u origin release/v0.1.1b1
-#   # PR を作成 → squash merge
+#   gh pr create --title ":bookmark: release: v0.1.1b1" --template release.md
+#   # PR を squash merge
 #
 #   # phase 2: main で tag 打って push
 #   git checkout main && git pull
 #   ./scripts/release-prepare.sh --tag-only 0.1.1b1
 #   git push origin v0.1.1b1
-#
-# push は意図的に行わない (destructive action を user 明示確認に委ねる)。
 
 set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LIB="$SCRIPT_DIR/release_prepare_lib.py"
 
 # ---------- 引数 parse ----------
 
@@ -91,32 +95,19 @@ Usage: $0 --dry-run? {--no-tag | --tag-only} <VERSION>
   $0 --no-tag 0.1.1b1         # phase 1
   $0 --tag-only 0.1.1b1       # phase 2
   $0 --dry-run --no-tag 0.1.1b1
-
-VERSION は PEP 440 native public version:
-  stable:       X.Y.Z
-  pre-release:  X.Y.Z(a|b|rc)N  (N に leading zero は不可)
 EOF
     exit 1
 fi
 
-# ---------- 1. VERSION format check ----------
-# release.yml の classify step と同じ spec。leading zero reject。
-if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+((a|b|rc)(0|[1-9][0-9]*))?$ ]]; then
-    cat >&2 <<EOF
-::error::VERSION '$VERSION' is not a PEP 440 native public version.
-Expected:
-  - X.Y.Z           (stable、例: 0.1.0)
-  - X.Y.Z(a|b|rc)N  (pre-release、例: 0.1.0b1 / 1.0.0rc1、N に leading zero 不可)
-非 native 形 (0.1.0-beta-1 / 0.1.0.post1 / 0.1.0b01 等) は reject します。
-EOF
-    exit 1
-fi
+# ---------- 1. VERSION format check (lib に委譲、PEP 440 native) ----------
+python3 "$LIB" validate "$VERSION"
 
-# pre-release / stable 分類 (echo 用)
-if [[ "$VERSION" =~ (a|b|rc)[0-9]+$ ]]; then
-    KIND="pre-release (TestPyPI only)"
+# pre-release / stable 分類 (echo 用、lib に委譲)
+KIND="$(python3 "$LIB" classify "$VERSION")"
+if [[ "$KIND" == "pre-release" ]]; then
+    KIND_LABEL="pre-release (TestPyPI only)"
 else
-    KIND="stable (prd PyPI + GitHub Release)"
+    KIND_LABEL="stable (prd PyPI + GitHub Release)"
 fi
 
 # ---------- 2. working tree clean ----------
@@ -145,7 +136,6 @@ if git rev-parse -q --verify "refs/tags/v$VERSION" >/dev/null 2>&1; then
     exit 1
 fi
 
-# remote tag 既存 check (origin 設定がある場合のみ、test 互換性)
 if git remote get-url origin >/dev/null 2>&1; then
     if git ls-remote --tags origin "v$VERSION" 2>/dev/null | grep -q .; then
         echo "::error::tag 'v$VERSION' already exists on origin. Choose a higher VERSION." >&2
@@ -158,12 +148,7 @@ fi
 # ============================================================================
 if $TAG_ONLY; then
     # pyproject.version == VERSION (= bump commit がすでに main に merge 済)
-    CURRENT=$(python3 -c 'import tomllib,pathlib; \
-print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")).get("project",{}).get("version",""))')
-    if [[ -z "$CURRENT" ]]; then
-        echo "::error::pyproject.toml has no static project.version (dynamic version は未対応)" >&2
-        exit 1
-    fi
+    CURRENT="$(python3 "$LIB" get-version)"
     if [[ "$CURRENT" != "$VERSION" ]]; then
         cat >&2 <<EOF
 ::error::--tag-only: pyproject.toml project.version = '$CURRENT' but VERSION='$VERSION'.
@@ -174,7 +159,7 @@ EOF
     fi
 
     # HEAD commit subject が `release: v<VERSION>` を含むこと (誤 tag 防止、HIGH)
-    SUBJECT=$(git log -1 --format=%s HEAD)
+    SUBJECT="$(git log -1 --format=%s HEAD)"
     if ! echo "$SUBJECT" | grep -qE "release:[[:space:]]*v?${VERSION//./\\.}([[:space:]]|$)"; then
         cat >&2 <<EOF
 ::error::--tag-only: HEAD commit subject does not reference 'release: v$VERSION'.
@@ -184,12 +169,11 @@ EOF
         exit 1
     fi
 
-    # HEAD が origin/main と一致 (orphan tag による本番 publish 暴発を防ぐ、HIGH)。
-    # origin/main ref が取れない test 環境では skip (warning のみ)。
+    # HEAD が origin/main と一致 (orphan tag による本番 publish 暴発を防ぐ、HIGH)
     if git rev-parse --verify origin/main >/dev/null 2>&1; then
         git fetch -q origin main 2>/dev/null || true
-        LOCAL_HEAD=$(git rev-parse HEAD)
-        REMOTE_HEAD=$(git rev-parse origin/main)
+        LOCAL_HEAD="$(git rev-parse HEAD)"
+        REMOTE_HEAD="$(git rev-parse origin/main)"
         if [[ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]]; then
             cat >&2 <<EOF
 ::error::--tag-only: HEAD ($LOCAL_HEAD) != origin/main ($REMOTE_HEAD).
@@ -202,7 +186,7 @@ EOF
     fi
 
     if $DRY_RUN; then
-        echo "dry-run OK (--tag-only): v$VERSION ($KIND), HEAD subject / pyproject / remote 全整合。"
+        echo "dry-run OK (--tag-only): v$VERSION ($KIND_LABEL), HEAD subject / pyproject / remote 全整合。"
         exit 0
     fi
 
@@ -210,7 +194,7 @@ EOF
 
     cat <<EOF
 
-Created annotated tag locally: v$VERSION ($KIND)
+Created annotated tag locally: v$VERSION ($KIND_LABEL)
 
 Next step — push the tag to trigger GitHub Actions release workflow:
   git push origin v$VERSION
@@ -225,64 +209,17 @@ fi
 # --no-tag: pyproject bump + commit のみ (release branch → PR 用)
 # ============================================================================
 
-# dry-run は format / working tree / tag 未存在だけ確認、pyproject は触らない
 if $DRY_RUN; then
-    CURRENT=$(python3 -c 'import tomllib,pathlib; \
-print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8")).get("project",{}).get("version",""))')
-    if [[ -z "$CURRENT" ]]; then
-        echo "::error::pyproject.toml has no static project.version (dynamic version は未対応)" >&2
-        exit 1
-    fi
-    echo "dry-run OK (--no-tag): v$VERSION ($KIND), working tree clean, tag not yet exists. pyproject will be bumped from '$CURRENT' to '$VERSION'."
+    CURRENT="$(python3 "$LIB" get-version)"
+    echo "dry-run OK (--no-tag): v$VERSION ($KIND_LABEL), working tree clean, tag not yet exists. pyproject will be bumped from '$CURRENT' to '$VERSION'."
     exit 0
 fi
 
-# ---------- 5. pyproject.toml の [project].version を書き換え ----------
-python3 - "$VERSION" <<'PY'
-import pathlib
-import re
-import sys
+# ---------- 5. pyproject.toml の [project].version を書き換え (lib 委譲) ----------
+python3 "$LIB" bump "$VERSION"
 
-new_version = sys.argv[1]
-path = pathlib.Path("pyproject.toml")
-src = path.read_text(encoding="utf-8")
-
-# [project] section の range を先に見つける
-lines = src.splitlines(keepends=True)
-start = None
-end = len(lines)
-section_header = re.compile(r"^\[[^\]]+\]\s*$")
-for i, line in enumerate(lines):
-    if line.rstrip("\r\n") == "[project]":
-        start = i + 1
-    elif start is not None and section_header.match(line):
-        end = i
-        break
-if start is None:
-    sys.exit("::error::pyproject.toml: [project] section が見つからない")
-
-version_re = re.compile(r'^(version\s*=\s*")([^"]*)(")')
-for i in range(start, end):
-    m = version_re.match(lines[i])
-    if m:
-        lines[i] = version_re.sub(
-            lambda _, nv=new_version: f'{m.group(1)}{nv}{m.group(3)}',
-            lines[i],
-            count=1,
-        )
-        break
-else:
-    sys.exit(
-        "::error::pyproject.toml: [project].version line not found "
-        "(dynamic version は未対応)"
-    )
-
-path.write_text("".join(lines), encoding="utf-8")
-PY
-
-# ---------- 6. read-back verify ----------
-ACTUAL=$(python3 -c 'import tomllib,pathlib; \
-print(tomllib.loads(pathlib.Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])')
+# ---------- 6. read-back verify (lib 委譲) ----------
+ACTUAL="$(python3 "$LIB" get-version)"
 if [[ "$ACTUAL" != "$VERSION" ]]; then
     git checkout HEAD -- ./pyproject.toml
     echo "::error::pyproject write did not produce expected version (got '$ACTUAL' expected '$VERSION')" >&2
@@ -309,7 +246,7 @@ trap - ERR INT TERM
 # ---------- 8. 次手順の案内 ----------
 cat <<EOF
 
-Created bump commit locally (no tag): v$VERSION ($KIND)
+Created bump commit locally (no tag): v$VERSION ($KIND_LABEL)
 
 Next step — release branch フローで main に merge 後、別途 tag を打つ:
   git push -u origin $BRANCH

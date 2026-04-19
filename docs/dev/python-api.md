@@ -45,7 +45,10 @@ if zoo.logs_clear():
 | `zoo.down()` | `None` | strict プロファイルも対象 |
 | `zoo.reload_policy()` | `None` | policy.toml 反映 |
 | `zoo.build(*, agent)` | `None` | |
-| `zoo.certs()` | `None` | 存在すれば何もしない |
+| `zoo.certs()` | `None` | mitmproxy CA 生成 (存在すれば no-op) |
+| `zoo.certs_import(src, *, name, force)` | `Path` | 企業 root CA を `<workspace>/.zoo/certs/extra/` にコピー |
+| `zoo.certs_list()` | `list[str]` | extra/ 配下の cert 名一覧 (`.gitkeep` 除外) |
+| `zoo.certs_remove(name)` | `bool` | 存在 → True、不在 → False |
 | `zoo.host_start()` / `zoo.host_stop()` | `int` | |
 | `zoo.logs_clear()` | `bool` | 削除した場合 True |
 | `zoo.logs_analyze()` / `summarize()` / `alerts()` | `int` | ホスト側 `claude` CLI 必須 |

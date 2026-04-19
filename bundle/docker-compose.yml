@@ -104,7 +104,9 @@ services:
       - ./templates/HARNESS_RULES.md:/harness/HARNESS_RULES.md:ro
 
   proxy:
-    image: mitmproxy/mitmproxy:10
+    # 包括レビュー M-3 (Sprint 006 PR E): mutable tag を sha256 digest で pin。
+    # multi-arch manifest list (amd64 + arm64) の digest。Dependabot 自動更新。
+    image: mitmproxy/mitmproxy:10@sha256:8ee7377e1dc2dd1b2a0083d9d07d6c3f1e48c69b53b39f8dd000581e72d74498
     # 包括レビュー H-3: 最小権限 hardening。
     # - user: 1000 で image の mitmproxy user に合わせる (default entrypoint が
     #   usermod/chown を要求するため、それを avoid するため entrypoint も override)
@@ -176,7 +178,9 @@ services:
     networks: [extnet]
 
   dns:
-    image: coredns/coredns:1.11.4
+    # 包括レビュー M-3 (Sprint 006 PR E): mutable tag を sha256 digest で pin。
+    # multi-arch manifest list (amd64 / arm64 / armv7 / ppc64le / riscv64 / s390x) の digest。
+    image: coredns/coredns:1.11.4@sha256:4190b960ea90e017631e3e1a38eea28e98e057ab60d57d47b3db6e5cf77436f7
     profiles: ["strict"]
     # 包括レビュー H-3: CoreDNS image は default で UID 65532 (nonroot)。
     # port 53 < 1024 に bind するため NET_BIND_SERVICE のみ cap_add で復活。

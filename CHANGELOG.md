@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **Docker image SHA pin (4 image)** — `bundle/container/Dockerfile.base` (node:20-slim) / `bundle/dashboard/Dockerfile` (python:3.12-slim) / `bundle/docker-compose.yml` の proxy (mitmproxy/mitmproxy:10) と dns (coredns/coredns:1.11.4) を multi-arch manifest list digest で固定。上流アカウント奪取 / mutable tag 上書き攻撃を防ぐ。Dependabot が週次更新 PR (Sprint 006 PR E、包括レビュー M-3)
+- **GitHub Actions SHA pin (19 uses)** — `actions/checkout` / `astral-sh/setup-uv` / `actions/cache` / `actions/upload-artifact` / `actions/download-artifact` / `pypa/gh-action-pypi-publish` を全 commit SHA で固定。Git tag rewrite による任意 step 実行を防ぐ。`pypa/gh-action-pypi-publish` は branch ref から tag SHA に切替 (Dependabot 自動更新を可能化)。コメントに `# <tag>` 併記 (Sprint 006 PR E、包括レビュー M-4)
+- **Dependabot 設定 (`.github/dependabot.yml`)** — github-actions / docker x3 / pip x2 を週次更新、`groups` で 1 ecosystem あたり 1 PR に集約してレビュー負荷削減。`docs/dev/security-notes.md` に PR 受け入れ前の manifest list 検証ガイド (Sprint 006 PR E)
+- **`pip-audit` を CI に統合** — `uv tool run pip-audit --vulnerability-service osv` で project + dashboard requirements.txt を独立に audit、PyPI advisory + OSV.dev 併用で広い CVE カバレッジ。`docker compose config --resolve-image-digests` 検証 step も追加 (Sprint 006 PR E)
 - **request body サイズ上限 + URL secret 検査 + URL scrub** — mitmproxy `--set body_size_limit=1m` で OOM 保護しつつ、addon 側で `Content-Length > 1MB` を 413 で fail-closed 遮断（M-6）。`flow.request.url` を `scrub_url` で userinfo / query / fragment 全部 redact してから DB 保存（M-2、ログ流出防止 + log injection / smuggling 防御の制御文字 reject）。`secret_patterns` を URL にも適用し credential が乗った request を 403 `URL_SECRET_BLOCKED` で遮断 (Sprint 006 PR D、包括レビュー M-2 / M-6)
 - **dashboard `_validate_domain` を RFC 1035 準拠 strict regex 化** — `localhost` / `*.com` / `a..com` / `a-.com` / `*.*.example.com` を UI から追加不可に。inbox accept 経由の bypass も塞ぐ (Sprint 006 PR D、包括レビュー M-5)
 - **harness.db / WAL / SHM の chmod 600** — PII / 機密情報を含む sqlite 関連ファイル群を同一 host の他ユーザから保護。symlink follow を抑止 (TOCTOU 緩和)、bind mount EPERM は fail-safe (Sprint 006 PR D、Gemini G3-B1)

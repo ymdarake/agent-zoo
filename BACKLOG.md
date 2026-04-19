@@ -30,7 +30,7 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 
 | 優先度 | Sprint | 内容 | 期間 |
 |---|---|---|---|
-| 🟢 **P2** | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 3 PR で (PR D = M-2/M-5/M-6/M-7/G3-B1 ✅ 完了 / PR E サプライチェーン M-3/M-4 + Dependabot / PR F = M-8 policy_lock 共通化) | 2〜3 日 |
+| 🟢 **P2** | **Sprint 006** Security Hardening | Medium (M-2〜M-8) + サプライチェーン hardening を 3 PR で (PR D = M-2/M-5/M-6/M-7/G3-B1 ✅ 完了 / PR E = M-3/M-4 + Dependabot + pip-audit ✅ 完了 / PR F = M-8 policy_lock 共通化) | 2〜3 日 |
 | 🟢 **P2** | **Sprint 007** Dashboard 外部依存ゼロ化 | pico/htmx → 自前 HTML/CSS/JS (ADR 0004) を 4 PR で → **Beta publish 可** | 1〜2 週間 |
 | ⚪ **P3** | **Sprint 008** Low Polish | Low 指摘解消 + 1.0 release candidate | 1 日 |
 | P1 | **#31 user smoke** | user 環境で 11 項目確認、Sprint 005 alpha 後に実施 | user 依存 |
@@ -50,6 +50,8 @@ active な未完了タスク + 将来計画 (ROADMAP) を統合管理する。
 - [ ] **dashboard 認証機構**（旧「Basic 認証 or API キー」）: 起動時生成 token 等で無認証 + CSRF を解消
 - [ ] **dashboard を外部依存ゼロの自前 HTML/CSS/vanilla JS に書き直す**（包括レビュー M-1）: 現状 `pico.css` / `htmx.org` を unpkg / jsdelivr から SRI 無しで読込 → CDN 乗っ取り / タンパリングリスク。dashboard は数画面規模なので**自前 CSS（数百行）+ vanilla JS（`fetch` + `form.addEventListener` で HTMX 置換、~50 行）に完全移行**する方が、外部ライブラリを self-host するより long-term simple。依存 0 にすることでサプライチェーン攻撃面消滅 + オフライン動作 + 監査対象縮小。規模見積: テンプレート書換 ~500 行、CSS ~300 行、JS ~50 行
 - [ ] **エントロピーチェック**: ペイロード内の高エントロピー文字列検知 (`[payload_rules.advanced] entropy_threshold = 4.5`)
+- [ ] **npm CLI 版固定**: `bundle/container/Dockerfile.{codex,gemini,unified}` の `npm install -g @<vendor>/cli` をバージョン pin して bit-for-bit 再現性を担保 (Sprint 006 PR E plan review で defer。詳細: docs/dev/security-notes.md)
+- [ ] **`uv.lock` activation in Dockerfile.base / hash 入り requirements.txt**: `uv sync --frozen --locked` および `pip install --require-hashes` で build 時の依存固定を強化 (Sprint 006 PR E plan review で defer)
 - [ ] **OpenAI `exec_command` 引数検査の高度化** (#3 / E-2): `exec_command(command="...")` の `command` フィールドを `[tool_use_rules].block_args` でいい感じに検知。仕様確定待ち
 
 ### 運用

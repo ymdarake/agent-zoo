@@ -105,6 +105,7 @@ class TestBash:
         compose_up_called: list[tuple] = []
         exec_called: list[list[str]] = []
 
+        monkeypatch.setattr(runner, "ensure_agent_images_built", lambda *a, **k: None)
         monkeypatch.setattr(
             runner, "compose_up",
             lambda services, **kw: compose_up_called.append((tuple(services), kw)),
@@ -233,6 +234,7 @@ class TestRun:
             calls.append(["interactive", *cmd])
             return 0
 
+        monkeypatch.setattr(runner, "ensure_agent_images_built", lambda *a, **k: None)
         monkeypatch.setattr(runner, "compose_up", fake_compose_up)
         monkeypatch.setattr(runner, "run_interactive", fake_interactive)
 
@@ -246,6 +248,7 @@ class TestRun:
     ) -> None:
         captured: dict[str, list[str]] = {}
 
+        monkeypatch.setattr(runner, "ensure_agent_images_built", lambda *a, **k: None)
         monkeypatch.setattr(runner, "compose_up", lambda *a, **kw: None)
 
         def fake_interactive(cmd, **kwargs) -> int:
@@ -266,6 +269,7 @@ class TestTask:
 
     def test_substitutes_prompt(self, repo_root: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "x")
+        monkeypatch.setattr(runner, "ensure_agent_images_built", lambda *a, **k: None)
         monkeypatch.setattr(runner, "compose_up", lambda *a, **kw: None)
 
         captured: dict[str, list[str]] = {}

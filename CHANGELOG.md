@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-04-20
+
+corporate private CA 下での dashboard / agent からの自社サーバーへの TLS 検証を fix する patch。
+
 ### Fixed
 - **`zoo certs import` が `certs/extra/bundle.pem` を自動生成しない設計欠陥** — mitmproxy は上流 TLS 検証に `--set ssl_verify_upstream_trusted_ca=/certs/extra/bundle.pem` で単一 file path を要求するが、`certs_import` / `certs_remove` / `init` は個別 PEM file 操作のみで bundle への aggregate を行っておらず、user が手動で `cat *.pem > bundle.pem` しない限り自社サーバー (corporate private CA) への TLS handshake で cert chain 検証 fail していた。
   - `_rebuild_cert_bundle()` を新設、`certs/extra/` 内の全 user PEM (`.gitkeep` と `bundle.pem` 自身を除く) を結合して `bundle.pem` を自動再生成

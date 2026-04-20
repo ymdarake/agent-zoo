@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-04-20
+
+v0.1.3 で dashboard を `FROM agent-zoo-base:latest` に切替えた副作用として、base の system python (Debian 系 `node:20-slim` + apt python3) が PEP 668 で externally-managed となり、dashboard の `pip install` が `externally-managed-environment` エラーで fail する問題を修正。
+
+### Fixed
+- **dashboard image build の PEP 668 エラー** — `bundle/container/Dockerfile.base` の apt install に `python3-venv` を追加 + `bundle/dashboard/Dockerfile` で `python3 -m venv /opt/venv` + `PATH=/opt/venv/bin:$PATH` を設定。dashboard 専用 virtualenv で pip install し、system python を汚さない (PEP 668 の意図通り)。`--break-system-packages` や `rm EXTERNALLY-MANAGED` の hacky 回避は採らない
+
 ## [0.1.3] - 2026-04-20
 
 build 周辺の UX 改善 patch。corporate CA 配下での dashboard image build と、`zoo build` の layer cache 再ビルド option 追加。

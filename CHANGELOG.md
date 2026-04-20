@@ -7,8 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-04-20
+
+build 周辺の UX 改善 patch。corporate CA 配下での dashboard image build と、`zoo build` の layer cache 再ビルド option 追加。
+
 ### Added
-- **`zoo build --no-cache`** — Docker image layer cache を skip して 0 から再 build する option。`uv tool upgrade agent-zoo` 後に Dockerfile の変更 (例: Sprint 008 の CA env 追加) を確実に反映したい時に使う。`runner.build_base(no_cache=True)` で base image の `docker build` と `docker compose build` 双方に `--no-cache` を伝播。Dockerfile.base が欠損している場合は warning を出して skip (以前は silent return)。5 unit test (base + compose 伝播、default 挙動、CLI help の flag 表示)
+- **`zoo build --no-cache`** — Docker image layer cache を skip して 0 から再 build する option。`uv tool upgrade agent-zoo` 後に Dockerfile の変更 (CA env 追加等) を確実に反映したい時に使う。`runner.build_base(no_cache=True)` で base image の `docker build` と `docker compose build` 双方に `--no-cache` を伝播。Dockerfile.base が欠損している場合は warning を出して skip (以前は silent return)。4 unit test (base + compose 伝播、default 挙動)
+
+### Fixed
+- **dashboard image の `pip install` が corporate CA 配下で TLS fail する問題** — `bundle/dashboard/Dockerfile` が `FROM python:3.12-slim` で独立 image だったため、v0.1.2 で `Dockerfile.base` に入れた CA plumbing (certs/extra COPY + update-ca-certificates + 4 env) が効かず pip の TLS 検証で fail していた。dashboard を `FROM agent-zoo-base:latest` に切り替え、CA plumbing を base に **single source of truth** で集約 (DRY)。`bundle/dashboard/.dockerignore` も新設し、bind mount 経由で runtime 生成される `__pycache__` / `*.pyc` を次回 build で image に焼かないよう除外
 
 ## [0.1.2] - 2026-04-20
 

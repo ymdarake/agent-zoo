@@ -193,6 +193,9 @@ def init(
     extra_gitkeep = zoo_target / "certs" / "extra" / ".gitkeep"
     if not extra_gitkeep.exists():
         extra_gitkeep.touch()
+    # 古い version で import 済の extra/*.pem がある workspace を再 init する
+    # 場合に bundle.pem を同期生成する (mitmproxy 上流 TLS 検証用)
+    _rebuild_cert_bundle(zoo_target / "certs" / "extra")
     (zoo_target / "policy.runtime.toml").touch(exist_ok=True)
 
     return target
@@ -356,6 +359,11 @@ def certs() -> None:
 # --- certs import / list / remove (issue #64) -------------------------------
 
 _CERT_NAME_PROTECTED = (".gitkeep",)  # 完全一致のみ (`.gitkeep.pem` 等は拡張子 whitelist で別途遮断)
+
+# mitmproxy の `--set ssl_verify_upstream_trusted_ca` に渡す bundle file。
+# zoo certs import / remove / init で自動再生成される aggregated file なので
+# user 操作 (import --name bundle.pem 等) からは予約する。
+_CERT_BUNDLE_NAME = "bundle.pem"
 _CERT_EXTENSIONS = (".pem", ".crt", ".cer")
 _PEM_HEADER = b"-----BEGIN CERTIFICATE-----"
 
@@ -368,6 +376,11 @@ def _check_cert_name_path_safety(name: str) -> None:
         raise ValueError(f"reserved name: {name!r}")
     if any(c in name for c in ("/", "\\", "\x00")):
         raise ValueError(f"name contains path separator or NUL: {name!r}")
+    if name == _CERT_BUNDLE_NAME:
+        raise ValueError(
+            f"name {name!r} is reserved for the auto-aggregated bundle; "
+            "rename your cert file to something else"
+        )
     if name in _CERT_NAME_PROTECTED:
         raise ValueError(f"{name} is protected")
 
@@ -382,6 +395,32 @@ def _validate_cert_name(name: str) -> str:
             f"name must end with .pem / .crt / .cer: {name!r}"
         )
     return name
+
+
+def _rebuild_cert_bundle(extra: Path) -> None:
+    """`<extra>/bundle.pem` を extra/ 内の全 user cert を結合して再生成する。
+
+    mitmproxy は上流 TLS 検証に ``--set ssl_verify_upstream_trusted_ca=<path>`` で
+    **単一 file** を要求するため、個別 `.pem` file を aggregate した bundle を
+    自動維持する必要がある。`certs_import` / `certs_remove` / `init` から呼ぶ。
+
+    - 結合対象: extra/ 内の通常 file のうち、`_CERT_NAME_PROTECTED` (= `.gitkeep`)
+      と bundle file 自身を除く
+    - 結合内容: 各 PEM の bytes を `\\n` で join
+    - extra/ に結合対象が 1 つも無ければ bundle を削除 (空 bundle を残さず、
+      docker-compose.yml が `[ -f bundle.pem ]` 判定で条件分岐できる)
+    """
+    bundle = extra / _CERT_BUNDLE_NAME
+    pems = sorted(
+        p for p in extra.iterdir()
+        if p.is_file()
+        and p.name not in _CERT_NAME_PROTECTED
+        and p.name != _CERT_BUNDLE_NAME
+    )
+    if not pems:
+        bundle.unlink(missing_ok=True)
+        return
+    bundle.write_bytes(b"\n".join(p.read_bytes() for p in pems))
 
 
 def _extra_certs_dir() -> Path:
@@ -462,15 +501,19 @@ def certs_import(
     # CA cert は public 情報のため shutil.copy2 が source mode を継承する挙動を許容。
     # follow_symlinks=True で symlink target の通常 file をコピー (= dest は symlink にならない)。
     shutil.copy2(resolved, dest, follow_symlinks=True)
+    # mitmproxy が上流 TLS 検証に使う bundle を再生成 (単一 path 要求への対応)
+    _rebuild_cert_bundle(extra)
     return dest
 
 
 def certs_list() -> list[str]:
-    """`extra/` 配下の cert ファイル名を sorted で返す (`.gitkeep` 除外)。"""
+    """`extra/` 配下の cert ファイル名を sorted で返す (`.gitkeep` / bundle.pem 除外)。"""
     extra = _extra_certs_dir()
     return sorted(
         p.name for p in extra.iterdir()
-        if p.is_file() and p.name not in _CERT_NAME_PROTECTED
+        if p.is_file()
+        and p.name not in _CERT_NAME_PROTECTED
+        and p.name != _CERT_BUNDLE_NAME
     )
 
 
@@ -481,11 +524,18 @@ def certs_remove(name: str) -> bool:
     Raises: ValueError (`.gitkeep` 試行 / path traversal)
     """
     _check_cert_name_path_safety(name)
+    if name == _CERT_BUNDLE_NAME:
+        raise ValueError(
+            f"{name!r} is the auto-aggregated bundle; remove individual "
+            "cert files instead (bundle is regenerated automatically)"
+        )
     extra = _extra_certs_dir()
     target = extra / name
     if not target.is_file():
         return False
     target.unlink()
+    # 削除反映 (残 cert から bundle 再生成、空なら bundle も削除)
+    _rebuild_cert_bundle(extra)
     return True
 
 

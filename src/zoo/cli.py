@@ -148,8 +148,11 @@ def certs_import_cmd(
         raise SystemExit(str(e))
     typer.echo(f"Imported: {dest}")
     typer.secho(
-        "Note: extra cert を image に反映するには `zoo build --no-cache` が必要です。\n"
-        "      (--no-cache 無しだと Docker layer cache hit で COPY 再評価されません)",
+        "Note:\n"
+        "  - extra cert を image に反映するには `zoo build --no-cache` が必要です。\n"
+        "    (--no-cache 無しだと Docker layer cache hit で COPY 再評価されません)\n"
+        "  - mitmproxy 上流 TLS 検証用の bundle.pem を自動再生成しました。\n"
+        "    mitmproxy 稼働中の場合は `zoo down && zoo up` で再読込してください。",
         fg=typer.colors.YELLOW,
     )
 

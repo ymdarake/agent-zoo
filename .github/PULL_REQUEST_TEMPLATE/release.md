@@ -51,16 +51,13 @@ git push origin v<VERSION>         # tag push → release workflow 発火
 - [ ] `pip install agent-zoo==<VERSION>` が publish 後に通ることを確認 (stable は `--pre` 不要)
 - [ ] GitHub Release の auto-generated notes で release note として妥当な内容か確認
 
-## Trusted Publisher 設定 (初回 / tag pattern 変更時)
+## Trusted Publisher 設定 (初回 maintainer のみ確認)
 
-- [ ] PyPI の "Trusted publisher" で以下が許可されているか (**重要**: pre-release
-      tag を発火させるので tag pattern が狭いと OIDC reject される)
-  - Repository: `ymdarake/agent-zoo`
-  - Workflow: `release.yml`
-  - Environment: `pypi`
-  - Tag filter: **`v*` or `v*.*.*` broad match** (pre-release suffix `b*` / `a*` / `rc*` を含む tag を許可)
+- [ ] PyPI の "Publishing" で pending or active publisher が以下で登録されていること
+  - Owner: `ymdarake` / Repository: `agent-zoo` / Workflow: `release.yml` / Environment: `pypi`
+  - (tag 名の filter 機能は PyPI 側に無い。tag の PEP 440 gate は release.yml 側)
 - [ ] TestPyPI (debug 専用) の Trusted Publisher も同様に登録 (Environment: `testpypi`)
-- [ ] `environment: pypi` の required reviewers が restored (public repo 前提) — issue #73
+- [ ] `environment: pypi` の required reviewers が public repo で有効化されている (issue #73)
 - [ ] 詳細: [docs/dev/release-testing.md](../../docs/dev/release-testing.md) の "PyPI / TestPyPI の Trusted Publisher 設定" section
 
 ## Rollback

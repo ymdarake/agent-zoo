@@ -308,9 +308,12 @@ main() {
 
     local kind; kind="$(lib classify "$VERSION")"
     if [[ "$kind" == "pre-release" ]]; then
-        KIND_LABEL="pre-release (TestPyPI only)"
+        # 本番 PyPI に pre-release として publish (pip install --pre で取得可)。
+        # environment approval (reviewer=maintainer) が人間 gate を担う。
+        # GitHub Release は pre-release では自動作成されない (stable のみ)。
+        KIND_LABEL="pre-release (prd PyPI, reviewer approval required)"
     else
-        KIND_LABEL="stable (prd PyPI + GitHub Release)"
+        KIND_LABEL="stable (prd PyPI + GitHub Release, reviewer approval required)"
     fi
     readonly KIND_LABEL
 

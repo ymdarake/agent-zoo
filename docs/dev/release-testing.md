@@ -65,23 +65,32 @@ cd / && rm -rf /tmp/zoo-wheel-test
 
 - `scripts/dogfood-dashboard-wheel.sh`: dist/*.whl を install + 同じ自動検証 18 項目を実行
 
-## beta / pre-release tag 運用 (issue #68)
+## beta / pre-release tag 運用 (issue #68 + 本番 PyPI 統一)
 
 release workflow は PEP 440 **native** pre-release suffix (`a` / `b` / `rc`) 付き tag を
-TestPyPI 限定経路で自動処理する。`v0.1.0b1` を push → TestPyPI のみ発火、本番 PyPI と
-GitHub Release は skip される。
+**本番 PyPI に publish する** (PEP 440 流儀)。stable と pre-release のルーティング差は
+GitHub Release の自動作成のみ。`environment: pypi` の **required reviewers**
+(public repo 前提、issue #73) が共通の人間 gate。
 
 ### ルーティング表
 
-| tag 形式 | 例 | TestPyPI | 本番 PyPI | GitHub Release |
+| tag 形式 | 例 | 本番 PyPI | GitHub Release | reviewer approval |
 |---|---|---|---|---|
-| stable | `v0.1.0` | ❌ | ✅ | ✅ |
-| pre-release | `v0.1.0a1` / `v0.1.0b1` / `v0.1.0rc1` | ✅ | ❌ | ❌ |
-| `workflow_dispatch` target=testpypi | (tag 非依存) | ✅ | ❌ | ❌ |
+| stable | `v0.1.0` | ✅ | ✅ | ✅ |
+| pre-release | `v0.1.0a1` / `v0.1.0b1` / `v0.1.0rc1` | ✅ | ❌ (CHANGELOG / PyPI description のみ) | ✅ |
+| `workflow_dispatch` target=testpypi | (tag 非依存) | ❌ | ❌ | ❌ (TestPyPI は debug 用、approval なし) |
+
+install 側の違い:
+
+| version | install コマンド |
+|---|---|
+| stable | `pip install agent-zoo` / `uv tool install agent-zoo` |
+| pre-release | `pip install --pre agent-zoo==X.Y.ZbN` / `uv tool install --prerelease=allow agent-zoo==X.Y.ZbN` |
 
 ### beta release フロー (stable 前の疎通確認)
 
-**推奨**: `make release-commit <VERSION>` + PR + `make release-tag <VERSION>` の 2-phase (後述 "make release-* コマンド" セクション)。以下は素の git 手順 (dogfood / 緊急時向け):
+**推奨**: `make release-commit <VERSION>` + PR + `make release-tag <VERSION>` の 2-phase
+(後述 "make release-* コマンド" セクション)。以下は素の git 手順 (dogfood / 緊急時向け):
 
 ```bash
 # 1. release branch で pyproject bump + commit
@@ -97,12 +106,16 @@ git checkout main && git pull
 git tag -a v0.1.0b1 -m "Release v0.1.0b1"
 git push origin v0.1.0b1
 
-# 3. TestPyPI に自動 publish される。wheel install で疎通確認
-pip install --index-url https://test.pypi.org/simple/ --pre agent-zoo==0.1.0b1
-# or 本手順冒頭の「手順」セクションの wheel install 検証を TestPyPI 経由で実施
+# 3. Actions 画面で `environment: pypi` の approval を与える
+#    (reviewer = maintainer、prevent_self_review=false で self-approve 可)。
+#    30 日以内に approve しないと run が自動 fail する点に注意。
 
-# 4. 問題があれば TestPyPI 上で yank (後述)。version を bump (`0.1.0b2`) して再試行
-# 5. OK なら stable version に bump して tag
+# 4. 本番 PyPI に publish される。`--pre` 経由で疎通確認
+pip install --pre agent-zoo==0.1.0b1
+# or: uv tool install --prerelease=allow agent-zoo==0.1.0b1
+
+# 5. 問題があれば PyPI 上で yank (後述)。version を bump (`0.1.0b2`) して再試行
+# 6. OK なら stable version に bump して tag
 vim pyproject.toml                            # version = "0.1.0"
 git commit -am "bump version: 0.1.0"
 git tag v0.1.0
@@ -117,29 +130,40 @@ git push origin v0.1.0                        # 本番 PyPI + GitHub Release
   正規化されると事故になるため)。
 - **leading zero 禁止** — `v0.1.0b01` は classify regex で reject。PyPI 側で `0.1.0b1` に
   正規化され、後続の `v0.1.0b1` push と衝突する事故を未然に防ぐ。
-- **同一 version の再 upload 不可** — TestPyPI / PyPI は同一 version の 2 回目 upload を
-  reject。beta 毎に `b1 → b2 → ...` で bump する。
+- **同一 version の再 upload 不可** — PyPI は同一 version の 2 回目 upload を reject。
+  beta 毎に `b1 → b2 → ...` で bump する。yank しても同じ filename は再利用不可。
 - **dynamic version (`dynamic = ["version"]`) は未対応**。Verify step が明示 error で
   fail する。hatch-vcs 等への移行が必要になった時点で workflow を拡張する。
+- **pre-release は GitHub Release を自動作成しない**。release notes は CHANGELOG.md /
+  PyPI project description で公開される。beta でも GitHub Release を作りたい場合は
+  手動で `gh release create v<V> --prerelease --notes ...` を叩く。
 
-### TestPyPI の yank / rollback
+### PyPI の yank / rollback
 
-broken な beta を上げてしまった場合:
+broken な release (stable / pre-release 両方) を publish してしまった場合:
 
-1. https://test.pypi.org/manage/project/agent-zoo/ にログイン
-2. 対象 version の "Manage" → "Yank" (install 時に `--pre` + 明示 version 指定されない限り skip される)
-3. 修正を commit し `b2` に bump して再 tag (同一 version の再 upload は不可)
+1. https://pypi.org/manage/project/agent-zoo/ にログイン
+2. 対象 version の "Options" → "Yank" (install 時に `pip install foo` から skip されるが、
+   `==X.Y.Z` や `--pre` で明示指定すると install は可能)
+3. 修正を commit し次 version に bump して再 tag (同一 version の再 upload は不可)
 
-完全削除 (release file の delete) も同画面で可能だが、既存の install を破壊するので yank を優先する。
+完全削除 (release file の delete) も同画面で可能だが、公式ドキュメントでは
+"last resort to address legal issues or harmful releases" 扱い。既存 install を破壊
+するので yank を優先する。
 
-### PyPI / TestPyPI の Trusted Publisher 設定
+### PyPI / TestPyPI の Trusted Publisher 設定 (重要)
 
-OIDC trusted publishing を使う場合、PyPI 側の project 設定で以下を確認:
+OIDC trusted publishing を使うため、PyPI 側の project 設定で以下を確認する必要がある:
 
 - **Workflow filename**: `release.yml`
-- **Environment**: `pypi` / `testpypi` (本 workflow で使い分け)
-- **Tag pattern**: PyPI 側で tag filter を絞っている場合、pre-release suffix を含む tag
-  (`v*.*.*b*` 等) も許可範囲に入れる。通常 `v*.*.*` のような broad glob で問題ない。
+- **Environment (prod)**: `pypi` — tag filter は **pre-release suffix を許容する pattern** に
+  する (`v*` または `v*.*.*` broad match。未設定も可)。`v*.*.*` だけ許可すると
+  **`v0.1.0b1` で OIDC reject され publish fail する** ので要チェック (critical)。
+- **Environment (debug)**: `testpypi` — `workflow_dispatch` 経由の smoke test 用。
+  tag filter は未設定で可。
+- **何か新しい maintainer が追加された / PyPI project owner 変更時**: Trusted Publisher の
+  claim が tagger identity に依存しないため影響なしだが、environment reviewers リストは
+  更新が必要。
 
 設定が pre-release 未許可のまま `v0.1.0b1` を push すると、`pypa/gh-action-pypi-publish`
 step が認証エラーで fail する (ただし build 自体は通っているので artifact は残る)。
@@ -147,10 +171,30 @@ step が認証エラーで fail する (ただし build 自体は通っている
 ### 想定外 tag が push された時の挙動
 
 - **非 PEP 440 native (`v0.1.0-beta-1`, `v0.1.0.post1`, `vv0.1.0` 等)**: build job の
-  Classify step が exit 1 で止める。TestPyPI / 本番 PyPI / GitHub Release いずれにも
-  発火しない。failing red build は意図的 (silent > loud)。
+  Classify step が exit 1 で止める。本番 PyPI / GitHub Release いずれにも発火しない。
+  pre-release の safety net (TestPyPI のみに逃がす) を廃止したため、**Classify の
+  exit 1 が本番 PyPI 誤公開を防ぐ唯一の防衛線**。failing red build は意図的 (silent > loud)。
 - **`v*.*.*` glob に偶然マッチする tag (例 `v2026.04.19`)**: 同上、Classify で明示
   reject される。workflow を通したい場合は `on.push.tags` pattern を見直す。
+
+### TestPyPI (publish workflow デバッグ専用 annex)
+
+TestPyPI は **publish workflow 自体の smoke test 用**に残してある
+(Trusted Publisher OIDC / artifact upload 配線の動作確認)。tag push では発火せず、
+`workflow_dispatch` (target=testpypi) でのみ手動発火する:
+
+```bash
+# Actions タブ → "Release to PyPI" → "Run workflow" → target=testpypi を選択
+# or gh CLI:
+gh workflow run release.yml -f target=testpypi
+
+# 疎通確認 (index-url が必要):
+pip install --index-url https://test.pypi.org/simple/ \
+            --extra-index-url https://pypi.org/simple/ \
+            --pre agent-zoo==X.Y.ZbN
+```
+
+TestPyPI は user 配布先ではない。一般 install 検証は本番 PyPI (pre-release は `--pre`) で行う。
 
 ### `make release-*` コマンド (自動化)
 
@@ -203,9 +247,9 @@ git push origin v0.1.1b1                  # tag push → release workflow 発火
 
 **push は意図的に自動化していない** — tag を公開する destructive action は maintainer の明示確認に委ねる (script の echo 通りのコマンドを手で実行)。
 
-### 想定外 tag が push された時の挙動
+## 関連
 
 - `pyproject.toml` の hatchling 設定 (`force-include` / sdist include)
 - `src/zoo/api.py::_asset_source()` の installed/source 分岐
-- リリースワークフロー: `.github/workflows/release.yml` (tag push で TestPyPI / PyPI に自動 publish)
+- リリースワークフロー: `.github/workflows/release.yml` (tag push で本番 PyPI に自動 publish、TestPyPI は workflow_dispatch 経由のデバッグ)
 - `tests/test_release_workflow.py` (workflow yaml assertion + inline python の subprocess test)

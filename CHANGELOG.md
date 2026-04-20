@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`zoo run` / `zoo up` / `zoo task` で Docker image 未 build 時の UX 改善** — 初回起動時 (または `zoo build` を忘れた時) に agent-zoo 系 image が未 build だと compose が registry pull を試みて `pull access denied` で落ちる問題を解決:
   - `docker-compose.yml` の agent service (`claude` / `codex` / `gemini` / `unified`) に `image: agent-zoo-<agent>:latest` + `pull_policy: never` を明示追加。registry pull 試行を抑止
   - `api.run` / `api.task` / `api.bash` / `api.up` の各 entry で `ensure_agent_images_built()` を呼び、`agent-zoo-base:latest` / `agent-zoo-<agent>:latest` の存在を `docker image inspect` で pre-check。無ければ English hint (`Run 'zoo build --agent <agent>' first`) を stderr に出して fail-fast。低レイヤ `runner.compose_up` からは呼ばず、単体 test の purity を保つ設計
+- **Dockerfile.base に CA bundle env 追加 — corporate root CA 配下での `zoo build` を fix** — `certs/extra/` に企業 root CA を配置 + `update-ca-certificates` は system CA store (`/etc/ssl/certs/ca-certificates.crt`) に追加するが、**pip / Python requests / Node.js (npm) はそれぞれ自前 bundle (`certifi` / node built-in) を使う**ため、TLS 検証が fail して build 時の `npm install @anthropic-ai/claude-code` / `pip install` 等がエラーで止まる問題を解決。`Dockerfile.base` の `update-ca-certificates` 直後に `SSL_CERT_FILE` / `REQUESTS_CA_BUNDLE` / `PIP_CERT` / `NODE_EXTRA_CA_CERTS` の 4 つを system bundle path に向ける `ENV` を追加。base image から派生する agent image (claude / codex / gemini / unified) でも継承され、build 時 RUN + runtime の両方で TLS 解決が通る。5 unit test で regression 防止 (env の存在 + `update-ca-certificates` 後の順序 assert)
 
 ## [0.1.1] - 2026-04-20
 

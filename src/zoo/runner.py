@@ -248,7 +248,9 @@ def ensure_agent_images_built(services: list[str]) -> None:
 
 def compose_up(services: list[str], *, workspace: str | None = None,
                strict: bool = False) -> None:
-    ensure_agent_images_built(services)
+    # NOTE: `ensure_agent_images_built()` は呼ばない。低レイヤ helper として
+    # 純粋に docker compose up を実行するに留め、image 存在 pre-check は
+    # api.py の entry (run / task / bash / up) 側で行う (単体 test 容易性)。
     ensure_certs()
     touch_runtime_files()
     _ensure_inbox_dir(workspace)

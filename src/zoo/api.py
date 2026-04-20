@@ -37,7 +37,7 @@ _BUNDLED_DIRS = [
 
 
 class PolicyProfile(str, enum.Enum):
-    """`zoo init --policy <profile>` で選択可能な初期ポリシープロファイル (issue #66).
+    """`zoo init --policy <profile>` で選択可能な初期ポリシープロファイル。
 
     str subclass 化しているのは以下 2 点のため:
     - typer が Enum を native に choice として扱う（`--help` 自動生成 + invalid value exit 2）
@@ -69,7 +69,7 @@ def _coerce_policy_profile(value: PolicyProfile | str) -> PolicyProfile:
 
 
 def _asset_source() -> Path:
-    """Locate bundled assets (ADR 0002 D7).
+    """Locate bundled assets.
 
     - Installed: `zoo/_assets/.zoo/` (= 配布物の `.zoo/` 構造)
     - Source repo (開発時): `bundle/` (source repo root から検索)
@@ -117,12 +117,12 @@ def init(
     force: bool = False,
     policy: PolicyProfile | str = PolicyProfile.minimal,
 ) -> Path:
-    """Bootstrap a ready-to-use agent-zoo workspace at ``target_dir`` (ADR 0002).
+    """Bootstrap a ready-to-use agent-zoo workspace at ``target_dir``.
 
-    新 layout: 全 zoo 管理ファイルを ``target/.zoo/`` 配下に集約。
+    全 zoo 管理ファイルを ``target/.zoo/`` 配下に集約。
     - ``target/.zoo/`` 配下に bundled files / dirs をコピー
     - ``target/.zoo/policy.toml`` は ``policy`` 引数で選択された profile を書き出す
-      (issue #66; default = minimal = secure by default)
+      (default = minimal = secure by default)
     - ``target/.gitignore`` (workspace 用、`.zoo/` 1 行) を配置（既存 skip）
     - ``target/.zoo/.gitignore`` (内部 runtime artifact 除外) を配置
     - runtime dirs (``data/``, ``certs/``, ``inbox/``) と

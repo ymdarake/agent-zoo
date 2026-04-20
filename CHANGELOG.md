@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-04-20
+
+初回 stable release (PyPI 公開)。中間 beta (`0.1.1b1` / `0.1.1b2`) を経て release workflow と 2-phase flow を固めた上での initial stable。
+
 ### Security
 - **`zoo init --policy <profile>` で secure-by-default** ([#66](https://github.com/ymdarake/agent-zoo/issues/66)) — `zoo init` の default profile が `minimal` (空 allow list) になり、初期状態では全外向き通信が BLOCKED → Inbox に pending として積まれる。従来は Anthropic / OpenAI / Google の 13 domain が最初から allow されていたため、企業環境 / 高セキュリティ環境では意図せず provider への通信が通る状態だった。初体験を secure by default に転換 (breaking change、user 0 のため migration guide 不要)
 - **dashboard 外部依存ゼロ化** ([ADR 0004](docs/dev/adr/0004-dashboard-external-deps-removal.md)) — pico.css / htmx.org の CDN 経由読込を完全撤去し、自前 HTML/CSS/vanilla JS (CSS ~284 行 + JS ~268 行) に移行。CDN 乗っ取り / unpkg リダイレクト改ざんによる任意 JS 注入経路を消滅 (Sprint 007 PR F〜I、包括レビュー M-1)
@@ -89,7 +93,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `docs/codex-integration.md` / `.en.md` — maintainer 用ガイドとしての役目終了
 - `ROADMAP.md` / `TODO.md` — `BACKLOG.md` に集約
 - repo root の空 `data/` ディレクトリ — `.zoo/data/` に集約されたため不要
-
-## [0.1.0] - TBD
 
 初回リリース。

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-04-20
+
+user experience 改善 patch。初回 `zoo run` での image 未 build 時の挙動が分かりやすくなり、corporate root CA 下での `zoo build` も通るようになった。
+
 ### Changed
 - **`zoo run` / `zoo up` / `zoo task` で Docker image 未 build 時の UX 改善** — 初回起動時 (または `zoo build` を忘れた時) に agent-zoo 系 image が未 build だと compose が registry pull を試みて `pull access denied` で落ちる問題を解決:
   - `docker-compose.yml` の agent service (`claude` / `codex` / `gemini` / `unified`) に `image: agent-zoo-<agent>:latest` + `pull_policy: never` を明示追加。registry pull 試行を抑止

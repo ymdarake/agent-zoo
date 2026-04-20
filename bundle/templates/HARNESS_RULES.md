@@ -15,7 +15,7 @@
 ## 制約を超える作業が必要な場合
 
 `/harness/inbox/` ディレクトリに新規 TOML ファイルを作成して
-**Policy Inbox Request** を出してください（ADR 0001）。
+**Policy Inbox Request** を出してください。
 
 ファイル名は同名衝突を避けるため `<日時>-<任意ユニーク文字列>.toml` を推奨します
 （例: `2026-04-18T10-23-45-myreq.toml`）。

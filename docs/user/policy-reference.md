@@ -180,4 +180,4 @@ min_size = 50000
 
 | 変数 | デフォルト | 説明 |
 |---|---|---|
-| `POLICY_LOCK_DIR` | `/locks` | `policy.runtime.toml` の cross-container shared/exclusive lock ファイルを置くディレクトリ。proxy / dashboard 双方から writable な共有 dir である必要がある (Sprint 006 PR F、TOCTOU M-8 対策)。`zoo init` が `.zoo/locks/` を生成し、docker-compose.yml が `./locks:/locks` を bind mount する。host-mode で proxy を動かす場合は writable な絶対パスを指定（未指定でも policy_path 同階層 → tempdir の順で fallback する）。`<dir>/<basename>.lock` の形式で lock file が作られる。 |
+| `POLICY_LOCK_DIR` | `/locks` | `policy.runtime.toml` の cross-container shared/exclusive lock ファイルを置くディレクトリ。proxy / dashboard 双方から writable な共有 dir である必要がある (TOCTOU 対策)。`zoo init` が `.zoo/locks/` を生成し、docker-compose.yml が `./locks:/locks` を bind mount する。host-mode で proxy を動かす場合は writable な絶対パスを指定（未指定でも policy_path 同階層 → tempdir の順で fallback する）。`<dir>/<basename>.lock` の形式で lock file が作られる。 |

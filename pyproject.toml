@@ -1,6 +1,6 @@
 [project]
 name = "agent-zoo"
-version = "0.1.1"
+version = "0.1.2"
 description = "Security harness for AI coding agents (Claude Code, Codex CLI, etc.) — mitmproxy payload inspection + TOML policy control."
 readme = "README.md"
 requires-python = ">=3.11"

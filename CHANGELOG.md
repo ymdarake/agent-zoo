@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`zoo build --no-cache`** — Docker image layer cache を skip して 0 から再 build する option。`uv tool upgrade agent-zoo` 後に Dockerfile の変更 (例: Sprint 008 の CA env 追加) を確実に反映したい時に使う。`runner.build_base(no_cache=True)` で base image の `docker build` と `docker compose build` 双方に `--no-cache` を伝播。Dockerfile.base が欠損している場合は warning を出して skip (以前は silent return)。5 unit test (base + compose 伝播、default 挙動、CLI help の flag 表示)
+
 ## [0.1.2] - 2026-04-20
 
 user experience 改善 patch。初回 `zoo run` での image 未 build 時の挙動が分かりやすくなり、corporate root CA 下での `zoo build` も通るようになった。

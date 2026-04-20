@@ -1,0 +1,8 @@
+# dashboard image の build context (./dashboard) から除外する file。
+# runtime で ./dashboard:/app の bind mount 経由で gunicorn が .pyc を
+# ./dashboard/__pycache__/ に書き込む。次回 `zoo build` で `COPY . .` が
+# その __pycache__ を image 内に焼いてしまうのを防ぐ (host python version
+# と container python version の違いで import error になるリスクあり)。
+__pycache__/
+*.pyc
+*.pyo

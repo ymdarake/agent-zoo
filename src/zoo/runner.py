@@ -198,8 +198,59 @@ def _ensure_inbox_dir(workspace: str | None) -> None:
     (base / ".zoo" / "inbox").mkdir(parents=True, exist_ok=True)
 
 
+def ensure_agent_images_built(services: list[str]) -> None:
+    """Pre-check that locally-built agent-zoo images exist before `docker compose up`.
+
+    agent-zoo images (``agent-zoo-base`` / ``agent-zoo-<agent>``) are built
+    locally by ``zoo build`` and are **not** available on any registry.
+    Without this check, compose would attempt to pull from Docker Hub and
+    fail with a cryptic ``pull access denied`` error.
+
+    Fail-fast with an English hint pointing at ``zoo build --agent <name>``
+    so maintainers / new users don't waste time debugging the pull failure.
+
+    Args:
+        services: compose service names (e.g. ``["claude"]`` or
+            ``["proxy", "dashboard"]``). Only services in :data:`AGENTS`
+            trigger per-agent image checks; other services are assumed to
+            use external images (proxy / dashboard / dns) and are skipped.
+    """
+    agent_services = [s for s in services if s in AGENTS]
+    required = ["agent-zoo-base:latest"]
+    for svc in agent_services:
+        required.append(f"agent-zoo-{svc}:latest")
+
+    missing: list[str] = []
+    for img in required:
+        result = subprocess.run(
+            ["docker", "image", "inspect", img],
+            capture_output=True,
+        )
+        if result.returncode != 0:
+            missing.append(img)
+
+    if not missing:
+        return
+
+    # English hint: `zoo build --agent <name>` で直る
+    agent_hint = agent_services[0] if agent_services else "<agent>"
+    lines = [
+        "",
+        f"::error::Docker image not found locally: {', '.join(missing)}",
+        "",
+        "agent-zoo images are built locally (not pulled from a registry).",
+        f"Run `zoo build --agent {agent_hint}` first (initial build takes a few minutes).",
+        "",
+    ]
+    print("\n".join(lines), file=sys.stderr)
+    raise SystemExit(1)
+
+
 def compose_up(services: list[str], *, workspace: str | None = None,
                strict: bool = False) -> None:
+    # NOTE: `ensure_agent_images_built()` は呼ばない。低レイヤ helper として
+    # 純粋に docker compose up を実行するに留め、image 存在 pre-check は
+    # api.py の entry (run / task / bash / up) 側で行う (単体 test 容易性)。
     ensure_certs()
     touch_runtime_files()
     _ensure_inbox_dir(workspace)

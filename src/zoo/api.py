@@ -242,6 +242,7 @@ def run(
     Returns the agent process exit code.
     """
     cfg = runner.resolve_agent(agent)
+    runner.ensure_agent_images_built([cfg.name])
     runner.compose_up([cfg.name, "dashboard"], workspace=_as_str(workspace))
     cmd = cfg.run_dangerous_cmd if dangerous else cfg.run_cmd
     return runner.run_interactive(cmd)
@@ -262,6 +263,7 @@ def task(
         cfg.required_env,
         hint=f"Set {cfg.required_env} before calling task().",
     )
+    runner.ensure_agent_images_built([cfg.name])
     runner.compose_up([cfg.name, "dashboard"], workspace=_as_str(workspace))
     cmd = [arg.replace("{prompt}", prompt) for arg in cfg.task_cmd_template]
     return runner.run_interactive(cmd)
@@ -277,6 +279,7 @@ def bash(
     Useful for manual inspection / ad-hoc debugging within the harness.
     """
     cfg = runner.resolve_agent(agent)
+    runner.ensure_agent_images_built([cfg.name])
     runner.compose_up([cfg.name, "dashboard"], workspace=_as_str(workspace))
     return runner.run_interactive(
         ["docker", "compose", "exec", cfg.name, "bash"],
@@ -296,6 +299,7 @@ def up(
     else:
         cfg = runner.resolve_agent(agent)
         services = [cfg.name, "dashboard"]
+    runner.ensure_agent_images_built(services)
     runner.compose_up(services, workspace=_as_str(workspace), strict=strict)
 
 

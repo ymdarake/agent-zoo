@@ -129,11 +129,15 @@ def test_external_dockerfile_from_uses_sha_pin():
 
 
 def test_docker_compose_image_uses_sha_pin():
-    """docker-compose.yml の image: 行 (Dependabot 対象) が SHA pin されていること。"""
+    """docker-compose.yml の image: 行 (Dependabot 対象) が SHA pin されていること。
+
+    `agent-zoo-*:latest` は locally built image で registry に存在しないため
+    SHA pin 対象外 (`pull_policy: never` で registry pull 自体を抑止)。
+    """
     path = pathlib.Path("bundle/docker-compose.yml")
     for lineno, line in enumerate(path.read_text().splitlines(), start=1):
         stripped = line.strip()
-        if stripped.startswith("image:") and "agent-zoo-base" not in stripped:
+        if stripped.startswith("image:") and "agent-zoo-" not in stripped:
             assert _SHA_DIGEST_RE.search(stripped), (
                 f"{path}:{lineno} の image: 行が SHA pin されていない: {stripped!r}"
             )

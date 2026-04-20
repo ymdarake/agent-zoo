@@ -19,6 +19,8 @@ services:
   claude:
     <<: *agent-common
     profiles: ["claude"]
+    image: agent-zoo-claude:latest
+    pull_policy: never  # locally built via `zoo build`, never pull from registry
     build:
       context: ./container
       dockerfile: Dockerfile
@@ -39,6 +41,8 @@ services:
   codex:
     <<: *agent-common
     profiles: ["codex"]
+    image: agent-zoo-codex:latest
+    pull_policy: never
     build:
       context: ./container
       dockerfile: Dockerfile.codex
@@ -59,6 +63,8 @@ services:
   gemini:
     <<: *agent-common
     profiles: ["gemini"]
+    image: agent-zoo-gemini:latest
+    pull_policy: never
     build:
       context: ./container
       dockerfile: Dockerfile.gemini
@@ -83,6 +89,8 @@ services:
   unified:
     <<: *agent-common
     profiles: ["unified"]
+    image: agent-zoo-unified:latest
+    pull_policy: never
     build:
       context: ./container
       dockerfile: Dockerfile.unified

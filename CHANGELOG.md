@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **`zoo run` / `zoo up` / `zoo task` で Docker image 未 build 時の UX 改善** — 初回起動時 (または `zoo build` を忘れた時) に agent-zoo 系 image が未 build だと compose が registry pull を試みて `pull access denied` で落ちる問題を解決:
+  - `docker-compose.yml` の agent service (`claude` / `codex` / `gemini` / `unified`) に `image: agent-zoo-<agent>:latest` + `pull_policy: never` を明示追加。registry pull 試行を抑止
+  - `api.run` / `api.task` / `api.bash` / `api.up` の各 entry で `ensure_agent_images_built()` を呼び、`agent-zoo-base:latest` / `agent-zoo-<agent>:latest` の存在を `docker image inspect` で pre-check。無ければ English hint (`Run 'zoo build --agent <agent>' first`) を stderr に出して fail-fast。低レイヤ `runner.compose_up` からは呼ばず、単体 test の purity を保つ設計
+
 ## [0.1.1] - 2026-04-20
 
 初回 stable release (PyPI 公開)。中間 beta (`0.1.1b1` / `0.1.1b2`) を経て release workflow と 2-phase flow を固めた上での initial stable。

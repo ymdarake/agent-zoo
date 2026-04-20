@@ -170,12 +170,10 @@ jobs:
 
   publish-testpypi:
     name: Publish to TestPyPI
-    # issue #68: 従来の workflow_dispatch 経路を維持しつつ、pre-release tag
-    # push で自動発火させる。is_prerelease は build job の classify step
-    # output (literal 'true' / 'false' / empty)。
-    if: |
-      (github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi') ||
-      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') && needs.build.outputs.is_prerelease == 'true')
+    # TestPyPI は publish workflow / Trusted Publisher 設定のデバッグ専用。
+    # pre-release / stable 問わず tag push は本番 PyPI に流すため、tag 経路は
+    # 撤去し workflow_dispatch (target=testpypi) からの手動実行のみを受ける。
+    if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
     needs: build
     runs-on: ubuntu-latest
     environment:
@@ -196,13 +194,12 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    # 本番 PyPI は stable tag push (`v*.*.*` で suffix 無し) でのみ発火。
-    # issue #68: pre-release tag を絶対に通さないよう is_prerelease == 'false'
-    # を明示。workflow_dispatch からの本番公開は従来通り塞いでいる。
-    if: |
-      github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/tags/') &&
-      needs.build.outputs.is_prerelease == 'false'
+    # PEP 440 流儀に統一: pre-release (`v*a*` / `v*b*` / `v*rc*`) / stable
+    # (`v*.*.*` suffix 無し) 問わず tag push で本番 PyPI に publish する。
+    # 人間 gate は `environment: pypi` の required reviewers (public repo で
+    # 復活、issue #73 参照) が担う。
+    # workflow_dispatch からの本番公開は従来通り塞いでいる (tag 経由のみ)。
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
     needs: build
     runs-on: ubuntu-latest
     environment:

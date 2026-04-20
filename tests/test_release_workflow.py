@@ -110,24 +110,63 @@ def _job_if(name: str) -> str:
     return _workflow()["jobs"][name]["if"]
 
 
-def test_publish_testpypi_if_covers_prerelease_tag_and_workflow_dispatch():
+def test_publish_testpypi_if_is_workflow_dispatch_only():
+    """PEP 440 流儀に合わせ、pre-release tag も本番 PyPI に publish する方針に
+    移行したので、TestPyPI は workflow_dispatch (publish workflow デバッグ) 専用。
+    tag push 経路は撤去されていること。"""
     expr = _job_if("publish-testpypi")
-    # workflow_dispatch 経路 (既存)
+    # workflow_dispatch 経路のみ残存
     assert "workflow_dispatch" in expr
     assert "inputs.target == 'testpypi'" in expr
-    # tag push + is_prerelease == 'true' 経路 (新規)
-    assert "needs.build.outputs.is_prerelease == 'true'" in expr, (
-        f"testpypi.if に is_prerelease == 'true' literal が無い: {expr!r}"
+    # tag push 経路 / is_prerelease 参照が expr に含まれないこと (drift 防止)
+    assert "startsWith(github.ref" not in expr, (
+        f"testpypi.if に tag push 経路が残っている: {expr!r}"
+    )
+    assert "is_prerelease" not in expr, (
+        f"testpypi.if が is_prerelease を参照している: {expr!r}"
     )
 
 
-def test_publish_pypi_if_excludes_prerelease():
+def test_publish_pypi_fires_on_any_tag_push():
+    """新 flow: pre-release / stable 問わず本番 PyPI に publish する。
+    pre-release gate (is_prerelease == 'false') は撤去済。
+    environment protection rule (reviewer required) が人間 gate を担う。"""
     expr = _job_if("publish-pypi")
+    assert "github.event_name == 'push'" in expr
     assert "startsWith(github.ref, 'refs/tags/')" in expr
-    # belt: pre-release は絶対に通さない
-    assert "needs.build.outputs.is_prerelease == 'false'" in expr, (
-        f"publish-pypi.if に is_prerelease == 'false' literal が無い: {expr!r}"
+    # pre-release guard が残存していないこと (regression guard)
+    assert "is_prerelease" not in expr, (
+        f"publish-pypi.if に is_prerelease gate が残っている (新 flow では撤去): {expr!r}"
     )
+
+
+def test_publish_pypi_needs_build():
+    """publish-pypi は build artifact を needs する (transitive drift 防止、sub-agent H1)。"""
+    job = _workflow()["jobs"]["publish-pypi"]
+    needs = job["needs"]
+    # needs は str or list
+    if isinstance(needs, str):
+        needs = [needs]
+    assert "build" in needs, (
+        f"publish-pypi.needs に build が無い (artifact download が壊れる): {needs!r}"
+    )
+
+
+def test_publish_testpypi_needs_build():
+    job = _workflow()["jobs"]["publish-testpypi"]
+    needs = job["needs"]
+    if isinstance(needs, str):
+        needs = [needs]
+    assert "build" in needs
+
+
+def test_github_release_needs_build_for_is_prerelease_output():
+    """github-release は is_prerelease output 参照のため needs に build を直接含める必要。"""
+    job = _workflow()["jobs"]["github-release"]
+    needs = job["needs"]
+    if isinstance(needs, str):
+        needs = [needs]
+    assert "build" in needs
 
 
 def test_github_release_if_excludes_prerelease_belt_and_suspenders():

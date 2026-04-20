@@ -327,18 +327,25 @@ def reload_policy() -> None:
     )
 
 
-def build(*, agent: str = "claude") -> None:
+def build(*, agent: str = "claude", no_cache: bool = False) -> None:
     """Build docker images for the given agent + dashboard.
 
     まず共通 base（B-1: `agent-zoo-base:latest`）をビルドし、次に compose build。
+
+    Args:
+        agent: agent name (claude / codex / gemini)
+        no_cache: ``True`` で ``docker build --no-cache`` + ``docker compose build --no-cache``。
+            Dockerfile 変更 (例: Dockerfile.base の CA env 追加) を package upgrade 後に
+            確実に反映したい時に使う。
     """
     cfg = runner.resolve_agent(agent)
     runner.ensure_certs()
-    runner.build_base()
-    runner.run(
-        ["docker", "compose", "build", cfg.name, "dashboard"],
-        env=runner.compose_env(),
-    )
+    runner.build_base(no_cache=no_cache)
+    compose_cmd = ["docker", "compose", "build"]
+    if no_cache:
+        compose_cmd.append("--no-cache")
+    compose_cmd.extend([cfg.name, "dashboard"])
+    runner.run(compose_cmd, env=runner.compose_env())
 
 
 def certs() -> None:

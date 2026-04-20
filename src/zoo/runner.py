@@ -151,22 +151,38 @@ def run_interactive(cmd: list[str], *, env: dict[str, str] | None = None) -> int
         return 130
 
 
-def build_base() -> None:
+def build_base(*, no_cache: bool = False) -> None:
     """共通 base イメージ `agent-zoo-base:latest` をビルドする（B-1）。
 
     `container/Dockerfile.base` を使う。各 agent イメージはこれを `FROM` する。
     build context は zoo_dir（D-1: certs/extra/ も取り込むため）。
+
+    Args:
+        no_cache: ``True`` で docker build に ``--no-cache`` を付け、layer cache を
+            skip して 0 から再 build する。Dockerfile.base の変更 (CA env 追加等) を
+            確実に反映したい時に使う。
     """
     zoo = zoo_dir()
     base_dockerfile = zoo / "container" / "Dockerfile.base"
     if not base_dockerfile.exists():
+        # `zoo init --force` で展開されるはずの Dockerfile.base が欠損。
+        # no_cache を明示しているケースは user が「確実に焼き直し」を期待
+        # しているので silent skip すると誤解を生む → warning を出す。
+        msg = (
+            f"warning: {base_dockerfile} not found, skipping base image build. "
+            "Run `zoo init --force` to restore bundle assets."
+        )
+        print(msg, file=sys.stderr)
         return
-    run([
+    cmd = [
         "docker", "build",
         "-t", "agent-zoo-base:latest",
         "-f", str(base_dockerfile),
-        str(zoo),
-    ], env=compose_env())
+    ]
+    if no_cache:
+        cmd.append("--no-cache")
+    cmd.append(str(zoo))
+    run(cmd, env=compose_env())
 
 
 def ensure_certs() -> None:

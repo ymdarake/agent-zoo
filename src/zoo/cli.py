@@ -74,9 +74,16 @@ def reload() -> None:
 
 
 @app.command()
-def build(agent: str = AgentOpt) -> None:
+def build(
+    agent: str = AgentOpt,
+    no_cache: bool = typer.Option(
+        False,
+        "--no-cache",
+        help="Docker layer cache を skip して 0 から再 build (Dockerfile 変更を確実に反映)",
+    ),
+) -> None:
     """Docker イメージをビルド。"""
-    api.build(agent=agent)
+    api.build(agent=agent, no_cache=no_cache)
 
 
 @app.command(name="bash")

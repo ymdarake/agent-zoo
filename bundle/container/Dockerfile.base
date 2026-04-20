@@ -22,6 +22,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# update-ca-certificates は system CA store
+# (/etc/ssl/certs/ca-certificates.crt) に extra CA を追加するが、pip /
+# Python requests / Node.js は system store を見ずに自前 bundle (certifi /
+# node built-in) を使うため、corporate CA を含む環境で TLS 検証が fail する。
+# 4 つの env で bundle path を統一し、build 時の RUN (npm install 等) と
+# runtime の両方で TLS 解決が通るようにする。base image からの派生
+# (claude / codex / gemini / unified) でも継承される。
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt \
+    REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt \
+    PIP_CERT=/etc/ssl/certs/ca-certificates.crt \
+    NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git sqlite3 curl wget gnupg \
     python3 python3-pip jq less ripgrep \

@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **`zoo certs import` が `certs/extra/bundle.pem` を自動生成しない設計欠陥** — mitmproxy は上流 TLS 検証に `--set ssl_verify_upstream_trusted_ca=/certs/extra/bundle.pem` で単一 file path を要求するが、`certs_import` / `certs_remove` / `init` は個別 PEM file 操作のみで bundle への aggregate を行っておらず、user が手動で `cat *.pem > bundle.pem` しない限り自社サーバー (corporate private CA) への TLS handshake で cert chain 検証 fail していた。
+  - `_rebuild_cert_bundle()` を新設、`certs/extra/` 内の全 user PEM (`.gitkeep` と `bundle.pem` 自身を除く) を結合して `bundle.pem` を自動再生成
+  - `certs_import` / `certs_remove` の最後 + `init` (古い version で import 済 workspace への遡及適用) で呼ぶ
+  - `bundle.pem` は予約名、`zoo certs import --name bundle.pem` / `zoo certs remove bundle.pem` は明示 error で reject
+  - `zoo certs list` は `bundle.pem` を自動生成物として除外
+  - CLI hint に "mitmproxy 稼働中なら `zoo down && zoo up` で再読込" 案内追加
+  - 7 unit test (import / remove / list / 予約名 / init 遡及)
+
 ## [0.1.4] - 2026-04-20
 
 v0.1.3 で dashboard を `FROM agent-zoo-base:latest` に切替えた副作用として、base の system python (Debian 系 `node:20-slim` + apt python3) が PEP 668 で externally-managed となり、dashboard の `pip install` が `externally-managed-environment` エラーで fail する問題を修正。
